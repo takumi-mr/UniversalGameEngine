@@ -1,5 +1,5 @@
 // apps/backend/infra/HybridGameRepository.ts
-import { MongoClient, Db, type WithId, type Document } from 'mongodb';
+import { MongoClient, Db, type Document } from 'mongodb';
 import Redis from 'ioredis';
 import type { IGameRepository } from '@engine/shared/stores/repository';
 

@@ -1,6 +1,18 @@
 // packages/shared/UniversalEngine.ts
 // --- 1. エンジンが要求する「ルールの文法（契約）」 ---
-export interface GameRuleset<TState, TAction> {
+// エンジンが状態を扱うための最低限の約束
+export interface BaseGameState {
+    status: 'PLAYING' | 'FINISHED';
+    message?: string;
+    // 必要に応じて updatedAt などもここに入れる
+}
+
+// エンジンがアクションを識別するための最低限の約束
+export interface BaseGameAction {
+    type: string;
+}
+
+export interface GameRuleset<TState extends BaseGameState, TAction extends BaseGameAction> {
     // 1. ゲームの初期状態を生成する関数
     getInitialState: (options?: any) => TState;
     
@@ -15,7 +27,7 @@ export interface GameRuleset<TState, TAction> {
 }
 
 // --- 2. 汎用エンジン本体 ---
-export class UniversalEngine<TState, TAction> {
+export class UniversalEngine<TState extends BaseGameState, TAction extends BaseGameAction> {
     private state: TState;
     private rules: GameRuleset<TState, TAction>;
     public history: TAction[] = [];

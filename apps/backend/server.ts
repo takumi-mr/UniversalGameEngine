@@ -5,12 +5,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { UniversalEngine } from '@engine/shared/UniversalEngine';
 import { HybridGameRepository } from './infra/HybridGameRepository';
-
-const repo = new HybridGameRepository<any>(
-    process.env.REDIS_URL || 'redis://localhost:6379',
-    process.env.MONGO_URL || 'mongodb://localhost:27017'
-);
-import { OthelloRuleset } from '@engine/shared/rules/OthelloRules';
+import { gameRegistry } from '@engine/shared/GameRegistry';
 
 const app = express();
 app.use(cors());
@@ -20,7 +15,21 @@ const io = new Server(httpServer, {
     cors: { origin: "*" } // 開発用
 });
 
-const sessions = new Map<string, UniversalEngine<any, any>>();
+/**
+ * セッション管理
+ * エンジン本体と、そのゲームの種類(type)をセットで保持
+ */
+interface GameSession {
+    engine: UniversalEngine<any, any>;
+    type: string;
+}
+const sessions = new Map<string, GameSession>();
+
+const repo = new HybridGameRepository<any>(
+    process.env.REDIS_URL || 'redis://localhost:6379',
+    process.env.MONGO_URL || 'mongodb://localhost:27017'
+);
+
 
 const updatePresence = (gameId: string) => {
     const room = io.sockets.adapter.rooms.get(gameId);
@@ -38,10 +47,16 @@ io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
 
     // 部屋の作成リクエスト
-    socket.on('request-create-game', (options) => {
+    socket.on('request-create-game', ({ type, options }) => {
+        const def = gameRegistry.getDefinition(type);
+        if (!def) {
+            socket.emit('error-message', `Unknown game type: ${type}`);
+            return;
+        }
+
         const gameId = Math.random().toString(36).substring(7);
-        const engine = new UniversalEngine(OthelloRuleset, options);
-        sessions.set(gameId, engine);
+        const engine = new UniversalEngine(def.ruleset, options);
+        sessions.set(gameId, { engine, type });
         
         // 作成した本人に ID を送り返す
         socket.emit('game-created', gameId);
@@ -54,40 +69,42 @@ io.on('connection', (socket) => {
         
         // メモリになければDBから復元を試みる
         if (!sessions.has(gameId)) {
-            const savedState = await repo.load(gameId);
-            if (savedState) {
-                const engine = new UniversalEngine(OthelloRuleset);
-                // 汎用エンジンに状態を直接流し込む口が必要
-                engine.loadState(savedState); 
-                sessions.set(gameId, engine);
+            const savedData = await repo.load(gameId);
+            if (savedData) {
+                const def = gameRegistry.getDefinition(savedData.type);
+                if (def) { 
+                    const engine = new UniversalEngine(def.ruleset);
+                    engine.loadState(savedData.state); 
+                    sessions.set(gameId, { engine, type: savedData.type });
+                    console.log(`Game ${gameId} restored from storage (${savedData.type})`);
+                }
             }
         }
 
-        let engine = sessions.get(gameId);
-        if (!engine) {
-            // なければ新規作成（本来はREST APIと分けても良い）
-            engine = new UniversalEngine(OthelloRuleset, { size: 4 });
-            sessions.set(gameId, engine);
+        const session = sessions.get(gameId);
+        if (!session) {
+            socket.emit('error-message', 'Game session not found');
+            return;
         }
         
         // 参加した瞬間に現在の状態を送信
-        socket.emit('state-update', engine.getState());
         console.log(`User ${socket.id} joined room ${gameId}`);
+        socket.emit('state-update', session.engine.getState());
         updatePresence(gameId);
     });
 
     // 着手アクションの受信
     socket.on('dispatch-action', async ({ gameId, action }) => {
-        const engine = sessions.get(gameId);
-        if (!engine) return;
+        const session = sessions.get(gameId);
+        if (!session) return;
 
-        const success = engine.dispatch(action);
+        const success = session.engine.dispatch(action);
         if (success) {
-            const state = engine.getState();
+            const state = session.engine.getState();
             // 状態を永続化（終了フラグをチェックしてMongoDBへの保存判断）
             await repo.save(gameId, state, state.status === 'FINISHED');
             // ルーム内の全員に最新の状態をブロードキャスト（リアルタイム反映！）
-            io.to(gameId).emit('state-update', engine.getState());
+            io.to(gameId).emit('state-update', state);
         } else {
             socket.emit('error-message', 'Invalid move!');
         }

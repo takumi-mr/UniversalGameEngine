@@ -1,8 +1,7 @@
 // packages/shared/rules/Othello3DRuleset.ts
-import type { GameRuleset } from '../UniversalEngine';
+import type { GameRuleset, BaseGameState, BaseGameAction } from '../UniversalEngine';
 
 export type PlayerColor = 1 | -1; // 1: 黒, -1: 白
-export type GameStatus = 'PLAYING' | 'FINISHED';
 
 export interface Position {
     x: number;
@@ -10,16 +9,16 @@ export interface Position {
     z: number;
 }
 
-export interface GameState {
+// 汎用エンジンの BaseGameState を継承
+export interface GameState extends BaseGameState {
     board: number[][][];
     currentTurn: PlayerColor;
     scores: Record<number, number>;
     validMoves: Position[];
-    status: GameStatus;
-    message: string;
 }
 
-export interface MoveAction extends Position {
+// 汎用エンジンの BaseGameAction を継承 (type が必須になる)
+export interface MoveAction extends BaseGameAction, Position {
     type: 'MOVE';
     color: PlayerColor;
 }
@@ -49,9 +48,9 @@ export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
             board,
             currentTurn: 1,
             scores,
-            validMoves: [], // 最初の計算は後で行う
-            status: 'PLAYING',
-            message: ''
+            validMoves: [], 
+            status: 'PLAYING', // BaseGameState で要求される
+            message: ''        // BaseGameState で要求される
         };
         state.validMoves = calculateValidMoves(state, 1, size);
         return state;
@@ -61,13 +60,13 @@ export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
     isValidAction: (state, action) => {
         if (state.status !== 'PLAYING') return false;
         if (action.color !== state.currentTurn) return false;
+        if (action.type !== 'MOVE') return false; // Actionの種別チェックも追加
         return isValidMove(state.board, action.x, action.y, action.z, action.color, state.board.length);
     },
 
     // 状態の更新 (Reducer)
     reduce: (state, action) => {
         const size = state.board.length;
-        // イミュータブルな更新のためにディープコピー
         const nextBoard = JSON.parse(JSON.stringify(state.board));
         const color = action.color;
         const opponent = (color === 1 ? -1 : 1) as PlayerColor;
@@ -75,7 +74,6 @@ export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
         nextBoard[action.z][action.y][action.x] = color;
         let flippedCount = 0;
 
-        // 26方向スキャン
         for (let dz = -1; dz <= 1; dz++) {
             for (let dy = -1; dy <= 1; dy++) {
                 for (let dx = -1; dx <= 1; dx++) {
@@ -94,21 +92,20 @@ export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
             [opponent]: state.scores[opponent] - flippedCount
         };
 
-        // 次のプレイヤーの判定
         let nextTurn = opponent;
         let nextValidMoves = calculateValidMoves({ ...state, board: nextBoard }, nextTurn, size);
-        let message = '';
+        let message = state.message; // 以前のメッセージを引き継ぐ
 
         if (nextValidMoves.length === 0) {
-            // パス判定
             nextValidMoves = calculateValidMoves({ ...state, board: nextBoard }, color, size);
             if (nextValidMoves.length > 0) {
                 message = `${opponent === 1 ? "Black" : "White"} passed!`;
                 nextTurn = color;
             } else {
-                // 両者打てないので終了フラグ（statusはcheckStatusで処理）
-                nextTurn = color; // dummy
+                nextTurn = color; 
             }
+        } else {
+            message = ''; // 通常のターン交代時はメッセージをクリア
         }
 
         return {
@@ -135,7 +132,7 @@ export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
     }
 };
 
-// --- ヘルパー関数群 (Coreから移植・純粋関数化) ---
+// --- ヘルパー関数群 ---
 
 function countFlips(board: number[][][], x: number, y: number, z: number, dx: number, dy: number, dz: number, color: number, size: number): number {
     let count = 0;
@@ -163,7 +160,7 @@ function isValidMove(board: number[][][], x: number, y: number, z: number, color
     return false;
 }
 
-function calculateValidMoves(state: any, color: PlayerColor, size: number): Position[] {
+function calculateValidMoves(state: GameState, color: PlayerColor, size: number): Position[] {
     const moves: Position[] = [];
     for (let z = 0; z < size; z++) {
         for (let y = 0; y < size; y++) {

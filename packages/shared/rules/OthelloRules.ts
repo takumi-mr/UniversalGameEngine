@@ -1,21 +1,22 @@
 // packages/shared/rules/OthelloRuleset.ts
-import type { GameRuleset } from '../UniversalEngine';
+import type { GameRuleset, BaseGameState, BaseGameAction } from '../UniversalEngine';
 
 export type PlayerColor = 1 | -1; // 1: 黒, -1: 白
-export type GameStatus = 'PLAYING' | 'FINISHED';
 
-export interface OthelloState {
+// BaseGameState を継承することで status, message が保証される
+export interface OthelloState extends BaseGameState {
     board: number[][][];
     currentTurn: PlayerColor;
     scores: Record<number, number>;
-    status: GameStatus;
-    message: string;
     size: number;
 }
 
-export interface OthelloAction {
+// BaseGameAction を継承しつつ、固有のプロパティを定義
+export interface OthelloAction extends BaseGameAction {
     type: 'PLACE_PIECE';
-    x: number; y: number; z: number;
+    x: number; 
+    y: number; 
+    z: number;
     color: PlayerColor;
 }
 
@@ -34,12 +35,13 @@ const DIRECTIONS = (() => {
 })();
 
 export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
-    getInitialState: (options = { size: 4 }) => {
+    getInitialState: (options = { size: 4 }): OthelloState => {
         const { size } = options;
         const board = Array.from({ length: size }, () =>
             Array.from({ length: size }, () => Array(size).fill(0))
         );
-        const m = size / 2;
+        const m = Math.floor(size / 2);
+        
         // 初期配置
         for (let dz = -1; dz <= 0; dz++) {
             for (let dy = -1; dy <= 0; dy++) {
@@ -48,11 +50,21 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
                 }
             }
         }
-        return { board, currentTurn: 1, scores: { 1: 4, [-1]: 4 }, status: 'PLAYING', message: '', size };
+        
+        return { 
+            board, 
+            currentTurn: 1, 
+            scores: { 1: 4, [-1]: 4 }, 
+            size,
+            status: 'PLAYING', 
+            message: '' 
+        };
     },
 
     isValidAction: (state, action) => {
-        if (state.status === 'FINISHED' || action.color !== state.currentTurn) return false;
+        if (state.status !== 'PLAYING') return false;
+        if (action.type !== 'PLACE_PIECE') return false; // 型チェック
+        if (action.color !== state.currentTurn) return false;
         if (state.board[action.z][action.y][action.x] !== 0) return false;
 
         return DIRECTIONS.some(d => countFlips(state, action.x, action.y, action.z, d.dx, d.dy, d.dz, action.color) > 0);
@@ -85,17 +97,26 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
         
         let finalTurn = nextPlayer;
         let message = '';
+        let status = state.status;
         
         if (!hasMoves) {
             const currentHasMoves = hasValidMoves(nextBoard, color, state.size);
             if (!currentHasMoves) {
+                // 両者パスで終了
                 return { ...state, board: nextBoard, scores: nextScores, status: 'FINISHED' };
             }
             message = `${nextPlayer === 1 ? 'Black' : 'White'} passed!`;
             finalTurn = color; // パスなので手番交代しない
         }
 
-        return { ...state, board: nextBoard, currentTurn: finalTurn, scores: nextScores, message };
+        return { 
+            ...state, 
+            board: nextBoard, 
+            currentTurn: finalTurn, 
+            scores: nextScores, 
+            message,
+            status
+        };
     },
 
     checkWinCondition: (state) => {
@@ -109,7 +130,7 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
 };
 
 // ヘルパー関数群
-function countFlips(state: OthelloState, x: number, y: number, z: number, dx: number, dy: number, dz: number, color: number) {
+function countFlips(state: OthelloState, x: number, y: number, z: number, dx: number, dy: number, dz: number, color: number): number {
     let count = 0;
     let cx = x + dx, cy = y + dy, cz = z + dz;
     while (cx >= 0 && cx < state.size && cy >= 0 && cy < state.size && cz >= 0 && cz < state.size) {
