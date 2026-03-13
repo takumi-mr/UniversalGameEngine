@@ -18,11 +18,21 @@ export interface GameRuleset<TState, TAction> {
 export class UniversalEngine<TState, TAction> {
     private state: TState;
     private rules: GameRuleset<TState, TAction>;
-    public history: TAction[] = []; // 汎用エンジンなら履歴（Undo/Redo）もここで一元管理できる
+    public history: TAction[] = [];
 
     constructor(rules: GameRuleset<TState, TAction>, options?: any) {
         this.rules = rules;
         this.state = this.rules.getInitialState(options);
+    }
+
+    /**
+     * DBなどから取得した外部の状態をエンジンにセットする
+     * @param savedState 保存されていた状態
+     * @param history 任意：保存されていたアクション履歴
+     */
+    public loadState(savedState: TState, history: TAction[] = []): void {
+        this.state = savedState;
+        this.history = history;
     }
 
     public getState(): TState {

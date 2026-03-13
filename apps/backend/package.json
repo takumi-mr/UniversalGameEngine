@@ -5,6 +5,7 @@
     "@types/bun": "latest",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/ioredis": "^5.0.0",
     "@types/socket.io": "^3.0.2"
   },
   "peerDependencies": {
@@ -14,6 +15,8 @@
     "@engine/shared": "workspace:*",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "ioredis": "^5.10.0",
+    "mongodb": "^7.1.0",
     "socket.io": "^4.8.3"
   }
 }

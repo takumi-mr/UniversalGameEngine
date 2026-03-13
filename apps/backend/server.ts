@@ -4,6 +4,12 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { UniversalEngine } from '@engine/shared/UniversalEngine';
+import { HybridGameRepository } from './infra/HybridGameRepository';
+
+const repo = new HybridGameRepository<any>(
+    process.env.REDIS_URL || 'redis://localhost:6379',
+    process.env.MONGO_URL || 'mongodb://localhost:27017'
+);
 import { OthelloRuleset } from '@engine/shared/rules/OthelloRules';
 
 const app = express();
@@ -43,9 +49,20 @@ io.on('connection', (socket) => {
     });
 
     // ルーム（ゲーム）への参加
-    socket.on('join-game', (gameId: string) => {
+    socket.on('join-game', async (gameId: string) => {
         socket.join(gameId);
         
+        // メモリになければDBから復元を試みる
+        if (!sessions.has(gameId)) {
+            const savedState = await repo.load(gameId);
+            if (savedState) {
+                const engine = new UniversalEngine(OthelloRuleset);
+                // 汎用エンジンに状態を直接流し込む口が必要
+                engine.loadState(savedState); 
+                sessions.set(gameId, engine);
+            }
+        }
+
         let engine = sessions.get(gameId);
         if (!engine) {
             // なければ新規作成（本来はREST APIと分けても良い）
@@ -60,12 +77,15 @@ io.on('connection', (socket) => {
     });
 
     // 着手アクションの受信
-    socket.on('dispatch-action', ({ gameId, action }) => {
+    socket.on('dispatch-action', async ({ gameId, action }) => {
         const engine = sessions.get(gameId);
         if (!engine) return;
 
         const success = engine.dispatch(action);
         if (success) {
+            const state = engine.getState();
+            // 状態を永続化（終了フラグをチェックしてMongoDBへの保存判断）
+            await repo.save(gameId, state, state.status === 'FINISHED');
             // ルーム内の全員に最新の状態をブロードキャスト（リアルタイム反映！）
             io.to(gameId).emit('state-update', engine.getState());
         } else {
