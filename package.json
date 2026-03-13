@@ -1,0 +1,8 @@
+{
+  "name": "my-universal-engine",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
