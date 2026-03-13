@@ -2,6 +2,7 @@
 import type { GameRuleset, BaseGameState, BaseGameAction } from './UniversalEngine';
 import { OthelloRuleset } from './rules/OthelloRules';
 import { Othello3DRuleset } from './rules/Othello3DRules';
+import { HighLowRuleset } from './rules/HighLowRules';
 // 将来的に import { ShogiRuleset } from './rules/ShogiRuleset'; などが増える
 
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
@@ -25,6 +26,11 @@ class GameRegistry {
             name: 'Othello',
             ruleset: OthelloRuleset
         })
+        this.register({
+            type: 'high-low',
+            name: 'High-Low Card Game',
+            ruleset: HighLowRuleset
+        });
     }
 
     register<TState extends BaseGameState, TAction extends BaseGameAction>(
