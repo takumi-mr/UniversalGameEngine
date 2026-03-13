@@ -1,65 +1,90 @@
 // apps/backend/server.ts
 import express from 'express';
 import cors from 'cors';
-import { Othello3DCore, type MoveAction } from '@engine/shared';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import { UniversalEngine } from '@engine/shared/UniversalEngine';
+import { OthelloRuleset } from '@engine/shared/rules/OthelloRules';
 
 const app = express();
 app.use(cors());
-app.use(express.json());
 
-// インメモリでゲームセッションを管理
-const games = new Map<string, Othello3DCore>();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+    cors: { origin: "*" } // 開発用
+});
 
-// 1. 新しいゲームを作成
-app.post('/api/games', (req, res) => {
-    const size = req.body.size || 4;
-    const gameId = Math.random().toString(36).substring(2, 9);
+const sessions = new Map<string, UniversalEngine<any, any>>();
+
+const updatePresence = (gameId: string) => {
+    const room = io.sockets.adapter.rooms.get(gameId);
+    const count = room ? room.size : 0;
     
-    // 共有パッケージのクラスをそのまま使える！
-    const newGame = new Othello3DCore(size);
-    games.set(gameId, newGame);
-    
-    res.status(201).json({
-        gameId,
-        state: newGame.getState()
+    // ルーム内の全員に現在の人数などを送信
+    io.to(gameId).emit('metadata-update', {
+        playerCount: Math.min(count, 2), // 例えば2人までをプレイヤーとする
+        spectatorCount: Math.max(0, count - 2),
+        activePlayers: Array.from(room || [])
+    });
+};
+
+io.on('connection', (socket) => {
+    console.log(`User connected: ${socket.id}`);
+
+    // 部屋の作成リクエスト
+    socket.on('request-create-game', (options) => {
+        const gameId = Math.random().toString(36).substring(7);
+        const engine = new UniversalEngine(OthelloRuleset, options);
+        sessions.set(gameId, engine);
+        
+        // 作成した本人に ID を送り返す
+        socket.emit('game-created', gameId);
+        console.log(`Game ${gameId} created via WebSocket`);
+    });
+
+    // ルーム（ゲーム）への参加
+    socket.on('join-game', (gameId: string) => {
+        socket.join(gameId);
+        
+        let engine = sessions.get(gameId);
+        if (!engine) {
+            // なければ新規作成（本来はREST APIと分けても良い）
+            engine = new UniversalEngine(OthelloRuleset, { size: 4 });
+            sessions.set(gameId, engine);
+        }
+        
+        // 参加した瞬間に現在の状態を送信
+        socket.emit('state-update', engine.getState());
+        console.log(`User ${socket.id} joined room ${gameId}`);
+        updatePresence(gameId);
+    });
+
+    // 着手アクションの受信
+    socket.on('dispatch-action', ({ gameId, action }) => {
+        const engine = sessions.get(gameId);
+        if (!engine) return;
+
+        const success = engine.dispatch(action);
+        if (success) {
+            // ルーム内の全員に最新の状態をブロードキャスト（リアルタイム反映！）
+            io.to(gameId).emit('state-update', engine.getState());
+        } else {
+            socket.emit('error-message', 'Invalid move!');
+        }
+    });
+
+    socket.on('disconnect', () => {
+        // 切断直前に所属していた全ルームに対して更新をかける
+        for (const room of socket.rooms) {
+            if (sessions.has(room)) {
+                // 少し遅延させないと、自分自身が含まれたカウントになってしまう場合がある
+                process.nextTick(() => updatePresence(room));
+            }
+        }
+        console.log(`User disconnected: ${socket.id}`);
     });
 });
 
-// 2. ゲームの状態を取得
-app.get('/api/games/:id', (req, res) => {
-    const game = games.get(req.params.id);
-    if (!game) {
-        res.status(404).json({ error: 'Game not found' });
-        return;
-    }
-    res.json(game.getState());
-});
-
-// 3. 駒を置く（アクションの送信）
-app.post('/api/games/:id/moves', (req, res) => {
-    const game = games.get(req.params.id);
-    if (!game) {
-        res.status(404).json({ error: 'Game not found' });
-        return;
-    }
-
-    const action = req.body as MoveAction;
-
-    if (action.x === undefined || action.y === undefined || action.z === undefined || action.color === undefined) {
-        res.status(400).json({ error: 'Missing parameters.' });
-        return;
-    }
-
-    const success = game.dispatchMove(action.x, action.y, action.z, action.color);
-
-    if (success) {
-        res.json({ success: true, state: game.getState() });
-    } else {
-        res.status(400).json({ success: false, error: 'Invalid move or wrong turn.' });
-    }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Backend running on http://localhost:${PORT}`);
+httpServer.listen(3000, () => {
+    console.log("🚀 Realtime Engine Platform running on port 3000");
 });

@@ -39,9 +39,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { RestPollingClient } from "../network/ApiClient";
+import type { INetworkClient } from "@engine/shared/network/INetworkClient";
+import { SocketIoClient } from "../network/SocketIoClient";
 import { Othello3DUI } from "../three/Othello3DUI";
-import type { GameState } from "../../../../packages/shared/interfaces";
+import type {
+  GameState,
+  MoveAction,
+} from "@engine/shared/rules/Othello3DRules";
 
 // --- ステート管理 ---
 const gameState = ref<GameState | null>(null);
@@ -53,12 +57,12 @@ const GAME_SIZE = 4;
 // ※バックエンドのURL（必要に応じて変更してください）
 const API_BASE_URL = "http://localhost:3000/api/games";
 
-let networkClient: RestPollingClient;
+let networkClient: INetworkClient<GameState, MoveAction>;
 let threeUI: Othello3DUI;
 
 onMounted(() => {
   // 1. ネットワーク層の初期化
-  networkClient = new RestPollingClient(API_BASE_URL);
+  networkClient = new SocketIoClient(API_BASE_URL);
 
   // ネットワークからの状態更新をVueのリアクティブな変数に反映し、Three.jsにも渡す
   networkClient.onStateUpdate = (state: GameState) => {
@@ -74,7 +78,7 @@ onMounted(() => {
   // 2. Three.js描画層の初期化
   if (canvasContainer.value) {
     threeUI = new Othello3DUI(canvasContainer.value, GAME_SIZE, (action) => {
-      networkClient.sendMove(action);
+      networkClient.sendAction(action);
     });
   }
 

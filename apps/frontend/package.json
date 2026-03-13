@@ -9,9 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@engine/shared": "workspace:*",
+    "socket.io-client": "^4.8.3",
     "three": "^0.183.2",
-    "vue": "^3.5.30",
-    "@engine/shared": "workspace:*"
+    "vue": "^3.5.30"
   },
   "devDependencies": {
     "@types/node": "^24.12.0",

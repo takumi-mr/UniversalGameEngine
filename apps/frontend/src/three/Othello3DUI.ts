@@ -1,7 +1,7 @@
 // src/three/Othello3DUI.ts
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import type { GameState, MoveAction } from '../../../../packages/shared/interfaces';
+import type { GameState, MoveAction } from '@engine/shared/rules/Othello3DRules';
 
 export class Othello3DUI {
     private size: number;

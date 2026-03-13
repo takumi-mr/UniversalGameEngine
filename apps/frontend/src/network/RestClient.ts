@@ -1,13 +1,12 @@
-// src/network/ApiClient.ts
-import type { GameState, MoveAction } from '../../../../packages/shared/interfaces';
+// apps/frontend/src/network/ApiClient.ts
+import type { INetworkClient } from '@engine/shared/network/INetworkClient';
 
-export class RestPollingClient {
+export class RestPollingClient<TState, TAction> implements INetworkClient<TState, TAction> {
     private baseUrl: string;
     public gameId: string | null = null;
     private pollInterval: ReturnType<typeof setInterval> | null = null;
 
-    // 外部（Vueコンポーネント）からセットされるコールバック
-    public onStateUpdate: (state: GameState) => void = () => {};
+    public onStateUpdate: (state: TState) => void = () => {};
     public onError: (message: string) => void = () => {};
 
     constructor(baseUrl: string) {
@@ -22,7 +21,8 @@ export class RestPollingClient {
                 body: JSON.stringify({ size })
             });
             const data = await response.json();
-            this.connect(data.gameId);
+            // 自動的に接続
+            await this.connect(data.gameId);
             return data.gameId;
         } catch (err) {
             this.onError("Failed to create game");
@@ -33,14 +33,15 @@ export class RestPollingClient {
     public async connect(gameId: string): Promise<void> {
         this.gameId = gameId;
         this.stopPolling();
-        
         await this.fetchState();
-        
-        // 2秒ごとにポーリング
         this.pollInterval = setInterval(() => this.fetchState(), 2000);
     }
 
-    public async sendMove(action: MoveAction): Promise<void> {
+    public disconnect(): void {
+        this.stopPolling();
+    }
+
+    public async sendAction(action: TAction): Promise<void> {
         if (!this.gameId) return;
         try {
             const response = await fetch(`${this.baseUrl}/${this.gameId}/moves`, {
@@ -49,14 +50,11 @@ export class RestPollingClient {
                 body: JSON.stringify(action)
             });
             const data = await response.json();
-            
             if (data.success) {
                 this.onStateUpdate(data.state);
-            } else {
-                console.warn("Invalid move:", data.error);
             }
         } catch (err) {
-            this.onError("Failed to send move");
+            this.onError("Failed to send action");
         }
     }
 
@@ -65,7 +63,7 @@ export class RestPollingClient {
         try {
             const response = await fetch(`${this.baseUrl}/${this.gameId}`);
             if (!response.ok) throw new Error('Game not found');
-            const state: GameState = await response.json();
+            const state: TState = await response.json();
             this.onStateUpdate(state);
         } catch (err) {
             this.stopPolling();
@@ -73,7 +71,7 @@ export class RestPollingClient {
         }
     }
 
-    public stopPolling(): void {
+    private stopPolling(): void {
         if (this.pollInterval) {
             clearInterval(this.pollInterval);
             this.pollInterval = null;

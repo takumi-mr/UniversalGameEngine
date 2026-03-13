@@ -12,5 +12,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "../../packages/shared/interfaces.ts", "../../packages/shared/Othello3DCore.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "../../packages/shared/INetworkClient.ts",]
 }

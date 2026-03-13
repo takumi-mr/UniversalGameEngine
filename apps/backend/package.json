@@ -4,14 +4,16 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6"
+    "@types/express": "^5.0.6",
+    "@types/socket.io": "^3.0.2"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
+    "@engine/shared": "workspace:*",
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "@engine/shared": "workspace:*"
+    "socket.io": "^4.8.3"
   }
 }
