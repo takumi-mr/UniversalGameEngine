@@ -86,6 +86,11 @@
       "name": "UNO",
       "description": "Color and number card game.",
       "rules": "The first player to discard all cards by matching color or number wins."
+    },
+    "mancala": {
+      "name": "Mancala",
+      "description": "One of the oldest board games. Sow seeds and collect them in your store.",
+      "rules": "Choose a pit on your side and drop seeds one by one in a clockwise direction. The player with the most seeds in their store at the end wins."
     }
   },
   "help": {

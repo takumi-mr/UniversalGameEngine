@@ -14,6 +14,7 @@ import { GoRuleset } from './rules/GoRuleset';
 import { EquilibriumRuleset } from './rules/EquilibriumRuleset';
 import { UnoRuleset } from './rules/UnoRuleset';
 import { SudokuRuleset } from './rules/SudokuRuleset';
+import { MancalaRuleset } from './rules/MancalaRuleset';
 
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
     type: string;
@@ -169,6 +170,16 @@ class GameRegistry {
             description: 'AIが考案した、魂を削り合う究極の心理戦ボードゲーム。',
             emoji: '⚖️',
             rules: 'AIによって設計された戦略的なボードゲーム。相手の心理を読み、均衡を崩します。',
+        });
+        this.register({
+            type: 'mancala',
+            name: 'Mancala',
+            ruleset: MancalaRuleset,
+            minPlayers: 2,
+            maxPlayers: 2,
+            description: '最古のボードゲームの一つ。石をまいて自分のストアに集めよう。',
+            emoji: '🏺',
+            rules: '自分の陣地の穴から石を選んで、時計回りに一つずつ置いていきます。最後に自分のストアに多くの石がある人の勝ちです。',
         });
     }
 

@@ -97,10 +97,11 @@ import type { ChessState, ChessAction } from '@engine/shared/rules/ChessRuleset'
 import type { EquilibriumState, EquilibriumAction } from '@engine/shared/rules/EquilibriumRuleset';
 import type { ShogiState, ShogiAction } from '@engine/shared/rules/ShogiRuleset';
 import type { HighLowState, DrawAction } from '@engine/shared/rules/HighLowRuleset';
+import type { MancalaState, MancalaAction } from '@engine/shared/rules/MancalaRuleset';
 
 // 共用体型の定義
-type GameState = TicTacToeState | OthelloState | Othello3DState | RubiksState | ChessState | EquilibriumState | ShogiState | BaseGameState | HighLowState;
-type GameAction = TicTacToeAction | OthelloAction | Othello3DAction | RubiksAction | ChessAction | EquilibriumAction | ShogiAction | BaseGameAction | DrawAction;
+type GameState = TicTacToeState | OthelloState | Othello3DState | RubiksState | ChessState | EquilibriumState | ShogiState | BaseGameState | HighLowState | MancalaState;
+type GameAction = TicTacToeAction | OthelloAction | Othello3DAction | RubiksAction | ChessAction | EquilibriumAction | ShogiAction | BaseGameAction | DrawAction | MancalaAction;
 
 const props = defineProps<{
   gameType: string;
@@ -133,6 +134,7 @@ const components: Record<string, any> = {
   'high_low': defineAsyncComponent(() => import('./game/HighLow.vue')),
   'texas_holdem': defineAsyncComponent(() => import('./game/TexasHoldem.vue')),
   'uno': defineAsyncComponent(() => import('./game/Uno.vue')),
+  'mancala': defineAsyncComponent(() => import('./game/Mancala.vue')),
 };
 
 const gameComponent = computed(() => components[props.gameType] || null);
