@@ -22,5 +22,28 @@ export interface IAIPlayer<TState extends BaseGameState, TAction extends BaseGam
      * @param legalActions 現在のAIが実行可能なアクションの完全なリスト
      * @returns 決定したアクション。打てる手がない場合は null。
      */
-    computeNextMove(state: TState, legalActions: TAction[]): Promise<TAction | null>;
+    computeNextMove(
+        state: TState,
+        legalActions: TAction[],
+        options?: {
+            timeLimitMs?: number
+            iterationLimit?: number
+        }
+    ): Promise<TAction | null>;
+
+    observeAction?(action: TAction, newState: TState): void
+
+    notifyGameEnd?(result: {
+        winner?: string
+        reason?: string
+    }): void
+
+    reset?(): void
+
+    getDiagnostics?(): Record<string, any>
+
+    evaluateState?(state: TState): Promise<{
+        value: number
+        policy: Map<string, number>
+    }>
 }
