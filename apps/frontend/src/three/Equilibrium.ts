@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import type { EquilibriumState } from '@engine/shared/rules/EquilibriumRuleset';
 
-export class Equilibrium3D {
+export class Equilibrium {
     private scene: THREE.Scene;
     private camera: THREE.PerspectiveCamera;
     private renderer: THREE.WebGLRenderer;
