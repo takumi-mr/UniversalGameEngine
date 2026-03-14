@@ -7,6 +7,14 @@
         {{ gameEmoji }} {{ gameName }} Rooms
       </v-app-bar-title>
       <v-spacer></v-spacer>
+
+      <v-btn
+        icon="mdi-help-circle-outline"
+        variant="text"
+        class="mr-2"
+        @click="showHelp = true"
+      ></v-btn>
+
       <div class="px-4 text-body-2 text-medium-emphasis">
         Logged in as: <strong class="text-high-emphasis">{{ username }}</strong>
       </div>
@@ -105,6 +113,15 @@
         </v-row>
       </v-container>
     </v-main>
+
+    <!-- Help Dialog -->
+    <GameHelpDialog
+      v-model="showHelp"
+      :game-name="gameName"
+      :game-emoji="gameEmoji"
+      :game-rules="(gameInfo as any)?.rules"
+      :game-description="gameDescription"
+    />
   </v-app>
 </template>
 
@@ -113,6 +130,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { availableGames } from '../constants/games';
 import { SocketIoClient } from '../network/SocketIoClient';
+import GameHelpDialog from '../components/game/GameHelpDialog.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -122,6 +140,7 @@ const username = ref(localStorage.getItem('game_username') || 'Unknown');
 const rooms = ref<any[]>([]);
 const loading = ref(true);
 const creating = ref(false);
+const showHelp = ref(false);
 
 const gameInfo = computed(() => availableGames.find(g => g.type === gameType.value));
 const gameName = computed(() => gameInfo.value?.name || gameType.value);

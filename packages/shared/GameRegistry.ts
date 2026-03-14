@@ -22,6 +22,7 @@ export interface GameDefinition<TState extends BaseGameState, TAction extends Ba
     maxPlayers: number;
     description: string;
     emoji: string;
+    rules?: string;
 }
 
 class GameRegistry {
@@ -36,6 +37,7 @@ class GameRegistry {
             maxPlayers: 2,
             description: '3D立体オセロ。26方向に挟める！',
             emoji: '🟦',
+            rules: '石を置いて、上下左右、斜めに加えて、高さ（Z軸）方向も含む26方向に相手の石を挟んで自分の色に変えます。',
         });
         this.register({
             type: 'othello',
@@ -45,6 +47,7 @@ class GameRegistry {
             maxPlayers: 2,
             description: '古典的な2Dオセロ（リバーシ）。',
             emoji: '⚫',
+            rules: '相手の石を挟んで自分の色に変える、伝統的なボードゲームです。最後に石が多いほうが勝ち。',
         });
         this.register({
             type: 'chess',
@@ -54,6 +57,7 @@ class GameRegistry {
             maxPlayers: 2,
             description: '古典的なチェス。',
             emoji: '♔',
+            rules: 'キング、クイーン、ルーク、ビショップ、ナイト、ポーンを動かして、相手のキングをチェックメイトします。',
         })
         this.register({
             type: 'high_low',
@@ -63,6 +67,7 @@ class GameRegistry {
             maxPlayers: 2,
             description: '引いたカードの強さで競うカードゲーム。',
             emoji: '🃏',
+            rules: '次に引くカードが現在のカードより「高い」か「低い」かを予想します。',
         });
         this.register({
             type: 'uno',
@@ -72,6 +77,7 @@ class GameRegistry {
             maxPlayers: 10,
             description: 'UNO。',
             emoji: '🃏',
+            rules: '同じ色か同じ数字のカードを出していき、最初に手札がなくなった人の勝ちです。',
         })
         this.register({
             type: 'texas_holdem',
@@ -81,6 +87,7 @@ class GameRegistry {
             maxPlayers: 6,
             description: 'テキサスホールデムポーカー。',
             emoji: '🂡',
+            rules: '2枚の手札と5枚の共通カードを組み合わせて最強の役を作ります。',
         });
         this.register({
             type: 'mahjong',
@@ -90,6 +97,7 @@ class GameRegistry {
             maxPlayers: 4,
             description: '4人麻雀。役・符・点数計算対応。',
             emoji: '🀄',
+            rules: '4つの面子（メンツ）と1つの雀頭（ジャントウ）を揃えて和了（あがり）を目指します。',
         });
         this.register({
             type: 'daifugo',
@@ -99,6 +107,7 @@ class GameRegistry {
             maxPlayers: 4,
             description: '大富豪（ジョーカー入り54枚）。',
             emoji: '👑',
+            rules: '手札を早く出し切り、大富豪を目指すトランプゲームです。革命や階段などの独自ルールもあります。',
         });
         this.register({
             type: 'go',
@@ -108,6 +117,7 @@ class GameRegistry {
             maxPlayers: 2,
             description: '囲碁 (9x9, 13x13, 19x19)。Tromp-Taylor集計対応。',
             emoji: '⚪',
+            rules: '石で盤面の囲いを広げ、陣地の広さを競います。',
         });
         this.register({
             type: 'rubiks_cube',
@@ -117,6 +127,7 @@ class GameRegistry {
             maxPlayers: 1,
             description: '1人用ルービックキューブ。',
             emoji: '🟥',
+            rules: '6つの面の各色を揃える立体パズルです。',
         });
         this.register({
             type: 'tictactoe',
@@ -126,6 +137,7 @@ class GameRegistry {
             maxPlayers: 2,
             description: '古典的な三目並べ。',
             emoji: '⭕',
+            rules: '3x3のマス目に○と×を交互に書き、3つ並べたほうが勝ちというシンプルなゲーム。',
         });
         this.register({
             type: 'shogi',
@@ -135,6 +147,7 @@ class GameRegistry {
             maxPlayers: 2,
             description: '古典的な将棋。',
             emoji: '☗',
+            rules: '取った駒を自駒として使えるのが特徴です。相手の玉将を詰ませれば勝利。',
         })
         this.register({
             type: 'equilibrium',
@@ -144,6 +157,7 @@ class GameRegistry {
             maxPlayers: 2,
             description: 'AIが考案した、魂を削り合う究極の心理戦ボードゲーム。',
             emoji: '⚖️',
+            rules: 'AIによって設計された戦略的なボードゲーム。相手の心理を読み、均衡を崩します。',
         });
     }
 
