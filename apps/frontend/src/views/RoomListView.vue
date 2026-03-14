@@ -1,39 +1,111 @@
 <template>
-  <div class="room-list-container">
-    <div class="user-bar">
-      <button @click="back" class="back-btn">← Back to Selection</button>
-      <span>Logged in as: <strong>{{ username }}</strong></span>
-    </div>
+  <v-app>
+    <!-- Top App Bar -->
+    <v-app-bar flat border="none" color="surface">
+      <v-btn icon="mdi-arrow-left" variant="text" @click="back"></v-btn>
+      <v-app-bar-title class="font-weight-bold">
+        {{ gameEmoji }} {{ gameName }} Rooms
+      </v-app-bar-title>
+      <v-spacer></v-spacer>
+      <div class="px-4 text-body-2 text-medium-emphasis">
+        Logged in as: <strong class="text-high-emphasis">{{ username }}</strong>
+      </div>
+    </v-app-bar>
 
-    <div class="content-wrapper">
-      <div class="game-header">
-        <span class="game-emoji">{{ gameEmoji }}</span>
-        <h1>{{ gameName }} Rooms</h1>
-        <p>{{ gameDescription }}</p>
-      </div>
+    <v-main class="bg-grey-darken-4">
+      <v-container class="pa-6" fluid>
+        <v-row justify="center">
+          <v-col cols="12" md="10" lg="8">
+            <div class="d-flex align-center mb-8">
+              <div>
+                <h1 class="text-h3 font-weight-bold mb-2">{{ gameName }}</h1>
+                <p class="text-body-1 text-medium-emphasis">{{ gameDescription }}</p>
+              </div>
+              <v-spacer></v-spacer>
+              <div class="d-flex gap-2">
+                <v-btn
+                  color="primary"
+                  size="large"
+                  prepend-icon="mdi-plus"
+                  class="rounded-lg font-weight-bold"
+                  :loading="creating"
+                  @click="createNewRoom"
+                >
+                  Create New Room
+                </v-btn>
+                <v-btn
+                  variant="outlined"
+                  size="large"
+                  icon="mdi-refresh"
+                  class="rounded-lg ml-2"
+                  @click="fetchRooms"
+                ></v-btn>
+              </div>
+            </div>
 
-      <div class="actions">
-        <button @click="createNewRoom" class="create-btn" :disabled="creating">
-          {{ creating ? 'Creating...' : '🆕 Create New Room' }}
-        </button>
-        <button @click="fetchRooms" class="refresh-btn">🔄 Refresh List</button>
-      </div>
+            <v-divider class="mb-8"></v-divider>
 
-      <div v-if="loading" class="loading">Loading rooms...</div>
-      <div v-else-if="rooms.length === 0" class="no-rooms">
-        <p>No active rooms for this game. Create one!</p>
-      </div>
-      <div v-else class="rooms-grid">
-        <div v-for="room in rooms" :key="room.id" class="room-card">
-          <div class="room-info">
-            <span class="room-id">ID: {{ room.id }}</span>
-            <span class="player-count">👥 {{ room.playerCount }} Players</span>
-          </div>
-          <button @click="joinRoom(room.id)" class="join-btn">Join</button>
-        </div>
-      </div>
-    </div>
-  </div>
+            <div v-if="loading" class="text-center pa-12">
+              <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+              <div class="mt-4 text-body-1 text-medium-emphasis">Finding active rooms...</div>
+            </div>
+
+            <v-row v-else-if="rooms.length > 0">
+              <v-col v-for="room in rooms" :key="room.id" cols="12" sm="6" md="4">
+                <v-card class="rounded-xl pa-4 bg-surface" border="none">
+                  <v-card-item>
+                    <template v-slot:prepend>
+                      <v-icon icon="mdi-door-open" color="primary" size="32"></v-icon>
+                    </template>
+                    <v-card-title class="text-h6 font-weight-bold mb-1">Room #{{ room.id.slice(0, 4) }}</v-card-title>
+                    <v-card-subtitle>ID: {{ room.id }}</v-card-subtitle>
+                  </v-card-item>
+
+                  <v-card-text class="py-4">
+                    <div class="d-flex align-center">
+                      <v-chip
+                        prepend-icon="mdi-account-group"
+                        color="secondary"
+                        variant="tonal"
+                        size="small"
+                        class="rounded-lg"
+                      >
+                        {{ room.playerCount }} Players Joined
+                      </v-chip>
+                    </div>
+                  </v-card-text>
+
+                  <v-card-actions>
+                    <v-btn
+                      block
+                      color="primary"
+                      variant="tonal"
+                      class="rounded-lg font-weight-bold"
+                      @click="joinRoom(room.id)"
+                    >
+                      Join Match
+                    </v-btn>
+                  </v-card-actions>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <v-sheet
+              v-else
+              class="text-center pa-12 rounded-xl bg-surface-variant"
+              border="none"
+              color="transparent"
+            >
+              <v-icon icon="mdi-ghost-off" size="64" color="medium-emphasis" class="mb-4"></v-icon>
+              <h2 class="text-h5 font-weight-bold mb-2">No Active Rooms</h2>
+              <p class="text-body-1 text-medium-emphasis mb-6">Be the first to start a new match in this category!</p>
+              <v-btn color="primary" variant="flat" @click="createNewRoom">Create First Room</v-btn>
+            </v-sheet>
+          </v-col>
+        </v-row>
+      </v-container>
+    </v-main>
+  </v-app>
 </template>
 
 <script setup lang="ts">
@@ -82,7 +154,6 @@ const createNewRoom = async () => {
     router.push(`/game/${gameType.value}/${id}`);
   } catch (err) {
     console.error('Failed to create room:', err);
-    alert('Failed to create room');
   } finally {
     creating.value = false;
   }
@@ -98,141 +169,7 @@ const back = () => {
 </script>
 
 <style scoped>
-.room-list-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background: #0f172a;
-  color: #e2e8f0;
-}
-
-.user-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 7px 20px;
-  background: rgba(15, 23, 42, 0.95);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  font-size: 0.82rem;
-  color: #94a3b8;
-}
-.user-bar strong { color: #e2e8f0; }
-
-.back-btn {
-  background: rgba(255,255,255,0.07);
-  color: #94a3b8;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 8px;
-  padding: 4px 12px;
-  cursor: pointer;
-}
-
-.content-wrapper {
-  flex: 1;
-  padding: 40px;
-  max-width: 800px;
-  margin: 0 auto;
-  width: 100%;
-  overflow-y: auto;
-}
-
-.game-header {
-  text-align: center;
-  margin-bottom: 40px;
-}
-.game-emoji {
-  font-size: 4rem;
-}
-.game-header h1 {
-  font-size: 2.5rem;
-  margin: 10px 0;
-  background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.game-header p {
-  color: #64748b;
-}
-
-.actions {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 30px;
-  justify-content: center;
-}
-
-.create-btn {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-.create-btn:hover { transform: translateY(-2px); }
-
-.refresh-btn {
-  background: rgba(255,255,255,0.05);
-  color: #94a3b8;
-  border: 1px solid rgba(255,255,255,0.1);
-  padding: 12px 24px;
-  border-radius: 12px;
-  cursor: pointer;
-}
-
-.rooms-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 20px;
-}
-
-.room-card {
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 16px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.room-info {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-.room-id {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.9rem;
-  color: #94a3b8;
-}
-.player-count {
-  font-size: 0.8rem;
-  color: #64748b;
-}
-
-.join-btn {
-  background: rgba(99, 102, 241, 0.2);
-  color: #818cf8;
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  padding: 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-.join-btn:hover {
-  background: rgba(99, 102, 241, 0.4);
-  color: white;
-}
-
-.loading, .no-rooms {
-  text-align: center;
-  padding: 40px;
-  color: #64748b;
+.gap-2 {
+  gap: 8px;
 }
 </style>

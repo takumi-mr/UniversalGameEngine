@@ -1,24 +1,106 @@
 <template>
-  <div class="selection-view">
-    <div class="user-bar">
-      Logged in as: <strong>{{ username }}</strong>
-      <button @click="logout" class="logout-btn">Logout</button>
-    </div>
-    <GameSelector :games="availableGames" @select="onGameSelected" />
-  </div>
+  <v-app>
+    <!-- Sidebar for Game Categories -->
+    <v-navigation-drawer v-model="drawer" permanent border="none" color="grey-darken-4">
+      <v-list density="compact" nav>
+        <v-list-item
+          prepend-icon="mdi-view-dashboard"
+          title="All Games"
+          :active="selectedCategory === 'All'"
+          @click="selectedCategory = 'All'"
+        ></v-list-item>
+        
+        <v-divider class="my-2"></v-divider>
+        
+        <v-list-item
+          v-for="cat in categories"
+          :key="cat"
+          :title="cat"
+          prepend-icon="mdi-folder-outline"
+          :active="selectedCategory === cat"
+          @click="selectedCategory = cat"
+        ></v-list-item>
+      </v-list>
+      
+      <template v-slot:append>
+        <div class="pa-4">
+          <v-btn block color="error" variant="tonal" prepend-icon="mdi-logout" @click="logout">
+            Logout
+          </v-btn>
+        </div>
+      </template>
+    </v-navigation-drawer>
+
+    <!-- Top App Bar -->
+    <v-app-bar flat border="none" color="surface">
+      <v-app-bar-title class="text-h5 font-weight-bold">
+        <span class="text-primary">Universal</span> Game Engine
+      </v-app-bar-title>
+      <v-spacer></v-spacer>
+      <div class="px-4 text-body-2 text-medium-emphasis">
+        Logged in as: <strong class="text-high-emphasis">{{ username }}</strong>
+      </div>
+    </v-app-bar>
+
+    <!-- Main Content -->
+    <v-main class="bg-grey-darken-4">
+      <v-container class="pa-6" fluid>
+        <div class="mb-6">
+          <h2 class="text-h4 font-weight-bold mb-2">{{ selectedCategory }}</h2>
+          <p class="text-body-1 text-medium-emphasis">Select a game to see available rooms or start a new match.</p>
+        </div>
+
+        <v-row>
+          <v-col
+            v-for="game in filteredGames"
+            :key="game.type"
+            cols="12"
+            sm="6"
+            md="4"
+            lg="3"
+          >
+            <v-hover v-slot="{ isHovering, props }">
+              <v-card
+                v-bind="props"
+                :elevation="isHovering ? 12 : 2"
+                :class="{ 'on-hover': isHovering }"
+                class="rounded-xl overflow-hidden game-card"
+                @click="onGameSelected(game.type)"
+              >
+                <div class="pa-6 d-flex flex-column align-center text-center fill-height">
+                  <div class="text-h1 mb-4">{{ game.emoji }}</div>
+                  <v-card-title class="text-h5 font-weight-bold pa-0 mb-2">{{ game.name }}</v-card-title>
+                  <v-card-text class="text-body-2 text-medium-emphasis pa-0">
+                    {{ game.description }}
+                  </v-card-text>
+                </div>
+              </v-card>
+            </v-hover>
+          </v-col>
+        </v-row>
+      </v-container>
+    </v-main>
+  </v-app>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import GameSelector from '../components/GameSelector.vue';
 import { availableGames } from '../constants/games';
 
 const router = useRouter();
-const username = ref('');
+const username = ref(localStorage.getItem('game_username') || 'Unknown');
+const drawer = ref(true);
+const selectedCategory = ref('All');
 
-onMounted(() => {
-  username.value = localStorage.getItem('game_username') || 'Unknown';
+const categories = computed(() => {
+  const cats = new Set(availableGames.map(g => g.category));
+  return Array.from(cats).sort();
+});
+
+const filteredGames = computed(() => {
+  if (selectedCategory.value === 'All') return availableGames;
+  return availableGames.filter(g => g.category === selectedCategory.value);
 });
 
 const onGameSelected = (type: string) => {
@@ -33,37 +115,20 @@ const logout = () => {
 </script>
 
 <style scoped>
-.selection-view {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.user-bar {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 10px;
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  padding: 7px 20px;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.82rem;
-  color: #94a3b8;
-}
-.user-bar strong { color: #e2e8f0; }
-
-.logout-btn {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  border-radius: 8px;
-  padding: 4px 12px;
-  font-size: 0.78rem;
+.game-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
-  transition: all 0.15s ease;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
-.logout-btn:hover { background: rgba(239, 68, 68, 0.3); }
+
+.game-card.on-hover {
+  transform: translateY(-8px);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(var(--v-theme-primary), 0.5);
+}
+
+.text-primary {
+  color: #6366f1 !important;
+}
 </style>

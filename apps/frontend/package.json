@@ -10,12 +10,15 @@
   },
   "dependencies": {
     "@engine/shared": "workspace:*",
+    "@mdi/font": "^7.4.47",
     "@types/jsonwebtoken": "^9.0.10",
     "jsonwebtoken": "^9.0.3",
+    "sass": "^1.98.0",
     "socket.io-client": "^4.8.3",
     "three": "^0.183.2",
     "vue": "^3.5.30",
-    "vue-router": "4"
+    "vue-router": "4",
+    "vuetify": "3.7.15"
   },
   "devDependencies": {
     "@types/node": "^24.12.0",

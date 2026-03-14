@@ -1,19 +1,31 @@
 <template>
-  <div class="game-view-wrapper">
-    <div class="user-bar">
-      <button @click="back" class="back-btn">← Back to Rooms</button>
-      <span>Logged in as: <strong>{{ username }}</strong></span>
-      <button @click="logout" class="logout-btn">Logout</button>
-    </div>
-    <GenericGameView
-      :game-type="gameType"
-      :game-emoji="gameInfo?.emoji ?? '🎮'"
-      :game-name="gameInfo?.name ?? gameType"
-      :auth-token="authToken"
-      :room-id="roomId"
-      @back="back"
-    />
-  </div>
+  <v-app>
+    <!-- Top App Bar in Game -->
+    <v-app-bar flat border="none" color="surface" density="compact">
+      <v-btn icon="mdi-chevron-left" variant="text" @click="back"></v-btn>
+      <v-app-bar-title class="text-subtitle-1 font-weight-bold">
+        {{ gameInfo?.emoji }} {{ gameInfo?.name }} — Room: {{ roomId }}
+      </v-app-bar-title>
+      <v-spacer></v-spacer>
+      <div class="px-4 text-caption text-medium-emphasis d-none d-sm-flex align-center">
+        <v-icon icon="mdi-account-circle" class="mr-2"></v-icon>
+        <strong>{{ username }}</strong>
+      </div>
+      <v-btn icon="mdi-logout" color="error" variant="text" size="small" @click="logout"></v-btn>
+    </v-app-bar>
+
+    <v-main class="bg-grey-darken-4 fill-height">
+      <!-- Main Game View -->
+      <GenericGameView
+        :game-type="gameType"
+        :game-emoji="gameInfo?.emoji ?? '🎮'"
+        :game-name="gameInfo?.name ?? gameType"
+        :auth-token="authToken"
+        :room-id="roomId"
+        @back="back"
+      />
+    </v-main>
+  </v-app>
 </template>
 
 <script setup lang="ts">
@@ -44,49 +56,7 @@ const logout = () => {
 </script>
 
 <style scoped>
-.game-view-wrapper {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.user-bar {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 15px;
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  padding: 7px 20px;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.82rem;
-  color: #94a3b8;
-  z-index: 1000;
-}
-.user-bar strong { color: #e2e8f0; }
-.user-bar span { flex: 1; text-align: center; }
-
-.back-btn {
-  background: rgba(255,255,255,0.07);
-  color: #94a3b8;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 8px;
-  padding: 4px 12px;
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.back-btn:hover { background: rgba(255,255,255,0.14); color: #e2e8f0; }
-
-.logout-btn {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  border-radius: 8px;
-  padding: 4px 12px;
-  font-size: 0.78rem;
-  cursor: pointer;
+.fill-height {
+  height: 100vh;
 }
 </style>
