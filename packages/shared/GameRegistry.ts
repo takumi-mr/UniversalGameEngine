@@ -1,5 +1,8 @@
 // packages/shared/GameRegistry.ts
 import type { GameRuleset, BaseGameState, BaseGameAction } from './UniversalEngine';
+import { TicTacToeRuleset } from './rules/TicTacToeRuleset';
+import { ChessRuleset } from './rules/ChessRuleset';
+import { ShogiRuleset } from './rules/ShogiRuleset';
 import { OthelloRuleset } from './rules/OthelloRuleset';
 import { Othello3DRuleset } from './rules/Othello3DRuleset';
 import { HighLowRuleset } from './rules/HighLowRuleset';
@@ -8,6 +11,7 @@ import { MahjongRuleset } from './rules/mahjong/MahjongRuleset';
 import { DaifugoRuleset } from './rules/DaifugoRuleset';
 import { RubiksRuleset } from './rules/RubicCubeRuleset';
 import { GoRuleset } from './rules/GoRuleset';
+import { EquilibriumRuleset } from './rules/EquilibriumRuleset';
 
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
     type: string;
@@ -24,7 +28,7 @@ class GameRegistry {
 
     constructor() {
         this.register({
-            type: 'othello-3d',
+            type: 'othello_3d',
             name: '3D Othello',
             ruleset: Othello3DRuleset,
             minPlayers: 2,
@@ -41,6 +45,15 @@ class GameRegistry {
             description: '古典的な2Dオセロ（リバーシ）。',
             emoji: '⚫',
         });
+        this.register({
+            type: 'chess',
+            name: 'Chess',
+            ruleset: ChessRuleset,
+            minPlayers: 2,
+            maxPlayers: 2,
+            description: '古典的なチェス。',
+            emoji: '♔',
+        })
         this.register({
             type: 'high-low',
             name: 'High-Low Card',
@@ -87,13 +100,40 @@ class GameRegistry {
             emoji: '⚪',
         });
         this.register({
-            type: 'rubiks-cube',
+            type: 'rubiks_cube',
             name: "Rubik's Cube",
             ruleset: RubiksRuleset,
             minPlayers: 1,
             maxPlayers: 1,
             description: '1人用ルービックキューブ。',
             emoji: '🟥',
+        });
+        this.register({
+            type: 'tictactoe',
+            name: 'Tic Tac Toe',
+            ruleset: TicTacToeRuleset,
+            minPlayers: 2,
+            maxPlayers: 2,
+            description: '古典的な三目並べ。',
+            emoji: '⭕',
+        });
+        this.register({
+            type: 'shogi',
+            name: 'Shogi',
+            ruleset: ShogiRuleset,
+            minPlayers: 2,
+            maxPlayers: 2,
+            description: '古典的な将棋。',
+            emoji: '☗',
+        })
+        this.register({
+            type: 'equilibrium',
+            name: 'Equilibrium',
+            ruleset: EquilibriumRuleset,
+            minPlayers: 2,
+            maxPlayers: 2,
+            description: 'AIが考案した、魂を削り合う究極の心理戦ボードゲーム。',
+            emoji: '⚖️',
         });
     }
 
