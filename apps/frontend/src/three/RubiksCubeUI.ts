@@ -69,9 +69,17 @@ export class RubiksCubeUI {
     private animating = false;
     private animQueue: Array<() => void> = [];
 
+    private animationId: number | null = null;
+    private isDisposed = false;
+
     constructor(container: HTMLElement, onActionCallback: (action: RubiksAction) => void) {
         this.container = container;
         this.onAction = onActionCallback;
+        
+        this.onClick = this.onClick.bind(this);
+        this.onMouseMove = this.onMouseMove.bind(this);
+        this.onResize = this.onResize.bind(this);
+        
         this.initThreeJS(container);
         this.buildCube();
         this.buildFacePanels();
@@ -108,9 +116,9 @@ export class RubiksCubeUI {
         dir2.position.set(-8, -5, -8);
         this.scene.add(dir2);
 
-        window.addEventListener('click', this.onClick.bind(this));
-        window.addEventListener('mousemove', this.onMouseMove.bind(this));
-        window.addEventListener('resize', this.onResize.bind(this));
+        window.addEventListener('click', this.onClick);
+        window.addEventListener('mousemove', this.onMouseMove);
+        window.addEventListener('resize', this.onResize);
 
         this.animate();
     }
@@ -254,15 +262,35 @@ export class RubiksCubeUI {
     }
 
     private animate() {
-        requestAnimationFrame(this.animate.bind(this));
-        this.controls.update();
+        if (this.isDisposed) return;
+        this.animationId = requestAnimationFrame(this.animate.bind(this));
+        if (this.controls) this.controls.update();
         this.renderer.render(this.scene, this.camera);
     }
 
     public dispose() {
-        window.removeEventListener('click', this.onClick.bind(this));
-        window.removeEventListener('mousemove', this.onMouseMove.bind(this));
-        window.removeEventListener('resize', this.onResize.bind(this));
+        this.isDisposed = true;
+        if (this.animationId !== null) {
+            cancelAnimationFrame(this.animationId);
+        }
+        window.removeEventListener('click', this.onClick);
+        window.removeEventListener('mousemove', this.onMouseMove);
+        window.removeEventListener('resize', this.onResize);
+        
         this.renderer.dispose();
+        this.scene.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+                object.geometry.dispose();
+                if (Array.isArray(object.material)) {
+                    object.material.forEach(m => m.dispose());
+                } else {
+                    object.material.dispose();
+                }
+            }
+        });
+
+        if (this.container && this.renderer.domElement) {
+            this.container.removeChild(this.renderer.domElement);
+        }
     }
 }

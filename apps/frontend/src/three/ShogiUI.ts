@@ -21,6 +21,8 @@ export class ShogiUI {
 
     // UIステート（2ステップ操作用）
     private selectedFromIndex: number | null = null;
+    private animationId: number | null = null;
+    private isDisposed = false;
 
     // マテリアル
     private matBoard = new THREE.MeshLambertMaterial({ color: 0xdeb887 }); // 木目色
@@ -61,8 +63,10 @@ export class ShogiUI {
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
 
-        window.addEventListener('click', this.onClick.bind(this), false);
-        window.addEventListener('resize', this.onResize.bind(this), false);
+        this.onClick = this.onClick.bind(this);
+        this.onResize = this.onResize.bind(this);
+        window.addEventListener('click', this.onClick, false);
+        window.addEventListener('resize', this.onResize, false);
 
         this.animate();
     }
@@ -222,9 +226,35 @@ export class ShogiUI {
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
     }
 
+    public dispose() {
+        this.isDisposed = true;
+        if (this.animationId !== null) {
+            cancelAnimationFrame(this.animationId);
+        }
+        window.removeEventListener('click', this.onClick);
+        window.removeEventListener('resize', this.onResize);
+        
+        this.renderer.dispose();
+        this.scene.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+                object.geometry.dispose();
+                const materials = Array.isArray(object.material) ? object.material : [object.material];
+                materials.forEach(m => {
+                    if ((m as any).map) (m as any).map.dispose();
+                    m.dispose();
+                });
+            }
+        });
+
+        if (this.container && this.renderer.domElement) {
+            this.container.removeChild(this.renderer.domElement);
+        }
+    }
+
     private animate() {
-        requestAnimationFrame(this.animate.bind(this));
-        this.controls.update();
+        if (this.isDisposed) return;
+        this.animationId = requestAnimationFrame(this.animate.bind(this));
+        if (this.controls) this.controls.update();
         this.renderer.render(this.scene, this.camera);
     }
 }

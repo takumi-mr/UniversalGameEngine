@@ -29,7 +29,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import { Othello3DUI } from "../three/Othello3DUI";
 import type {
   GameState as Othello3DState,
@@ -58,6 +58,12 @@ onMounted(() => {
     if (props.state) {
       threeUI.renderState(props.state);
     }
+  }
+});
+
+onUnmounted(() => {
+  if (threeUI) {
+    threeUI.dispose();
   }
 });
 

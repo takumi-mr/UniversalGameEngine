@@ -1,13 +1,13 @@
 // src/three/Othello3DUI.ts
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import type { GameState, MoveAction } from '@engine/shared/rules/Othello3DRules';
+import type { GameState, MoveAction } from '@engine/shared/rules/Othello3DRuleset';
 
 export class Othello3DUI {
     private size: number;
     private onAction: (action: MoveAction) => void;
     private container: HTMLElement;
-    
+
     private scene!: THREE.Scene;
     private camera!: THREE.PerspectiveCamera;
     private renderer!: THREE.WebGLRenderer;
@@ -18,9 +18,11 @@ export class Othello3DUI {
     private spheres: (THREE.Mesh | null)[][][] = [];
     private gridCubes: THREE.Mesh[][][] = [];
     private interactableCubes: THREE.Mesh[] = [];
-    
+
     private currentHovered: THREE.Mesh | null = null;
     private currentState: GameState | null = null;
+    private animationId: number | null = null;
+    private isDisposed = false;
 
     // マテリアル
     private matEmpty = new THREE.MeshBasicMaterial({ color: 0x444444, transparent: true, opacity: 0.02, depthWrite: false });
@@ -63,9 +65,12 @@ export class Othello3DUI {
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
 
-        window.addEventListener('click', this.onClick.bind(this), false);
-        window.addEventListener('mousemove', this.onMouseMove.bind(this), false);
-        window.addEventListener('resize', this.onResize.bind(this), false);
+        this.onClick = this.onClick.bind(this);
+        this.onMouseMove = this.onMouseMove.bind(this);
+        this.onResize = this.onResize.bind(this);
+        window.addEventListener('click', this.onClick, false);
+        window.addEventListener('mousemove', this.onMouseMove, false);
+        window.addEventListener('resize', this.onResize, false);
 
         this.animate();
     }
@@ -103,10 +108,10 @@ export class Othello3DUI {
     public renderState(state: GameState) {
         this.currentState = state;
         const offset = (this.size - 1) / 2;
-        
+
         this.currentValidMat = state.currentTurn === 1 ? this.matValidBlack : this.matValidWhite;
         this.currentHoverMat = state.currentTurn === 1 ? this.matHoverBlack : this.matHoverWhite;
-        
+
         for (let z = 0; z < this.size; z++) {
             for (let y = 0; y < this.size; y++) {
                 for (let x = 0; x < this.size; x++) {
@@ -135,10 +140,12 @@ export class Othello3DUI {
         }
 
         if (state.status === 'PLAYING') {
-            state.validMoves.forEach(pos => {
+            state.validMoves.forEach((pos: { x: number, y: number, z: number }) => {
                 const cube = this.gridCubes[pos.z][pos.y][pos.x];
-                cube.userData.isValid = true;
-                cube.material = this.currentValidMat;
+                if (cube) {
+                    cube.userData.isValid = true;
+                    cube.material = this.currentValidMat;
+                }
             });
         }
     }
@@ -206,9 +213,36 @@ export class Othello3DUI {
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
     }
 
+    public dispose() {
+        this.isDisposed = true;
+        if (this.animationId !== null) {
+            cancelAnimationFrame(this.animationId);
+        }
+        window.removeEventListener('click', this.onClick);
+        window.removeEventListener('mousemove', this.onMouseMove);
+        window.removeEventListener('resize', this.onResize);
+
+        this.renderer.dispose();
+        this.scene.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+                object.geometry.dispose();
+                if (Array.isArray(object.material)) {
+                    object.material.forEach(m => m.dispose());
+                } else {
+                    object.material.dispose();
+                }
+            }
+        });
+
+        if (this.container && this.renderer.domElement) {
+            this.container.removeChild(this.renderer.domElement);
+        }
+    }
+
     private animate() {
-        requestAnimationFrame(this.animate.bind(this));
-        this.controls.update();
+        if (this.isDisposed) return;
+        this.animationId = requestAnimationFrame(this.animate.bind(this));
+        if (this.controls) this.controls.update();
         this.renderer.render(this.scene, this.camera);
     }
 }

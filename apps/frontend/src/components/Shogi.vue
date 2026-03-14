@@ -35,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import { ShogiUI } from "../three/ShogiUI";
 import type { ShogiState, ShogiAction } from "@engine/shared/rules/ShogiRuleset";
 
@@ -76,6 +76,12 @@ onMounted(() => {
     if (props.state) {
       threeUI.renderState(props.state);
     }
+  }
+});
+
+onUnmounted(() => {
+  if (threeUI) {
+    threeUI.dispose();
   }
 });
 

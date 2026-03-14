@@ -21,6 +21,8 @@ export class OthelloUI {
 
     // アニメーション管理用
     private flipAnimations: { mesh: THREE.Mesh, startRot: number, targetRot: number, progress: number }[] = [];
+    private animationId: number | null = null;
+    private isDisposed = false;
 
     // マテリアル定義
     private matBoard = new THREE.MeshLambertMaterial({ color: 0x1e5631 }); // 深い緑色（フェルト生地風）
@@ -77,8 +79,10 @@ export class OthelloUI {
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
 
-        window.addEventListener('click', this.onClick.bind(this), false);
-        window.addEventListener('resize', this.onResize.bind(this), false);
+        this.onClick = this.onClick.bind(this);
+        this.onResize = this.onResize.bind(this);
+        window.addEventListener('click', this.onClick, false);
+        window.addEventListener('resize', this.onResize, false);
 
         this.animate();
     }
@@ -87,7 +91,7 @@ export class OthelloUI {
         // 1. 盤面のベース（緑の部分）
         const boardGeom = new THREE.BoxGeometry(8, 0.3, 8);
         const boardMesh = new THREE.Mesh(boardGeom, this.matBoard);
-        boardMesh.position.y = -0.15;
+        boardMesh.position.y = -0.145;
         boardMesh.receiveShadow = true;
         this.scene.add(boardMesh);
 
@@ -136,7 +140,7 @@ export class OthelloUI {
                 // --- 1. 石の新規配置 ---
                 if (color !== 0 && !piece) {
                     piece = new THREE.Mesh(this.pieceGeom, this.pieceMaterials);
-                    piece.position.set(x - 3.5, 0.05, y - 3.5);
+                    piece.position.set(x - 3.5, 0.06, y - 3.5); // Z-fighting回避のため0.05から少し上げる
                     piece.castShadow = true;
                     // 黒なら上面が上(0)、白ならひっくり返す(Math.PI)
                     piece.rotation.x = color === 1 ? 0 : Math.PI;
@@ -210,9 +214,36 @@ export class OthelloUI {
         return -(Math.cos(Math.PI * x) - 1) / 2;
     }
 
+    public dispose() {
+        this.isDisposed = true;
+        if (this.animationId !== null) {
+            cancelAnimationFrame(this.animationId);
+        }
+        window.removeEventListener('click', this.onClick);
+        window.removeEventListener('resize', this.onResize);
+
+        // リソースの解放
+        this.renderer.dispose();
+        this.scene.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+                object.geometry.dispose();
+                if (Array.isArray(object.material)) {
+                    object.material.forEach(m => m.dispose());
+                } else {
+                    object.material.dispose();
+                }
+            }
+        });
+
+        if (this.container && this.renderer.domElement) {
+            this.container.removeChild(this.renderer.domElement);
+        }
+    }
+
     private animate() {
-        requestAnimationFrame(this.animate.bind(this));
-        this.controls.update();
+        if (this.isDisposed) return;
+        this.animationId = requestAnimationFrame(this.animate.bind(this));
+        if (this.controls) this.controls.update();
 
         // --- アニメーションの進行処理 ---
         for (let i = this.flipAnimations.length - 1; i >= 0; i--) {
@@ -239,9 +270,9 @@ export class OthelloUI {
         for (let y = 0; y < 8; y++) {
             for (let x = 0; x < 8; x++) {
                 const piece = this.pieces[y][x];
-                if (piece && piece.position.y > 0.05 && !this.flipAnimations.find(a => a.mesh === piece)) {
+                if (piece && piece.position.y > 0.06 && !this.flipAnimations.find(a => a.mesh === piece)) {
                     piece.position.y -= 0.05;
-                    if (piece.position.y < 0.05) piece.position.y = 0.05;
+                    if (piece.position.y < 0.06) piece.position.y = 0.06;
                 }
             }
         }

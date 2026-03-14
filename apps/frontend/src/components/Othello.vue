@@ -29,7 +29,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import type { OthelloState, OthelloAction } from "@engine/shared/rules/OthelloRuleset";
 import { OthelloUI } from "../three/OthelloUI";
 
@@ -46,6 +46,12 @@ onMounted(() => {
     });
     // 初回レンダリング
     threeUI.renderState(props.state);
+  }
+});
+
+onUnmounted(() => {
+  if (threeUI) {
+    threeUI.dispose();
   }
 });
 
