@@ -5,16 +5,39 @@
         <v-row justify="center">
           <v-col cols="12" sm="8" md="6" lg="4">
             <v-card class="rounded-xl pa-8 elevation-24 bg-surface" border="none">
+              <div class="d-flex justify-end mb-4">
+                <v-menu>
+                  <template v-slot:activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      variant="text"
+                      density="compact"
+                      prepend-icon="mdi-translate"
+                    >
+                      {{ $i18n.locale === 'ja' ? '日本語' : 'English' }}
+                    </v-btn>
+                  </template>
+                  <v-list>
+                    <v-list-item @click="$i18n.locale = 'en'">
+                      <v-list-item-title>English</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="$i18n.locale = 'ja'">
+                      <v-list-item-title>日本語</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+              </div>
+
               <div class="text-center mb-8">
                 <div class="text-h2 mb-4">🎮</div>
-                <h1 class="text-h4 font-weight-bold mb-2">Universal Engine</h1>
-                <p class="text-body-1 text-medium-emphasis">Enter your username to start playing.</p>
+                <h1 class="text-h4 font-weight-bold mb-2">{{ $t('common.title') }}</h1>
+                <p class="text-body-1 text-medium-emphasis">{{ $t('common.login_desc') }}</p>
               </div>
 
               <v-form @submit.prevent="handleLogin">
                 <v-text-field
                   v-model="username"
-                  label="Username"
+                  :label="$t('common.username')"
                   placeholder="e.g. MasterGamer"
                   variant="outlined"
                   required
@@ -32,7 +55,7 @@
                   :loading="loading"
                   class="font-weight-bold rounded-lg"
                 >
-                  Enter Arena
+                  {{ $t('common.enter_arena') }}
                 </v-btn>
               </v-form>
 

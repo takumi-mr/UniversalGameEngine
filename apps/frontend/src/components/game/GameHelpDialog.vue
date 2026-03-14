@@ -12,7 +12,7 @@
           </v-avatar>
           <div>
             <div class="text-h5 font-weight-bold">{{ gameName }}</div>
-            <div class="text-caption text-medium-emphasis">Game Rules & Guidance</div>
+            <div class="text-caption text-medium-emphasis">{{ $t('help.title') }}</div>
           </div>
         </div>
         <v-btn icon="mdi-close" variant="text" @click="internalModel = false"></v-btn>
@@ -24,17 +24,17 @@
         <div class="rules-section">
           <div class="d-flex align-center mb-3">
             <v-icon color="primary" class="mr-2">mdi-book-open-variant</v-icon>
-            <span class="text-subtitle-1 font-weight-bold text-primary">遊び方</span>
+            <span class="text-subtitle-1 font-weight-bold text-primary">{{ $t('help.how_to_play') }}</span>
           </div>
           <p class="text-body-1 mb-0 line-height-relaxed">
-            {{ gameRules || 'このゲームの詳細は現在準備中です。' }}
+            {{ gameRules || $t('help.no_rules') }}
           </p>
         </div>
 
         <div v-if="gameDescription" class="rules-section mt-6">
           <div class="d-flex align-center mb-3">
             <v-icon color="secondary" class="mr-2">mdi-information-outline</v-icon>
-            <span class="text-subtitle-1 font-weight-bold text-secondary">概要</span>
+            <span class="text-subtitle-1 font-weight-bold text-secondary">{{ $t('help.summary') }}</span>
           </div>
           <p class="text-body-2 text-medium-emphasis mb-0">
             {{ gameDescription }}
@@ -52,7 +52,7 @@
           size="large"
           @click="internalModel = false"
         >
-          了解しました
+          {{ $t('help.ok') }}
         </v-btn>
       </v-card-actions>
     </v-card>

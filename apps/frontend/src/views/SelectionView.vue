@@ -5,7 +5,7 @@
       <v-list density="compact" nav>
         <v-list-item
           prepend-icon="mdi-view-dashboard"
-          title="All Games"
+          :title="$t('categories.All')"
           :active="selectedCategory === 'All'"
           @click="selectedCategory = 'All'"
         ></v-list-item>
@@ -15,7 +15,7 @@
         <v-list-item
           v-for="cat in categories"
           :key="cat"
-          :title="cat"
+          :title="$t('categories.' + cat)"
           prepend-icon="mdi-folder-outline"
           :active="selectedCategory === cat"
           @click="selectedCategory = cat"
@@ -25,7 +25,7 @@
       <template v-slot:append>
         <div class="pa-4">
           <v-btn block color="error" variant="tonal" prepend-icon="mdi-logout" @click="logout">
-            Logout
+            {{ $t('common.logout') }}
           </v-btn>
         </div>
       </template>
@@ -34,11 +34,33 @@
     <!-- Top App Bar -->
     <v-app-bar flat border="none" color="surface">
       <v-app-bar-title class="text-h5 font-weight-bold">
-        <span class="text-primary">Universal</span> Game Engine
+        <span class="text-primary">Universal</span> {{ $t('common.title').split(' ').slice(1).join(' ') || 'Game Engine' }}
       </v-app-bar-title>
       <v-spacer></v-spacer>
+      
+      <!-- Language Switcher -->
+      <v-menu>
+        <template v-slot:activator="{ props }">
+          <v-btn
+            v-bind="props"
+            variant="text"
+            prepend-icon="mdi-translate"
+          >
+            {{ $i18n.locale === 'ja' ? '日本語' : 'English' }}
+          </v-btn>
+        </template>
+        <v-list>
+          <v-list-item @click="$i18n.locale = 'en'">
+            <v-list-item-title>English</v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="$i18n.locale = 'ja'">
+            <v-list-item-title>日本語</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+
       <div class="px-4 text-body-2 text-medium-emphasis">
-        Logged in as: <strong class="text-high-emphasis">{{ username }}</strong>
+        {{ $t('common.logged_in_as', { username: username }) }}
       </div>
     </v-app-bar>
 
@@ -46,8 +68,8 @@
     <v-main class="bg-grey-darken-4">
       <v-container class="pa-6" fluid>
         <div class="mb-6">
-          <h2 class="text-h4 font-weight-bold mb-2">{{ selectedCategory }}</h2>
-          <p class="text-body-1 text-medium-emphasis">Select a game to see available rooms or start a new match.</p>
+          <h2 class="text-h4 font-weight-bold mb-2">{{ $t('categories.' + selectedCategory) }}</h2>
+          <p class="text-body-1 text-medium-emphasis">{{ $t('common.select_game_desc') }}</p>
         </div>
 
         <v-row>
@@ -69,9 +91,9 @@
               >
                 <div class="pa-6 d-flex flex-column align-center text-center fill-height">
                   <div class="text-h1 mb-4">{{ game.emoji }}</div>
-                  <v-card-title class="text-h5 font-weight-bold pa-0 mb-2">{{ game.name }}</v-card-title>
+                  <v-card-title class="text-h5 font-weight-bold pa-0 mb-2">{{ $t('games.' + game.type + '.name') }}</v-card-title>
                   <v-card-text class="text-body-2 text-medium-emphasis pa-0">
-                    {{ game.description }}
+                    {{ $t('games.' + game.type + '.description') }}
                   </v-card-text>
                 </div>
               </v-card>

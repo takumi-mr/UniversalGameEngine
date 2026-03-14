@@ -4,9 +4,30 @@
     <v-app-bar flat border="none" color="surface">
       <v-btn icon="mdi-arrow-left" variant="text" @click="back"></v-btn>
       <v-app-bar-title class="font-weight-bold">
-        {{ gameEmoji }} {{ gameName }} Rooms
+        {{ gameEmoji }} {{ translatedGameName }} {{ $t('common.rooms') }}
       </v-app-bar-title>
       <v-spacer></v-spacer>
+
+      <!-- Language Switcher -->
+      <v-menu>
+        <template v-slot:activator="{ props }">
+          <v-btn
+            v-bind="props"
+            variant="text"
+            prepend-icon="mdi-translate"
+          >
+            {{ $i18n.locale === 'ja' ? '日本語' : 'English' }}
+          </v-btn>
+        </template>
+        <v-list>
+          <v-list-item @click="$i18n.locale = 'en'">
+            <v-list-item-title>English</v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="$i18n.locale = 'ja'">
+            <v-list-item-title>日本語</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
 
       <v-btn
         icon="mdi-help-circle-outline"
@@ -16,7 +37,7 @@
       ></v-btn>
 
       <div class="px-4 text-body-2 text-medium-emphasis">
-        Logged in as: <strong class="text-high-emphasis">{{ username }}</strong>
+        {{ $t('common.logged_in_as', { username: username }) }}
       </div>
     </v-app-bar>
 
@@ -26,8 +47,8 @@
           <v-col cols="12" md="10" lg="8">
             <div class="d-flex align-center mb-8">
               <div>
-                <h1 class="text-h3 font-weight-bold mb-2">{{ gameName }}</h1>
-                <p class="text-body-1 text-medium-emphasis">{{ gameDescription }}</p>
+                <h1 class="text-h3 font-weight-bold mb-2">{{ translatedGameName }}</h1>
+                <p class="text-body-1 text-medium-emphasis">{{ translatedGameDescription }}</p>
               </div>
               <v-spacer></v-spacer>
               <div class="d-flex gap-2">
@@ -39,7 +60,7 @@
                   :loading="creating"
                   @click="createNewRoom"
                 >
-                  Create New Room
+                  {{ $t('common.create_new_room') }}
                 </v-btn>
                 <v-btn
                   variant="outlined"
@@ -55,7 +76,7 @@
 
             <div v-if="loading" class="text-center pa-12">
               <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
-              <div class="mt-4 text-body-1 text-medium-emphasis">Finding active rooms...</div>
+              <div class="mt-4 text-body-1 text-medium-emphasis">{{ $t('common.finding_rooms') }}</div>
             </div>
 
             <v-row v-else-if="rooms.length > 0">
@@ -65,7 +86,7 @@
                     <template v-slot:prepend>
                       <v-icon icon="mdi-door-open" color="primary" size="32"></v-icon>
                     </template>
-                    <v-card-title class="text-h6 font-weight-bold mb-1">Room #{{ room.id.slice(0, 4) }}</v-card-title>
+                    <v-card-title class="text-h6 font-weight-bold mb-1">{{ $t('common.room_no', { id: room.id.slice(0, 4) }) }}</v-card-title>
                     <v-card-subtitle>ID: {{ room.id }}</v-card-subtitle>
                   </v-card-item>
 
@@ -78,7 +99,7 @@
                         size="small"
                         class="rounded-lg"
                       >
-                        {{ room.playerCount }} Players Joined
+                        {{ $t('common.players_joined', { count: room.playerCount }) }}
                       </v-chip>
                     </div>
                   </v-card-text>
@@ -91,7 +112,7 @@
                       class="rounded-lg font-weight-bold"
                       @click="joinRoom(room.id)"
                     >
-                      Join Match
+                      {{ $t('common.join_match') }}
                     </v-btn>
                   </v-card-actions>
                 </v-card>
@@ -105,9 +126,9 @@
               color="transparent"
             >
               <v-icon icon="mdi-ghost-off" size="64" color="medium-emphasis" class="mb-4"></v-icon>
-              <h2 class="text-h5 font-weight-bold mb-2">No Active Rooms</h2>
-              <p class="text-body-1 text-medium-emphasis mb-6">Be the first to start a new match in this category!</p>
-              <v-btn color="primary" variant="flat" @click="createNewRoom">Create First Room</v-btn>
+              <h2 class="text-h5 font-weight-bold mb-2">{{ $t('common.no_active_rooms') }}</h2>
+              <p class="text-body-1 text-medium-emphasis mb-6">{{ $t('common.be_the_first') }}</p>
+              <v-btn color="primary" variant="flat" @click="createNewRoom">{{ $t('common.create_first_room') }}</v-btn>
             </v-sheet>
           </v-col>
         </v-row>
@@ -117,10 +138,10 @@
     <!-- Help Dialog -->
     <GameHelpDialog
       v-model="showHelp"
-      :game-name="gameName"
+      :game-name="translatedGameName"
       :game-emoji="gameEmoji"
-      :game-rules="(gameInfo as any)?.rules"
-      :game-description="gameDescription"
+      :game-rules="translatedGameRules"
+      :game-description="translatedGameDescription"
     />
   </v-app>
 </template>
@@ -143,9 +164,13 @@ const creating = ref(false);
 const showHelp = ref(false);
 
 const gameInfo = computed(() => availableGames.find(g => g.type === gameType.value));
-const gameName = computed(() => gameInfo.value?.name || gameType.value);
 const gameEmoji = computed(() => gameInfo.value?.emoji || '🎮');
-const gameDescription = computed(() => gameInfo.value?.description || '');
+
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
+const translatedGameName = computed(() => t(`games.${gameType.value}.name`));
+const translatedGameDescription = computed(() => t(`games.${gameType.value}.description`));
+const translatedGameRules = computed(() => t(`games.${gameType.value}.rules`));
 
 const API_BASE = 'http://127.0.0.1:3000';
 
