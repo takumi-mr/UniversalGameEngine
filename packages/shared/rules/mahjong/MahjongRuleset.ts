@@ -409,5 +409,16 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
         }
         
         return actions;
+    },
+
+    applyWinResult: (state, winResult) => {
+        // 麻雀では RON/TSUMO によるアガリ処理（点棒移動）は reduce 内ですでに完結している。
+        // ここでは status と activePlayers を整理するだけでよい。
+        return {
+            ...state,
+            status: 'FINISHED',
+            message: winResult.message ?? state.message,
+            activePlayers: [],
+        };
     }
 };

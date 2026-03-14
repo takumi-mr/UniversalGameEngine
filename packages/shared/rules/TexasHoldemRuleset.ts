@@ -194,6 +194,31 @@ export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction
         return maskedState;
     },
 
+    applyWinResult: (state, winResult) => {
+        const newState = structuredClone(state);
+        newState.status = 'FINISHED';
+        newState.activePlayers = [];
+
+        // フォールド勝ち: 残った一人がポットをすべて獲得
+        const activePlayers = newState.playerIds.filter(id => !newState.foldedPlayers.includes(id));
+        if (activePlayers.length === 1) {
+            const winner = activePlayers[0];
+            newState.playerChips[winner] = (newState.playerChips[winner] ?? 0) + newState.pot;
+            newState.pot = 0;
+            newState.message = `${winner} wins the pot of ${newState.pot} chips! (Others folded)`;
+        } else {
+            // SHOWDOWN ケース: 本来は手の強さ判定が必要だが、ここでは均等分配で簡略化
+            const share = Math.floor(newState.pot / activePlayers.length);
+            for (const pid of activePlayers) {
+                newState.playerChips[pid] = (newState.playerChips[pid] ?? 0) + share;
+            }
+            newState.pot = 0;
+            newState.message = winResult.message ?? 'Showdown! Pot split.';
+        }
+
+        return newState;
+    },
+
     getLegalActions: (state: TexasHoldemState, playerId: string): TexasHoldemAction[] => {
         if (state.status !== 'PLAYING') return [];
         if (!state.activePlayers || !state.activePlayers.includes(playerId)) return [];

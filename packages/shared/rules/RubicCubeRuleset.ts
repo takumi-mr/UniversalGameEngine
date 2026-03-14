@@ -150,6 +150,13 @@ export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction> = {
         return { isFinished: false };
     },
 
+    applyWinResult: (state, winResult) => ({
+        ...state,
+        status: 'FINISHED',
+        message: winResult.message,
+        activePlayers: [],
+    }),
+
     getLegalActions: (state: RubiksState, playerId: string): RubiksAction[] => {
         if (state.status !== 'PLAYING') return [];
         const actions: RubiksAction[] = [];

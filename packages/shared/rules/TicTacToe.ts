@@ -109,6 +109,13 @@ export const TicTacToeRuleset: GameRuleset<TicTacToeState, TicTacToeAction> = {
         return { isFinished: false };
     },
 
+    applyWinResult: (state, winResult) => ({
+        ...state,
+        status: 'FINISHED',
+        message: winResult.message,
+        activePlayers: [],
+    }),
+
     getLegalActions: (state, playerId) => {
 
         if (state.status !== 'PLAYING') return [];

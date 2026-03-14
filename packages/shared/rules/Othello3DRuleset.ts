@@ -141,6 +141,13 @@ export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
         return { isFinished: false, message: state.message };
     },
 
+    applyWinResult: (state, winResult) => ({
+        ...state,
+        status: 'FINISHED',
+        message: winResult.message,
+        activePlayers: [],
+    }),
+
     getLegalActions: (state, playerId) => {
         if (state.status !== 'PLAYING') return [];
         const color = state.currentTurn;

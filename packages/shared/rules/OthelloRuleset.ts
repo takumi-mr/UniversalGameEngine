@@ -138,6 +138,17 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
         return { isFinished: false, message: state.message };
     },
 
+    applyWinResult: (state, winResult) => {
+        // This function is typically used to update the state based on the final win condition.
+        // For Othello, the 'checkWinCondition' already sets the status to 'FINISHED' and provides a message.
+        // If there were more complex post-game state changes (e.g., recording winner, scores in a meta-state),
+        // they would go here. For now, we just ensure the status is FINISHED and message is set.
+        if (winResult.isFinished) {
+            return { ...state, status: 'FINISHED', message: winResult.message };
+        }
+        return state;
+    },
+
     getLegalActions: (state, playerId) => {
         if (state.status !== 'PLAYING') return [];
         const color = state.currentTurn;

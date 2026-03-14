@@ -97,8 +97,18 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
         // 3. 勝敗判定
         const winCheck = this.rules.checkWinCondition(this.state);
         if (winCheck.isFinished) {
-            // エンジン側のステータスを終了にする等の処理
-            console.log("Game Finished!", winCheck.message);
+            // applyWinResult がある場合はルールセットに委任（スコア精算等）
+            if (this.rules.applyWinResult) {
+                this.state = this.rules.applyWinResult(this.state, winCheck);
+            } else {
+                // デフォルト: status と message だけ更新
+                this.state = {
+                    ...this.state,
+                    status: 'FINISHED',
+                    message: winCheck.message,
+                };
+            }
+            console.log("Game Finished!", this.state.message);
         }
 
         return true;

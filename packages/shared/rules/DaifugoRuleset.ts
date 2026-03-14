@@ -242,6 +242,29 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
         return { isFinished: false };
     },
 
+    applyWinResult: (state, winResult) => {
+        const newState = structuredClone(state);
+        newState.status = 'FINISHED';
+        newState.activePlayers = [];
+
+        // 役名を付与（例: 大富豪, 富豪, 平民, 貧民, 大貧民）
+        const roleNames: Record<number, string> = {
+            0: '大富豪',
+            1: '富豪',
+        };
+        const n = newState.playerIds.length;
+        roleNames[n - 1] = '大貧民';
+        if (n >= 3) roleNames[n - 2] = '貧民';
+
+        const roleLines = newState.ranks.map((pid, i) => {
+            const role = roleNames[i] ?? '平民';
+            return `${i + 1}位 [${role}]: ${pid}`;
+        });
+        newState.message = `ゲーム終了！\n${roleLines.join('\n')}`;
+
+        return newState;
+    },
+
     // 隠匿情報（相手の手札）のマスク処理
     maskState: (state, targetPlayerId) => {
         const maskedState = structuredClone(state);
