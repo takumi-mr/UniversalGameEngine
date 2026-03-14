@@ -11,37 +11,7 @@
     <GameSelector :games="availableGames" @select="onGameSelected" />
   </div>
 
-  <!-- Rubik's Cube: 専用3Dビュー -->
-  <div v-else-if="selectedGameType === 'rubiks-cube'" class="app-wrapper">
-    <div class="user-bar">
-      Logged in as: <strong>{{ username }}</strong>
-      <button @click="backToSelector" class="back-btn">← ゲーム選択</button>
-      <button @click="logout" class="logout-btn">Logout</button>
-    </div>
-    <RubiksCube />
-  </div>
-
-  <!-- 3D Othello: 専用3Dビュー -->
-  <div v-else-if="selectedGameType === 'othello-3d'" class="app-wrapper">
-    <div class="user-bar">
-      Logged in as: <strong>{{ username }}</strong>
-      <button @click="backToSelector" class="back-btn">← ゲーム選択</button>
-      <button @click="logout" class="logout-btn">Logout</button>
-    </div>
-    <Othello3D :authToken="authToken" />
-  </div>
-
-  <!-- Shogi: 専用3Dビュー -->
-  <div v-else-if="selectedGameType === 'shogi'" class="app-wrapper">
-    <div class="user-bar">
-      Logged in as: <strong>{{ username }}</strong>
-      <button @click="backToSelector" class="back-btn">← ゲーム選択</button>
-      <button @click="logout" class="logout-btn">Logout</button>
-    </div>
-    <Shogi :authToken="authToken" />
-  </div>
-
-  <!-- その他のゲーム: 汎用ビュー -->
+  <!-- 全てのゲームを汎用ビューで処理 -->
   <div v-else class="app-wrapper">
     <div class="user-bar">
       Logged in as: <strong>{{ username }}</strong>
@@ -62,19 +32,16 @@
 import { ref, computed, onMounted } from 'vue';
 import Login from './components/Login.vue';
 import GameSelector from './components/GameSelector.vue';
-import RubiksCube from './components/RubiksCube.vue';
-import Othello3D from './components/Othello3D.vue';
 import GenericGameView from './components/GenericGameView.vue';
 
-// ゲームの定義はフロントで静的に持つ（バックエンドと同期）
+// ゲームの定義
 const availableGames = [
+  { type: 'tictactoe',    name: 'Tic Tac Toe',      description: '古典的な三目並べ。',                     emoji: '⭕', minPlayers: 2, maxPlayers: 2 },
+  { type: 'othello',      name: 'Othello',          description: '3D対応の本格オセロ（リバーシ）。',         emoji: '⚫', minPlayers: 2, maxPlayers: 2 },
   { type: 'othello-3d',   name: '3D Othello',       description: '3D立体オセロ。26方向に挟める！',       emoji: '🟦', minPlayers: 2, maxPlayers: 2 },
-  { type: 'othello',      name: 'Othello',            description: '古典的な2Dオセロ（リバーシ）。',         emoji: '⚫', minPlayers: 2, maxPlayers: 2 },
-  { type: 'high-low',     name: 'High-Low Card',      description: '引いたカードの強さで競うカードゲーム。', emoji: '🃏', minPlayers: 1, maxPlayers: 2 },
-  { type: 'texas-holdem', name: "Texas Hold'em",      description: 'テキサスホールデムポーカー。',             emoji: '🂡', minPlayers: 2, maxPlayers: 6 },
-  { type: 'mahjong',      name: 'Mahjong',            description: '4人麻雀。役・符・点数計算対応。',         emoji: '🀄', minPlayers: 4, maxPlayers: 4 },
-  { type: 'daifugo',      name: '大富豪',              description: '大富豪（ジョーカー入り54枚）。',           emoji: '👑', minPlayers: 2, maxPlayers: 4 },
-  { type: 'rubiks-cube',  name: "Rubik's Cube",       description: '1人用ルービックキューブ。',               emoji: '🟥', minPlayers: 1, maxPlayers: 1 },
+  { type: 'high-low',     name: 'High-Low Card',    description: '引いたカードの強さで競うカードゲーム。', emoji: '🃏', minPlayers: 1, maxPlayers: 2 },
+  { type: 'shogi',        name: '将棋 (Shogi)',      description: '日本の伝統的なボードゲーム。3D。',       emoji: '☖', minPlayers: 2, maxPlayers: 2 },
+  { type: 'rubiks-cube',  name: "Rubik's Cube",     description: '1人用ルービックキューブ。3D。',           emoji: '🟥', minPlayers: 1, maxPlayers: 1 },
 ];
 
 const isAuthenticated  = ref(false);
@@ -108,6 +75,10 @@ function onGameSelected(type: string) {
 
 function backToSelector() {
   selectedGameType.value = null;
+  // ルームパラメータをクリア
+  const url = new URL(window.location.href);
+  url.searchParams.delete('room');
+  window.history.pushState({}, '', url);
 }
 
 function logout() {

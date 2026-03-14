@@ -1,163 +1,137 @@
 <template>
-  <div class="app-container">
-    <div class="ui-layer" v-if="gameState">
-      <div class="panel">
-        <div class="room-info">
-          Room ID: <span>{{ roomId }}</span>
-          <button @click="createNewGame">New Game</button>
+  <div class="othello-container">
+    <div class="game-wrapper">
+      <div class="side-info">
+        <div class="score-card black" :class="{ active: state.currentTurn === 1 }">
+          <div class="avatar">⚫</div>
+          <div class="details">
+            <div class="label">Black</div>
+            <div class="score">{{ state.scores[1] }}</div>
+          </div>
+        </div>
+        
+        <div class="status-center">
+          <div class="turn-msg">{{ state.message }}</div>
         </div>
 
-        <div v-if="errorMessage" class="error">{{ errorMessage }}</div>
-        <div v-if="gameState.message" class="status-msg">
-          {{ gameState.message }}
-        </div>
-
-        <div class="turn-indicator">
-          Turn:
-          <span :class="gameState.currentTurn === 1 ? 'color-black' : 'color-white'">
-            {{
-              gameState.status === "PLAYING"
-                ? gameState.currentTurn === 1
-                  ? "Black (黒)"
-                  : "White (白)"
-                : "-"
-            }}
-          </span>
-        </div>
-
-        <div class="score-board">
-          Black: {{ gameState.scores[1] }} | White: {{ gameState.scores[-1] }}
+        <div class="score-card white" :class="{ active: state.currentTurn === -1 }">
+          <div class="avatar">⚪</div>
+          <div class="details">
+            <div class="label">White</div>
+            <div class="score">{{ state.scores[-1] }}</div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div ref="canvasContainer" class="canvas-layer"></div>
+      <div ref="canvasContainer" class="board-3d-wrap"></div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import type { INetworkClient } from "@engine/shared/network/INetworkClient";
-import { SocketIoClient } from "../network/SocketIoClient";
+import { ref, onMounted, watch } from "vue";
 import type { OthelloState, OthelloAction } from "@engine/shared/rules/OthelloRuleset";
 import { OthelloUI } from "../three/OthelloUI";
 
-const props = defineProps<{ authToken: string; }>();
+const props = defineProps<{ state: OthelloState }>();
+const emit = defineEmits<{ (e: 'action', action: OthelloAction): void }>();
 
-const gameState = ref<OthelloState | null>(null);
-const errorMessage = ref<string>("");
-const roomId = ref<string>("Connecting...");
 const canvasContainer = ref<HTMLElement | null>(null);
-
-const GAME_SIZE = 8;
-const API_BASE_URL = "http://127.0.0.1:3000";
-
-let networkClient: INetworkClient<OthelloState, OthelloAction>;
 let threeUI: OthelloUI;
 
 onMounted(() => {
-  networkClient = new SocketIoClient(API_BASE_URL, props.authToken);
-
-  networkClient.onStateUpdate = (state: OthelloState) => {
-    gameState.value = state;
-    errorMessage.value = "";
-    // 状態が更新されたらThree.js側に丸投げ！
-    if (threeUI) threeUI.renderState(state);
-  };
-
-  networkClient.onError = (msg: string) => {
-    errorMessage.value = msg;
-  };
-
   if (canvasContainer.value) {
     threeUI = new OthelloUI(canvasContainer.value, (action) => {
-      networkClient.sendAction(action);
+      emit('action', action);
     });
+    // 初回レンダリング
+    threeUI.renderState(props.state);
   }
-
-  initApp();
 });
 
-const initApp = () => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const id = urlParams.get("id");
-
-  if (id) {
-    roomId.value = id;
-    networkClient.connect(id);
-  } else {
-    createNewGame();
+// stateが更新されたらThree.js側に通知
+watch(() => props.state, (newState) => {
+  if (threeUI) {
+    threeUI.renderState(newState);
   }
-};
-
-const createNewGame = async () => {
-  try {
-    networkClient.connect("");
-    const id = await networkClient.createGame({ type: 'OTHELLO', options: { size: GAME_SIZE } });
-    roomId.value = id;
-    window.history.pushState({}, "", `?id=${id}`);
-    networkClient.connect(id);
-  } catch (e) {
-    errorMessage.value = "Failed to create game.";
-  }
-};
+}, { deep: true });
 </script>
 
 <style scoped>
-/* 全画面表示のスタイル */
-.app-container {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  background-color: #000;
-}
-.canvas-layer {
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+
+.othello-container {
   width: 100%;
   height: 100%;
-  display: block;
+  background: #000;
+  font-family: 'Outfit', sans-serif;
+  overflow: hidden;
 }
-.ui-layer {
-  position: absolute;
-  top: 15px;
-  left: 15px;
-  z-index: 10;
-  pointer-events: none; /* UIの背景をクリックスルーさせる */
+
+.game-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
-.panel {
-  background: rgba(10, 10, 20, 0.85);
-  color: white;
+
+.side-info {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
   padding: 20px;
-  border-radius: 12px;
-  border: 1px solid #333;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-  min-width: 250px;
-  pointer-events: auto; /* ボタンなどは押せるようにする */
+  background: linear-gradient(to bottom, rgba(30, 41, 59, 0.4), transparent);
+  z-index: 10;
 }
-.room-info {
-  border-bottom: 1px solid #444;
-  padding-bottom: 12px;
-  margin-bottom: 12px;
-  font-size: 0.9em;
-  color: #88ff88;
+
+.score-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  opacity: 0.6;
 }
-.room-info button {
-  background: #3498db;
-  border: none;
-  color: white;
-  padding: 5px 12px;
-  margin-left: 10px;
-  cursor: pointer;
-  border-radius: 6px;
-  font-weight: bold;
+.score-card.active {
+  opacity: 1;
+  transform: scale(1.05);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
 }
-.room-info button:hover {
-  background: #2980b9;
+
+.score-card .avatar {
+  font-size: 1.8rem;
 }
-.error { color: #ff5555; font-weight: bold; margin-bottom: 10px; }
-.status-msg { color: #ffeb3b; font-weight: bold; font-size: 1.2em; margin-bottom: 10px; }
-.turn-indicator { font-size: 1.3em; margin-bottom: 10px; font-weight: bold; }
-.score-board { font-size: 1.2em; font-weight: bold; }
-.color-black { color: #aaaaaa; }
-.color-white { color: #ffffff; text-shadow: 0 0 8px rgba(255,255,255,0.6); }
+.score-card .label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+.score-card .score {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.status-center {
+  text-align: center;
+  min-width: 200px;
+}
+.turn-msg {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #c4b5fd;
+  text-shadow: 0 0 10px rgba(196, 181, 253, 0.3);
+}
+
+.board-3d-wrap {
+  flex: 1;
+  min-height: 0;
+}
 </style>
