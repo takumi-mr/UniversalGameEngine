@@ -70,6 +70,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
+import { useRouter } from 'vue-router';
 import { SocketIoClient } from '../network/SocketIoClient';
 import type { BaseGameState, BaseGameAction } from '@engine/shared/UniversalEngine';
 
@@ -91,13 +92,14 @@ const props = defineProps<{
   gameEmoji: string;
   gameName: string;
   authToken: string;
+  roomId: string;
 }>();
 
 defineEmits<{ (e: 'back'): void }>();
 
 const API_BASE = 'http://127.0.0.1:3000';
 
-const roomId          = ref('...');
+const roomId          = ref(props.roomId);
 const errorMsg        = ref('');
 const gameState       = ref<GameState | null>(null);
 const connectionStatus = ref('Connecting');
@@ -140,37 +142,20 @@ onMounted(() => {
     errorMsg.value = msg;
   };
 
-  initFromUrlOrNew();
+  client.connect(props.roomId);
 });
 
 onUnmounted(() => {
   client?.disconnect();
 });
 
-function initFromUrlOrNew() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const existingId = urlParams.get('room');
-  if (existingId) {
-    roomId.value = existingId;
-    client.connect(existingId);
-  } else {
-    createNewGame();
-  }
-}
+const router = useRouter();
 
 async function createNewGame() {
   try {
     connectionStatus.value = 'Creating...';
     const id = await client.createGame({ type: props.gameType.toUpperCase().replace('-', '_') });
-    roomId.value = id;
-    
-    // URLにルームIDを付与（共有用）
-    const newUrl = new URL(window.location.href);
-    newUrl.searchParams.set('room', id);
-    window.history.pushState({}, '', newUrl);
-
-    client.connect(id);
-    connectionStatus.value = 'Connected';
+    router.push(`/game/${props.gameType}/${id}`);
   } catch (e) {
     errorMsg.value = 'Failed to create game';
     connectionStatus.value = 'Error';

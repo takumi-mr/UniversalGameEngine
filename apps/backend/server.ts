@@ -41,6 +41,31 @@ const io = new Server(httpServer, {
     cors: { origin: "*" } // 開発用
 });
 
+// --- HTTP Endpoints ---
+
+// アクティブなルーム一覧の取得
+app.get('/rooms', (req, res) => {
+    const roomList = Array.from(sessions.entries()).map(([id, session]) => ({
+        id,
+        type: session.type,
+        playerCount: io.sockets.adapter.rooms.get(id)?.size ?? 0
+    }));
+    res.json({ rooms: roomList });
+});
+
+// ゲーム種別ごとのルーム一覧
+app.get('/rooms/:gameType', (req, res) => {
+    const gameType = req.params.gameType.toLowerCase();
+    const roomList = Array.from(sessions.entries())
+        .filter(([_, session]) => session.type.toLowerCase() === gameType)
+        .map(([id, session]) => ({
+            id,
+            type: session.type,
+            playerCount: io.sockets.adapter.rooms.get(id)?.size ?? 0
+        }));
+    res.json({ rooms: roomList });
+});
+
 // Socket.IO ミドルウェア: JWTの検証を行う
 io.use((socket, next) => {
     const token = socket.handshake.auth?.token;
