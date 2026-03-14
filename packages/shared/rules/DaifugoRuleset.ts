@@ -79,27 +79,34 @@ function createDeck(): Card[] {
 // --- ルールセット本体 ---
 
 export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
-    getInitialState: (options: { playerIds: string[] }): DaifugoState => {
-        const playerIds = options.playerIds || [];
+    getInitialState: (options: any): DaifugoState => {
+        const opts = options || {};
+        const playerIds = (opts.playerIds || []).filter((id: any) => !!id);
         const deck = createDeck();
         const hands: Record<string, Card[]> = {};
 
         // 手札を均等に配る
-        playerIds.forEach(pId => (hands[pId] = []));
-        let i = 0;
-        while (deck.length > 0) {
-            hands[playerIds[i % playerIds.length]].push(deck.pop()!);
-            i++;
-        }
+        if (playerIds.length > 0) {
+            playerIds.forEach((pId: string) => (hands[pId] = []));
+            
+            let i = 0;
+            while (deck.length > 0) {
+                const targetPlayerId = playerIds[i % playerIds.length];
+                if (hands[targetPlayerId]) {
+                    hands[targetPlayerId].push(deck.pop()!);
+                }
+                i++;
+            }
 
-        // 手札を強さ順にソート（UX向上）
-        Object.keys(hands).forEach(pId => {
-            hands[pId].sort((a, b) => getCardStrength(a) - getCardStrength(b));
-        });
+            // 手札を強さ順にソート（UX向上）
+            Object.keys(hands).forEach(pId => {
+                hands[pId].sort((a, b) => getCardStrength(a) - getCardStrength(b));
+            });
+        }
 
         return {
             status: 'PLAYING',
-            players: playerIds.reduce((acc, p) => ({ ...acc, [p]: p }), {}),
+            players: playerIds.reduce((acc: Record<string, string>, p: string) => ({ ...acc, [p]: p }), {}),
             activePlayers: [playerIds[0]], // 便宜上、最初のプレイヤーからスタート
             playerIds,
             hands,

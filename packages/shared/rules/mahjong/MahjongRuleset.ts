@@ -60,9 +60,11 @@ function createWall(): Tile[] {
 }
 
 export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
-    getInitialState: (options: { playerIds: string[] }): MahjongState => {
-        const playerIds = options.playerIds || [];
-        if (playerIds.length !== 4) throw new Error("Mahjong requires exactly 4 players.");
+    getInitialState: (options: any): MahjongState => {
+        const opts = options || {};
+        const playerIds = (opts.playerIds || []).filter((id: any) => !!id);
+        // 初期状態作成時はまだ参加プレイヤーが揃っていない可能性があるため、エラーにせず空の参加枠を許可する
+        // if (playerIds.length !== 4) throw new Error("Mahjong requires exactly 4 players.");
 
         const wall = createWall();
         const deadWall: Tile[] = [];
@@ -81,20 +83,23 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
         doraIndicators.push(deadWall.pop()!);
 
         // 各プレイヤーに13枚ずつ配る
-        for (const pId of playerIds) {
-            scores[pId] = 25000; // 原点25000
-            discards[pId] = [];
-            melds[pId] = [];
-            const initialHand: Tile[] = [];
-            for (let i = 0; i < 13; i++) {
-                initialHand.push(wall.pop()!);
+        if (playerIds.length > 0) {
+            for (const pId of playerIds) {
+                scores[pId] = 25000; // 原点25000
+                discards[pId] = [];
+                melds[pId] = [];
+                const initialHand: Tile[] = [];
+                for (let i = 0; i < 13; i++) {
+                    const t = wall.pop();
+                    if (t) initialHand.push(t);
+                }
+                hands[pId] = initialHand.sort(); // 簡易ソート
             }
-            hands[pId] = initialHand.sort(); // 簡易ソート
         }
 
         return {
             status: 'PLAYING',
-            players: playerIds.reduce((acc, p) => ({ ...acc, [p]: p }), {}),
+            players: playerIds.reduce((acc: Record<string, string>, p: string) => ({ ...acc, [p]: p }), {}),
             playerIds,
             activePlayers: [playerIds[0]], // 東場1局は [0] が最初のツモ番
             turnIndex: 0,

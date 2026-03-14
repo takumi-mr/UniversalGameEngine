@@ -36,25 +36,28 @@ function createDeck(): string[] {
 }
 
 export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction> = {
-    getInitialState: (options: { playerIds: string[], initialChips?: number }) => {
-        const playerIds = options.playerIds || [];
-        const initialChips = options.initialChips || 1000;
+    getInitialState: (options: any) => {
+        const opts = options || {};
+        const playerIds = (opts.playerIds || []).filter((id: any) => !!id);
+        const initialChips = opts.initialChips || 1000;
         const deck = createDeck();
         const hands: Record<string, string[]> = {};
         const playerChips: Record<string, number> = {};
         const playerBets: Record<string, number> = {};
 
         // 各プレイヤーにチップを配り、初期設定
-        for (const pId of playerIds) {
-            playerChips[pId] = initialChips;
-            playerBets[pId] = 0;
-            // 2枚ずつ配る
-            hands[pId] = [deck.pop()!, deck.pop()!];
+        if (playerIds.length > 0) {
+            for (const pId of playerIds) {
+                playerChips[pId] = initialChips;
+                playerBets[pId] = 0;
+                // 2枚ずつ配る
+                hands[pId] = [deck.pop()!, deck.pop()!];
+            }
         }
 
         return {
             status: 'PLAYING',
-            players: playerIds.reduce((acc, p) => ({ ...acc, [p]: p }), {}), // ID=Role
+            players: playerIds.reduce((acc: Record<string, string>, p: string) => ({ ...acc, [p]: p }), {}), // ID=Role
             // 最初の行動者はディーラーの次の次の人（通常はUTG: Under The Gun）だが簡略化して[0]とする
             activePlayers: playerIds.length > 0 ? [playerIds[0]] : [],
             playerIds,
