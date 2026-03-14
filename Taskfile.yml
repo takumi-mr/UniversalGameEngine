@@ -1,0 +1,45 @@
+version: '3'
+
+vars:
+  REDIS_URL: 'redis://localhost:6379'
+  MONGO_URL: 'mongodb://localhost:27017/game_engine'
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+
+  up:
+    desc: Start infrastructure (Redis, MongoDB)
+    cmds:
+      - docker compose up -d
+
+  down:
+    desc: Stop infrastructure
+    cmds:
+      - docker compose down
+
+  dev:
+    desc: Start infrastructure and run the application in dev mode
+    deps: [up]
+    cmds:
+      - |
+        # Use concurrently or separate terminals if possible, but here we run them in parallel
+        # Note: In a real terminal, you might want to use something like 'concurrently'
+        # For this Taskfile, we'll use bun's ability to run multiple things or just simple shell backgrounding if supported.
+        # However, for Taskfile, running them sequentially with & is common in simple setups.
+        bun --cwd apps/backend dev & bun --cwd apps/frontend dev
+    env:
+      REDIS_URL: "{{.REDIS_URL}}"
+      MONGO_URL: "{{.MONGO_URL}}"
+
+  clean:
+    desc: Stop infrastructure and remove volumes
+    cmds:
+      - docker compose down -v
+
+  install:
+    desc: Install dependencies
+    cmds:
+      - bun install

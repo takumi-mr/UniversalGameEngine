@@ -4,5 +4,10 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "scripts": {
+    "dev": "task dev",
+    "up": "task up",
+    "down": "task down"
+  }
 }

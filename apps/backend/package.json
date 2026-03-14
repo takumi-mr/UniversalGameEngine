@@ -1,6 +1,9 @@
 {
   "name": "backend",
   "private": true,
+  "scripts": {
+    "dev": "bun --watch server.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/cors": "^2.8.19",
