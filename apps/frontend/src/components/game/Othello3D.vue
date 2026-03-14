@@ -30,7 +30,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
-import { Othello3DUI } from "../three/Othello3DUI";
+import { Othello3DUI } from "../../three/Othello3DUI";
 import type {
   GameState as Othello3DState,
   MoveAction as Othello3DAction,

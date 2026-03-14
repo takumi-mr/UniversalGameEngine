@@ -56,7 +56,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { UniversalEngine } from '@engine/shared/UniversalEngine';
 import { RubiksRuleset } from '@engine/shared/rules/RubicCubeRuleset';
 import type { RubiksState, RubiksAction, FaceName } from '@engine/shared/rules/RubicCubeRuleset';
-import { RubiksCubeUI } from '../three/RubiksCubeUI';
+import { RubiksCubeUI } from '../../three/RubiksCubeUI';
 
 const FACES: FaceName[] = ['U', 'D', 'F', 'B', 'R', 'L'];
 

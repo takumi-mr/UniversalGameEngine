@@ -106,13 +106,14 @@ const connectionStatus = ref('Connecting');
 
 // 動的コンポーネントのマッピング
 const components: Record<string, any> = {
-  'tictactoe': defineAsyncComponent(() => import('./TicTacToe.vue')),
-  'othello': defineAsyncComponent(() => import('./Othello.vue')),
-  'othello-3d': defineAsyncComponent(() => import('./Othello3D.vue')),
-  'shogi': defineAsyncComponent(() => import('./Shogi.vue')),
-  'rubiks-cube': defineAsyncComponent(() => import('./RubiksCube.vue')),
-  'chess': defineAsyncComponent(() => import('./Chess.vue')),
-  'equilibrium': defineAsyncComponent(() => import('./Equilibrium.vue')),
+  'tictactoe': defineAsyncComponent(() => import('./game/TicTacToe.vue')),
+  'othello': defineAsyncComponent(() => import('./game/Othello.vue')),
+  'othello-3d': defineAsyncComponent(() => import('./game/Othello3D.vue')),
+  'shogi': defineAsyncComponent(() => import('./game/Shogi.vue')),
+  'rubiks-cube': defineAsyncComponent(() => import('./game/RubiksCube.vue')),
+  'chess': defineAsyncComponent(() => import('./game/Chess.vue')),
+  'go': defineAsyncComponent(() => import('./game/Go.vue')),
+  'equilibrium': defineAsyncComponent(() => import('./game/Equilibrium.vue')),
 };
 
 const gameComponent = computed(() => components[props.gameType] || null);

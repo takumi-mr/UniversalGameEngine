@@ -43,7 +43,6 @@
 </template>
 
 <script setup lang="ts">
-import { } from "vue";
 import type { TicTacToeState, TicTacToeAction } from "@engine/shared/rules/TicTacToeRuleset";
 
 const props = defineProps<{ state: TicTacToeState }>();

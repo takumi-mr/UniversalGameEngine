@@ -36,7 +36,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
-import { ShogiUI } from "../three/ShogiUI";
+import { ShogiUI } from "../../three/ShogiUI";
 import type { ShogiState, ShogiAction } from "@engine/shared/rules/ShogiRuleset";
 
 const props = defineProps<{

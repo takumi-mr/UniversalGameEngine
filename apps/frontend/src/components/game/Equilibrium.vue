@@ -114,7 +114,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
-import { Equilibrium3D } from '../three/Equilibrium/Equilibrium3D';
+import { Equilibrium3D } from '../../three/Equilibrium/Equilibrium3D';
 import type { EquilibriumState, EquilibriumAction } from '@engine/shared/rules/EquilibriumRuleset';
 
 const props = defineProps<{

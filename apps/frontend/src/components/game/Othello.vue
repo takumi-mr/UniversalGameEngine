@@ -31,7 +31,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import type { OthelloState, OthelloAction } from "@engine/shared/rules/OthelloRuleset";
-import { OthelloUI } from "../three/OthelloUI";
+import { OthelloUI } from "../../three/OthelloUI";
 
 const props = defineProps<{ state: OthelloState }>();
 const emit = defineEmits<{ (e: 'action', action: OthelloAction): void }>();
