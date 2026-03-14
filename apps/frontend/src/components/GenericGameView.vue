@@ -79,10 +79,12 @@ import type { OthelloState, OthelloAction } from '@engine/shared/rules/OthelloRu
 import type { GameState as Othello3DState, MoveAction as Othello3DAction } from '@engine/shared/rules/Othello3DRuleset';
 import type { RubiksState, RubiksAction } from '@engine/shared/rules/RubicCubeRuleset';
 import type { ChessState, ChessAction } from '@engine/shared/rules/ChessRuleset';
+import type { EquilibriumState, EquilibriumAction } from '@engine/shared/rules/EquilibriumRuleset';
+import type { ShogiState, ShogiAction } from '@engine/shared/rules/ShogiRuleset';
 
 // 共用体型の定義
-type GameState = TicTacToeState | OthelloState | Othello3DState | RubiksState | ChessState | BaseGameState;
-type GameAction = TicTacToeAction | OthelloAction | Othello3DAction | RubiksAction | ChessAction | BaseGameAction;
+type GameState = TicTacToeState | OthelloState | Othello3DState | RubiksState | ChessState | EquilibriumState | ShogiState | BaseGameState;
+type GameAction = TicTacToeAction | OthelloAction | Othello3DAction | RubiksAction | ChessAction | EquilibriumAction | ShogiAction | BaseGameAction;
 
 const props = defineProps<{
   gameType: string;
@@ -108,6 +110,7 @@ const components: Record<string, any> = {
   'shogi': defineAsyncComponent(() => import('./Shogi.vue')),
   'rubiks-cube': defineAsyncComponent(() => import('./RubiksCube.vue')),
   'chess': defineAsyncComponent(() => import('./Chess.vue')),
+  'equilibrium': defineAsyncComponent(() => import('./Equilibrium.vue')),
 };
 
 const gameComponent = computed(() => components[props.gameType] || null);

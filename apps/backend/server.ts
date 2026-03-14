@@ -108,7 +108,7 @@ app.get('/game/:gameId/state', async (req, res) => {
         const decoded = jwt.verify(token, JWT_SECRET) as any;
         const userId = decoded.userId as string;
 
-        let session = sessions.get(gameId);
+        let session = sessions.get(gameId.toLowerCase());
         if (!session) {
             const savedData = await repo.load(gameId);
             if (savedData) {
@@ -179,20 +179,27 @@ io.on('connection', (socket) => {
 
     // 部屋の作成リクエスト
     socket.on('request-create-game', ({ type, options }) => {
-        const def = gameRegistry.getDefinition(type);
+        const def = gameRegistry.getDefinition(type.toLowerCase());
         if (!def) {
+            console.error(`Unknown game type: ${type}`);
             socket.emit('error-message', `Unknown game type: ${type}`);
             return;
         }
 
-        const gameId = Math.random().toString(36).substring(7);
-        const engine = new UniversalEngine(def.ruleset, options);
-        const server = new SocketGameServer(gameId, engine);
-        sessions.set(gameId, { server, type });
+        try {
+            console.log(`Creating game: ${type} for user ${userId}`);
+            const gameId = Math.random().toString(36).substring(7);
+            const engine = new UniversalEngine(def.ruleset, options);
+            const server = new SocketGameServer(gameId, engine);
+            sessions.set(gameId, { server, type });
 
-        // 作成した本人に ID を送り返す
-        socket.emit('game-created', gameId);
-        console.log(`Game ${gameId} created via WebSocket by ${userId}`);
+            // 作成した本人に ID を送り返す
+            socket.emit('game-created', gameId);
+            console.log(`Game ${gameId} created via WebSocket by ${userId}`);
+        } catch (error) {
+            console.error(`Failed to create game ${type}:`, error);
+            socket.emit('error-message', `Failed to create game: ${(error as any).message || error}`);
+        }
     });
 
     // ルーム（ゲーム）への参加
@@ -200,7 +207,7 @@ io.on('connection', (socket) => {
         socket.join(gameId);
 
         // メモリになければDBから復元を試みる
-        if (!sessions.has(gameId)) {
+        if (!sessions.has(gameId.toLowerCase())) {
             const savedData = await repo.load(gameId);
             if (savedData) {
                 const def = gameRegistry.getDefinition(savedData.type);
@@ -229,7 +236,7 @@ io.on('connection', (socket) => {
             const isAlreadyAssigned = Object.values(state.players).includes(userId);
 
             if (!isAlreadyAssigned) {
-                // 黒番(1)が空いていれば座る。次に白番(-1)が空いていれば座る。
+                // 1. 標準的なロール (1, -1) への割り当て試行
                 if (state.players[1] === null) {
                     state.players[1] = userId;
                     updated = true;
@@ -239,11 +246,19 @@ io.on('connection', (socket) => {
                     updated = true;
                     console.log(`Assigned ${userId} to White (-1) in game ${gameId}`);
                 }
+                
+                // 2. ルールセットが JOIN アクションをサポートしている場合、それをディスパッチして playerData 等を初期化
+                // 既に割り当てられていない場合のみ実行
+                const joinAction = { type: 'JOIN', playerId: userId } as any;
+                if (session.server.engine.dispatch(joinAction)) {
+                    updated = true;
+                    console.log(`User ${userId} joined game ${gameId} via JOIN action`);
+                }
             }
 
             // 状態が更新された場合は保存し、全員にブロードキャスト
             if (updated) {
-                await repo.save(gameId, state, false);
+                await repo.save(gameId, session.server.engine.getState(), false);
             }
         }
 

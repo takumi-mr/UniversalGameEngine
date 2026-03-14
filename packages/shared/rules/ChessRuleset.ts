@@ -229,7 +229,7 @@ export const ChessRuleset: GameRuleset<ChessState, ChessAction> = {
     },
 
     reduce: (state, action) => {
-        const newState = structuredClone(state);
+        const newState = JSON.parse(JSON.stringify(state));
         const piece = newState.board[action.from];
         const target = newState.board[action.to];
         const isPawn = Math.abs(piece) === PIECES.P;

@@ -46,6 +46,7 @@ const availableGames = [
   { type: 'texas-holdem', name: "Texas Hold'em",    description: '本格ポーカー、テキサスホールデム。',     emoji: '🎰', minPlayers: 2, maxPlayers: 8 },
   { type: 'go',           name: 'Go (囲碁)',        description: '伝統的な囲碁ゲーム。',                   emoji: '⚪', minPlayers: 2, maxPlayers: 2 },
   { type: 'rubiks-cube',  name: "Rubik's Cube",     description: '1人用ルービックキューブ。3D。',           emoji: '🟥', minPlayers: 1, maxPlayers: 1 },
+  { type: 'equilibrium',  name: 'Equilibrium',      description: 'AIが考案した、魂を削り合う究極の心理戦ボードゲーム。', emoji: '⚖️', minPlayers: 2, maxPlayers: 2 },
 ];
 
 const isAuthenticated  = ref(false);
