@@ -4,12 +4,20 @@
 export interface BaseGameState {
     status: 'PLAYING' | 'FINISHED';
     message?: string;
+    // { "1": "userIdA", "-1": "userIdB" } のようにロールとユーザーIDをマッピング
+    players?: Record<string | number, string | null>; 
+    // アクティブな（現在手番・アクションを起こす権限がある）プレイヤーのIDリスト
+    activePlayers?: string[]; 
+    // ターンの制限時間（タイムスタンプ）。麻雀などの割り込みアクション（ポン・チー）待機時間に有用
+    turnDeadline?: number; 
     // 必要に応じて updatedAt などもここに入れる
 }
 
 // エンジンがアクションを識別するための最低限の約束
 export interface BaseGameAction {
     type: string;
+    playerId?: string; // サーバー側で検証・付与された送信元のユーザーID
+    timestamp?: number; // アクションが発生した時刻
 }
 
 export interface GameRuleset<TState extends BaseGameState, TAction extends BaseGameAction> {
@@ -24,6 +32,12 @@ export interface GameRuleset<TState extends BaseGameState, TAction extends BaseG
     
     // 4. ゲームが終了したかどうか、誰が勝ったかを判定する関数
     checkWinCondition: (state: TState) => { isFinished: boolean; message?: string };
+    
+    // 5. 隠匿情報（相手の手牌など）をマスク（伏せた）状態を作成する関数 (オプショナル)
+    maskState?: (state: TState, playerId: string) => TState;
+    
+    // 6. 制限時間切れの際に自動実行されるアクションを返す関数 (オプショナル)
+    getTimeoutAction?: (state: TState) => TAction | null;
 }
 
 // --- 2. 汎用エンジン本体 ---
@@ -48,6 +62,18 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
     }
 
     public getState(): TState {
+        return this.state;
+    }
+
+    /**
+     * 隠匿情報（相手の手札や裏向きのカード）など、
+     * 特定のプレイヤーに送信するべきではない情報をマスクした状態を返す
+     * @param playerId マスク処理の対象となるプレイヤーID
+     */
+    public getMaskedState(playerId: string): TState {
+        if (this.rules.maskState) {
+            return this.rules.maskState(this.state, playerId);
+        }
         return this.state;
     }
 

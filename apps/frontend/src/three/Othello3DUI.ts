@@ -176,12 +176,26 @@ export class Othello3DUI {
         }
     }
 
-    private onClick() {
-        if (!this.currentHovered || !this.currentState) return;
-        const { x, y, z, isValid } = this.currentHovered.userData;
-        if (isValid) {
-            this.onAction({ type: 'MOVE', x, y, z, color: this.currentState.currentTurn });
-            this.currentHovered = null;
+    private onClick(event: MouseEvent) {
+        if (!this.currentState || this.currentState.status !== 'PLAYING') return;
+
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        const clientX = event.clientX - rect.left;
+        const clientY = event.clientY - rect.top;
+
+        this.mouse.x = (clientX / rect.width) * 2 - 1;
+        this.mouse.y = -(clientY / rect.height) * 2 + 1;
+
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        const validTargets = this.interactableCubes.filter(c => c.userData.isValid);
+        const intersects = this.raycaster.intersectObjects(validTargets);
+
+        if (intersects.length > 0) {
+            const obj = intersects[0].object as THREE.Mesh;
+            const { x, y, z, isValid } = obj.userData;
+            if (isValid) {
+                this.onAction({ type: 'MOVE', x, y, z, color: this.currentState.currentTurn });
+            }
         }
     }
 

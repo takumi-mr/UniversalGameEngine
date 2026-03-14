@@ -13,9 +13,11 @@
   },
   "dependencies": {
     "@engine/shared": "workspace:*",
+    "@types/jsonwebtoken": "^9.0.10",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "ioredis": "^5.10.0",
+    "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.1.0",
     "socket.io": "^4.8.3"
   }

@@ -47,6 +47,10 @@ import type {
   MoveAction,
 } from "@engine/shared/rules/Othello3DRules";
 
+const props = defineProps<{
+  authToken: string;
+}>();
+
 // --- ステート管理 ---
 const gameState = ref<GameState | null>(null);
 const errorMessage = ref<string>("");
@@ -55,14 +59,14 @@ const canvasContainer = ref<HTMLElement | null>(null);
 
 const GAME_SIZE = 4;
 // ※バックエンドのURL（必要に応じて変更してください）
-const API_BASE_URL = "http://localhost:3000/api/games";
+const API_BASE_URL = "http://127.0.0.1:3000";
 
 let networkClient: INetworkClient<GameState, MoveAction>;
 let threeUI: Othello3DUI;
 
 onMounted(() => {
-  // 1. ネットワーク層の初期化
-  networkClient = new SocketIoClient(API_BASE_URL);
+  // 1. ネットワーク層の初期化 (JWTトークンを渡す)
+  networkClient = new SocketIoClient(API_BASE_URL, props.authToken);
 
   // ネットワークからの状態更新をVueのリアクティブな変数に反映し、Three.jsにも渡す
   networkClient.onStateUpdate = (state: GameState) => {
@@ -100,11 +104,18 @@ const initApp = () => {
 
 const createNewGame = async () => {
   try {
-    const id = await networkClient.createGame(GAME_SIZE);
+    // サーバーに接続（バックエンドの io.use ミドルウェアを通過させる）
+    networkClient.connect("");
+    // 接続後にタイムアウトしないように少し待つか、SocketIoClient側で対処する
+    const id = await networkClient.createGame({ size: GAME_SIZE });
     roomId.value = id;
     window.history.pushState({}, "", `?id=${id}`);
+    
+    // UIを更新
+    networkClient.connect(id); // 作成されたIDで改めてjoinする
   } catch (e) {
     console.error(e);
+    errorMessage.value = "Failed to create game.";
   }
 };
 </script>

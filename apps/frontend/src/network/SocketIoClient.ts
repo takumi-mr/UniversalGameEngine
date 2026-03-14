@@ -10,8 +10,11 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
     public onError: (message: string) => void = () => { };
     public onMetadataUpdate: (metadata: GameMetadata) => void = () => {};
 
-    constructor(url: string) {
-        this.socket = io(url, { autoConnect: false });
+    constructor(url: string, authToken?: string) {
+        this.socket = io(url, { 
+            autoConnect: false,
+            auth: { token: authToken } // JWTトークンをセット
+        });
 
         // サーバーからのプッシュ通知イベント
         this.socket.on('state-update', (state: TState) => {
@@ -30,9 +33,14 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
     }
 
     public async createGame(options?: any): Promise<string> {
+        // まず接続を確立する
+        if (!this.socket.connected) {
+            await this.connect("");
+        }
+
         return new Promise((resolve, reject) => {
             // サーバーに作成をリクエスト
-            this.socket.emit('request-create-game', options);
+            this.socket.emit('request-create-game', { type: 'othello-3d', options });
 
             // 1回だけ返信を待つ
             this.socket.once('game-created', (gameId: string) => {
@@ -47,8 +55,27 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
     }
 
     public async connect(gameId: string): Promise<void> {
-        this.gameId = gameId;
-        this.socket.emit('join-game', gameId);
+        return new Promise((resolve, reject) => {
+            if (this.socket.connected) {
+                if (gameId) {
+                    this.gameId = gameId;
+                    this.socket.emit('join-game', gameId);
+                }
+                resolve();
+            } else {
+                this.socket.once('connect', () => {
+                    if (gameId) {
+                         this.gameId = gameId;
+                         this.socket.emit('join-game', gameId);
+                    }
+                    resolve();
+                });
+                this.socket.once('connect_error', (err) => {
+                    reject(err);
+                });
+                this.socket.connect();
+            }
+        });
     }
 
     public disconnect(): void {

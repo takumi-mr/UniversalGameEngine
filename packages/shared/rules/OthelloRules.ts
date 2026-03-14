@@ -9,6 +9,7 @@ export interface OthelloState extends BaseGameState {
     currentTurn: PlayerColor;
     scores: Record<number, number>;
     size: number;
+    players: Record<PlayerColor, string | null>;
 }
 
 // BaseGameAction を継承しつつ、固有のプロパティを定義
@@ -56,6 +57,7 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
             currentTurn: 1, 
             scores: { 1: 4, [-1]: 4 }, 
             size,
+            players: { 1: null, [-1]: null }, // [TODO] Server will assign players later
             status: 'PLAYING', 
             message: '' 
         };
@@ -65,6 +67,14 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
         if (state.status !== 'PLAYING') return false;
         if (action.type !== 'PLACE_PIECE') return false; // 型チェック
         if (action.color !== state.currentTurn) return false;
+        
+        // 【セキュリティ】送信者のユーザーIDが、割り当てられたプレイヤーであるかを検証
+        const expectedPlayerId = state.players[action.color];
+        if (expectedPlayerId !== null && action.playerId !== expectedPlayerId) {
+            console.warn(`[Security] Action blocked: expected player ${expectedPlayerId}, got ${action.playerId}`);
+            return false;
+        }
+
         if (state.board[action.z][action.y][action.x] !== 0) return false;
 
         return DIRECTIONS.some(d => countFlips(state, action.x, action.y, action.z, d.dx, d.dy, d.dz, action.color) > 0);

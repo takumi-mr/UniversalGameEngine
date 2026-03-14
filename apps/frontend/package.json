@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@engine/shared": "workspace:*",
+    "@types/jsonwebtoken": "^9.0.10",
+    "jsonwebtoken": "^9.0.3",
     "socket.io-client": "^4.8.3",
     "three": "^0.183.2",
     "vue": "^3.5.30"

@@ -15,6 +15,7 @@ export interface GameState extends BaseGameState {
     currentTurn: PlayerColor;
     scores: Record<number, number>;
     validMoves: Position[];
+    players: Record<PlayerColor, string | null>;
 }
 
 // 汎用エンジンの BaseGameAction を継承 (type が必須になる)
@@ -48,7 +49,8 @@ export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
             board,
             currentTurn: 1,
             scores,
-            validMoves: [], 
+            validMoves: [],
+            players: { 1: null, [-1]: null }, // サーバーで割り当てる
             status: 'PLAYING', // BaseGameState で要求される
             message: ''        // BaseGameState で要求される
         };
@@ -61,6 +63,14 @@ export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
         if (state.status !== 'PLAYING') return false;
         if (action.color !== state.currentTurn) return false;
         if (action.type !== 'MOVE') return false; // Actionの種別チェックも追加
+
+        // 【セキュリティ】送信者のユーザーIDが、割り当てられたプレイヤーであるかを検証
+        const expectedPlayerId = state.players[action.color];
+        if (expectedPlayerId !== null && action.playerId !== expectedPlayerId) {
+            console.warn(`[Security] Action blocked: expected player ${expectedPlayerId}, got ${action.playerId}`);
+            return false;
+        }
+
         return isValidMove(state.board, action.x, action.y, action.z, action.color, state.board.length);
     },
 
