@@ -68,7 +68,7 @@
     </v-app-bar>
 
     <!-- Main Content -->
-    <v-main>
+    <v-main style="height: 100vh; overflow-y: auto;">
       <v-container class="pa-6" fluid>
         <div class="mb-6">
           <h2 class="text-h4 font-weight-bold mb-2">{{ $t('categories.' + selectedCategory) }}</h2>
