@@ -7,6 +7,7 @@ import { TexasHoldemRuleset } from './rules/TexasHoldemRuleset';
 import { MahjongRuleset } from './rules/mahjong/MahjongRuleset';
 import { DaifugoRuleset } from './rules/DaifugoRuleset';
 import { RubiksRuleset } from './rules/RubicCubeRuleset';
+import { GoRuleset } from './rules/GoRuleset';
 
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
     type: string;
@@ -75,6 +76,15 @@ class GameRegistry {
             maxPlayers: 4,
             description: '大富豪（ジョーカー入り54枚）。',
             emoji: '👑',
+        });
+        this.register({
+            type: 'go',
+            name: 'Go',
+            ruleset: GoRuleset,
+            minPlayers: 2,
+            maxPlayers: 2,
+            description: '囲碁 (9x9, 13x13, 19x19)。Tromp-Taylor集計対応。',
+            emoji: '⚪',
         });
         this.register({
             type: 'rubiks-cube',

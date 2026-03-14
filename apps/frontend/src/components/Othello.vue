@@ -14,14 +14,12 @@
 
         <div class="turn-indicator">
           Turn:
-          <span
-            :class="gameState.currentTurn === 1 ? 'color-black' : 'color-white'"
-          >
+          <span :class="gameState.currentTurn === 1 ? 'color-black' : 'color-white'">
             {{
               gameState.status === "PLAYING"
                 ? gameState.currentTurn === 1
-                  ? "Black"
-                  : "White"
+                  ? "Black (黒)"
+                  : "White (白)"
                 : "-"
             }}
           </span>
@@ -41,37 +39,29 @@
 import { ref, onMounted } from "vue";
 import type { INetworkClient } from "@engine/shared/network/INetworkClient";
 import { SocketIoClient } from "../network/SocketIoClient";
-import { Othello3DUI } from "../three/Othello3DUI";
-import type {
-  GameState,
-  MoveAction,
-} from "@engine/shared/rules/Othello3DRuleset";
+import type { OthelloState, OthelloAction } from "@engine/shared/rules/OthelloRuleset";
+import { OthelloUI } from "../three/OthelloUI";
 
-const props = defineProps<{
-  authToken: string;
-}>();
+const props = defineProps<{ authToken: string; }>();
 
-// --- ステート管理 ---
-const gameState = ref<GameState | null>(null);
+const gameState = ref<OthelloState | null>(null);
 const errorMessage = ref<string>("");
 const roomId = ref<string>("Connecting...");
 const canvasContainer = ref<HTMLElement | null>(null);
 
-const GAME_SIZE = 4;
-// ※バックエンドのURL（必要に応じて変更してください）
+const GAME_SIZE = 8;
 const API_BASE_URL = "http://127.0.0.1:3000";
 
-let networkClient: INetworkClient<GameState, MoveAction>;
-let threeUI: Othello3DUI;
+let networkClient: INetworkClient<OthelloState, OthelloAction>;
+let threeUI: OthelloUI;
 
 onMounted(() => {
-  // 1. ネットワーク層の初期化 (JWTトークンを渡す)
   networkClient = new SocketIoClient(API_BASE_URL, props.authToken);
 
-  // ネットワークからの状態更新をVueのリアクティブな変数に反映し、Three.jsにも渡す
-  networkClient.onStateUpdate = (state: GameState) => {
+  networkClient.onStateUpdate = (state: OthelloState) => {
     gameState.value = state;
     errorMessage.value = "";
+    // 状態が更新されたらThree.js側に丸投げ！
     if (threeUI) threeUI.renderState(state);
   };
 
@@ -79,14 +69,12 @@ onMounted(() => {
     errorMessage.value = msg;
   };
 
-  // 2. Three.js描画層の初期化
   if (canvasContainer.value) {
-    threeUI = new Othello3DUI(canvasContainer.value, GAME_SIZE, (action) => {
+    threeUI = new OthelloUI(canvasContainer.value, (action) => {
       networkClient.sendAction(action);
     });
   }
 
-  // 3. アプリケーションの起動（URLの解釈）
   initApp();
 });
 
@@ -104,38 +92,25 @@ const initApp = () => {
 
 const createNewGame = async () => {
   try {
-    // サーバーに接続（バックエンドの io.use ミドルウェアを通過させる）
     networkClient.connect("");
-    // 接続後にタイムアウトしないように少し待つか、SocketIoClient側で対処する
-    const id = await networkClient.createGame({ size: GAME_SIZE });
+    const id = await networkClient.createGame({ type: 'OTHELLO', options: { size: GAME_SIZE } });
     roomId.value = id;
     window.history.pushState({}, "", `?id=${id}`);
-    
-    // UIを更新
-    networkClient.connect(id); // 作成されたIDで改めてjoinする
+    networkClient.connect(id);
   } catch (e) {
-    console.error(e);
     errorMessage.value = "Failed to create game.";
   }
 };
 </script>
 
-<style>
-/* グローバルリセット */
-body,
-html {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background-color: #1a1a1a;
-  font-family: sans-serif;
-}
-
-/* レイアウト */
+<style scoped>
+/* 全画面表示のスタイル */
 .app-container {
   position: relative;
   width: 100vw;
   height: 100vh;
+  overflow: hidden;
+  background-color: #000;
 }
 .canvas-layer {
   width: 100%;
@@ -144,67 +119,45 @@ html {
 }
 .ui-layer {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: 15px;
+  left: 15px;
   z-index: 10;
-  pointer-events: none;
+  pointer-events: none; /* UIの背景をクリックスルーさせる */
 }
-
-/* パネルデザイン */
 .panel {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(10, 10, 20, 0.85);
   color: white;
-  padding: 15px;
-  border-radius: 8px;
-  min-width: 200px;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #333;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  min-width: 250px;
+  pointer-events: auto; /* ボタンなどは押せるようにする */
 }
 .room-info {
   border-bottom: 1px solid #444;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-  pointer-events: auto;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
   font-size: 0.9em;
   color: #88ff88;
 }
 .room-info button {
-  background: #555;
+  background: #3498db;
   border: none;
   color: white;
-  padding: 3px 8px;
+  padding: 5px 12px;
   margin-left: 10px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 6px;
+  font-weight: bold;
 }
 .room-info button:hover {
-  background: #777;
+  background: #2980b9;
 }
-
-.turn-indicator {
-  font-size: 1.2em;
-  margin-bottom: 10px;
-}
-.score-board {
-  font-size: 1.2em;
-  font-weight: bold;
-}
-.error {
-  color: #ff5555;
-  font-weight: bold;
-  margin-bottom: 10px;
-}
-.status-msg {
-  font-size: 1.2em;
-  font-weight: bold;
-  color: #ffeb3b;
-  margin-bottom: 10px;
-  text-shadow: 0 0 5px #ffeb3b;
-}
-
-.color-black {
-  color: #aaa;
-}
-.color-white {
-  color: #fff;
-  text-shadow: 0 0 5px #fff;
-}
+.error { color: #ff5555; font-weight: bold; margin-bottom: 10px; }
+.status-msg { color: #ffeb3b; font-weight: bold; font-size: 1.2em; margin-bottom: 10px; }
+.turn-indicator { font-size: 1.3em; margin-bottom: 10px; font-weight: bold; }
+.score-board { font-size: 1.2em; font-weight: bold; }
+.color-black { color: #aaaaaa; }
+.color-white { color: #ffffff; text-shadow: 0 0 8px rgba(255,255,255,0.6); }
 </style>

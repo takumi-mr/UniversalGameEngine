@@ -31,6 +31,16 @@
     <Othello3D :authToken="authToken" />
   </div>
 
+  <!-- Shogi: 専用3Dビュー -->
+  <div v-else-if="selectedGameType === 'shogi'" class="app-wrapper">
+    <div class="user-bar">
+      Logged in as: <strong>{{ username }}</strong>
+      <button @click="backToSelector" class="back-btn">← ゲーム選択</button>
+      <button @click="logout" class="logout-btn">Logout</button>
+    </div>
+    <Shogi :authToken="authToken" />
+  </div>
+
   <!-- その他のゲーム: 汎用ビュー -->
   <div v-else class="app-wrapper">
     <div class="user-bar">
