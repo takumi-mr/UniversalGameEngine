@@ -1,8 +1,10 @@
 // packages/shared/GameRegistry.ts
 import type { GameRuleset, BaseGameState, BaseGameAction } from './UniversalEngine';
-import { OthelloRuleset } from './rules/OthelloRules';
-import { Othello3DRuleset } from './rules/Othello3DRules';
-import { HighLowRuleset } from './rules/HighLowRules';
+import { OthelloRuleset } from './rules/OthelloRuleset';
+import { Othello3DRuleset } from './rules/Othello3DRuleset';
+import { HighLowRuleset } from './rules/HighLowRuleset';
+import { TexasHoldemRuleset } from './rules/TexasHoldemRuleset';
+import { MahjongRuleset } from './rules/mahjong/MahjongRuleset';
 // 将来的に import { ShogiRuleset } from './rules/ShogiRuleset'; などが増える
 
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
@@ -30,6 +32,16 @@ class GameRegistry {
             type: 'high-low',
             name: 'High-Low Card Game',
             ruleset: HighLowRuleset
+        });
+        this.register({
+            type: 'texas-holdem',
+            name: 'Texas Hold\'em Poker',
+            ruleset: TexasHoldemRuleset
+        });
+        this.register({
+            type: 'mahjong',
+            name: 'Mahjong (4 Players)',
+            ruleset: MahjongRuleset
         });
     }
 

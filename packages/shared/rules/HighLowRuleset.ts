@@ -123,5 +123,21 @@ export const HighLowRuleset: GameRuleset<HighLowState, DrawAction> = {
         }
 
         return { isFinished: false };
+    },
+
+    getLegalActions: (state, playerId) => {
+        if (state.status !== 'PLAYING') return [];
+        
+        const turn = state.currentTurn;
+        if (state.players && state.players[turn] !== null && state.players[turn] !== playerId) {
+            return [];
+        }
+
+        const action: DrawAction = { type: 'DRAW', player: turn, playerId };
+        if (HighLowRuleset.isValidAction(state, action)) {
+            return [action];
+        }
+
+        return [];
     }
 };

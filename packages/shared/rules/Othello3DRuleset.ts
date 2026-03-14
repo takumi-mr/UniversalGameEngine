@@ -25,7 +25,7 @@ export interface MoveAction extends BaseGameAction, Position {
 }
 
 export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
-    
+
     // 初期状態の生成
     getInitialState: (options = { size: 4 }) => {
         const size = options.size;
@@ -80,7 +80,7 @@ export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
         const nextBoard = JSON.parse(JSON.stringify(state.board));
         const color = action.color;
         const opponent = (color === 1 ? -1 : 1) as PlayerColor;
-        
+
         nextBoard[action.z][action.y][action.x] = color;
         let flippedCount = 0;
 
@@ -112,7 +112,7 @@ export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
                 message = `${opponent === 1 ? "Black" : "White"} passed!`;
                 nextTurn = color;
             } else {
-                nextTurn = color; 
+                nextTurn = color;
             }
         } else {
             message = ''; // 通常のターン交代時はメッセージをクリア
@@ -139,6 +139,24 @@ export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
             return { isFinished: true, message: msg };
         }
         return { isFinished: false, message: state.message };
+    },
+
+    getLegalActions: (state, playerId) => {
+        if (state.status !== 'PLAYING') return [];
+        const color = state.currentTurn;
+
+        if (state.players && state.players[color] !== null && state.players[color] !== playerId) {
+            return [];
+        }
+
+        return state.validMoves.map(pos => ({
+            type: 'MOVE' as const,
+            color,
+            x: pos.x,
+            y: pos.y,
+            z: pos.z,
+            playerId
+        }));
     }
 };
 

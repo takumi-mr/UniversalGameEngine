@@ -38,6 +38,9 @@ export interface GameRuleset<TState extends BaseGameState, TAction extends BaseG
     
     // 6. 制限時間切れの際に自動実行されるアクションを返す関数 (オプショナル)
     getTimeoutAction?: (state: TState) => TAction | null;
+
+    // 7. 特定のプレイヤーが現在実行可能な合法手の完全なリストを返す関数（AI用）
+    getLegalActions: (state: TState, playerId: string) => TAction[];
 }
 
 // --- 2. 汎用エンジン本体 ---
@@ -96,5 +99,12 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
         }
 
         return true;
+    }
+
+    /**
+     * 特定のプレイヤーが現在実行可能な合法手一覧を取得する機能（AIやUI補助用）
+     */
+    public getLegalActions(playerId: string): TAction[] {
+        return this.rules.getLegalActions(this.state, playerId);
     }
 }

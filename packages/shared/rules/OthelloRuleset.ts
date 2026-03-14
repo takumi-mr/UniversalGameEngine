@@ -15,8 +15,8 @@ export interface OthelloState extends BaseGameState {
 // BaseGameAction を継承しつつ、固有のプロパティを定義
 export interface OthelloAction extends BaseGameAction {
     type: 'PLACE_PIECE';
-    x: number; 
-    y: number; 
+    x: number;
+    y: number;
     z: number;
     color: PlayerColor;
 }
@@ -42,7 +42,7 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
             Array.from({ length: size }, () => Array(size).fill(0))
         );
         const m = Math.floor(size / 2);
-        
+
         // 初期配置
         for (let dz = -1; dz <= 0; dz++) {
             for (let dy = -1; dy <= 0; dy++) {
@@ -51,15 +51,15 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
                 }
             }
         }
-        
-        return { 
-            board, 
-            currentTurn: 1, 
-            scores: { 1: 4, [-1]: 4 }, 
+
+        return {
+            board,
+            currentTurn: 1,
+            scores: { 1: 4, [-1]: 4 },
             size,
             players: { 1: null, [-1]: null }, // [TODO] Server will assign players later
-            status: 'PLAYING', 
-            message: '' 
+            status: 'PLAYING',
+            message: ''
         };
     },
 
@@ -67,7 +67,7 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
         if (state.status !== 'PLAYING') return false;
         if (action.type !== 'PLACE_PIECE') return false; // 型チェック
         if (action.color !== state.currentTurn) return false;
-        
+
         // 【セキュリティ】送信者のユーザーIDが、割り当てられたプレイヤーであるかを検証
         const expectedPlayerId = state.players[action.color];
         if (expectedPlayerId !== null && action.playerId !== expectedPlayerId) {
@@ -104,11 +104,11 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
         // 次のターンを決定（パス判定含む）
         const nextPlayer = (color * -1) as PlayerColor;
         const hasMoves = hasValidMoves(nextBoard, nextPlayer, state.size);
-        
+
         let finalTurn = nextPlayer;
         let message = '';
         let status = state.status;
-        
+
         if (!hasMoves) {
             const currentHasMoves = hasValidMoves(nextBoard, color, state.size);
             if (!currentHasMoves) {
@@ -119,11 +119,11 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
             finalTurn = color; // パスなので手番交代しない
         }
 
-        return { 
-            ...state, 
-            board: nextBoard, 
-            currentTurn: finalTurn, 
-            scores: nextScores, 
+        return {
+            ...state,
+            board: nextBoard,
+            currentTurn: finalTurn,
+            scores: nextScores,
             message,
             status
         };
@@ -136,6 +136,30 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
             return { isFinished: true, message: `Finished: ${msg}` };
         }
         return { isFinished: false, message: state.message };
+    },
+
+    getLegalActions: (state, playerId) => {
+        if (state.status !== 'PLAYING') return [];
+        const color = state.currentTurn;
+        
+        // プレイヤー文字列と色のマッピング確認 
+        if (state.players && state.players[color] !== null && state.players[color] !== playerId) {
+            return [];
+        }
+
+        const actions: OthelloAction[] = [];
+        for (let z = 0; z < state.size; z++) {
+            for (let y = 0; y < state.size; y++) {
+                for (let x = 0; x < state.size; x++) {
+                    const action: OthelloAction = { type: 'PLACE_PIECE', color, x, y, z, playerId };
+                    // プレイヤーの権限チェック自体は `isValidAction` にも入っている。
+                    if (OthelloRuleset.isValidAction(state, action)) {
+                        actions.push(action);
+                    }
+                }
+            }
+        }
+        return actions;
     }
 };
 

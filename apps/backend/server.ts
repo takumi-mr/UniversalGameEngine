@@ -7,6 +7,7 @@ import { UniversalEngine } from '@engine/shared/UniversalEngine';
 import { HybridGameRepository } from './infra/HybridGameRepository';
 import { gameRegistry } from '@engine/shared/GameRegistry';
 import jwt from 'jsonwebtoken';
+import { GenericGameServer } from '@engine/shared/network/GenericGameServer';
 
 process.on('uncaughtException', (err) => {
     console.error('[UNCAUGHT EXCEPTION]', err);
@@ -25,7 +26,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
 // 実際のシステムではDBから検証する
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
-    
+
     // 簡易的な検証: パスワードは問わず、適当なユーザーIDとしてトークンを発行
     if (username) {
         const token = jwt.sign({ userId: username }, JWT_SECRET, { expiresIn: '24h' });
@@ -60,12 +61,32 @@ io.use((socket, next) => {
     }
 });
 
+class SocketGameServer extends GenericGameServer<any, any> {
+    constructor(roomId: string, engine: UniversalEngine<any, any>) {
+        super(roomId, engine);
+    }
+
+    public override broadcastState(): void {
+        const state = this.engine.getState();
+        const players = state.players ? Object.values(state.players).filter(Boolean) as string[] : [];
+
+        io.in(this.roomId).fetchSockets().then(sockets => {
+            for (const socket of sockets) {
+                const userId = socket.data.userId;
+                const targetId = players.includes(userId) ? userId : 'SPECTATOR';
+                const maskedState = this.engine.getMaskedState(targetId);
+                socket.emit('state-update', maskedState);
+            }
+        }).catch(err => console.error("Broadcast error:", err));
+    }
+}
+
 /**
  * セッション管理
  * エンジン本体と、そのゲームの種類(type)をセットで保持
  */
 interface GameSession {
-    engine: UniversalEngine<any, any>;
+    server: SocketGameServer;
     type: string;
 }
 const sessions = new Map<string, GameSession>();
@@ -75,11 +96,75 @@ const repo = new HybridGameRepository<any>(
     process.env.MONGO_URL || 'mongodb://localhost:27017'
 );
 
+// --- HTTP Polling Endpoints ---
+app.get('/game/:gameId/state', async (req, res) => {
+    const gameId = req.params.gameId;
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'No token' });
+
+    try {
+        const token = authHeader.split(' ')[1];
+        if (!token) return res.status(401).json({ error: 'No token' });
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const userId = decoded.userId as string;
+
+        let session = sessions.get(gameId);
+        if (!session) {
+            const savedData = await repo.load(gameId);
+            if (savedData) {
+                const def = gameRegistry.getDefinition(savedData.type);
+                if (def) {
+                    const engine = new UniversalEngine(def.ruleset);
+                    engine.loadState(savedData.state);
+                    const server = new SocketGameServer(gameId, engine);
+                    sessions.set(gameId, { server, type: savedData.type });
+                    session = sessions.get(gameId);
+                }
+            } else {
+                return res.status(404).json({ error: 'Game not found' });
+            }
+        }
+
+        const state = session!.server.getPollingState(userId);
+        res.json({ state });
+    } catch (err) {
+        res.status(401).json({ error: 'Invalid token computation' });
+    }
+});
+
+app.post('/game/:gameId/action', async (req, res) => {
+    const gameId = req.params.gameId;
+    const action = req.body;
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'No token' });
+
+    try {
+        const token = authHeader.split(' ')[1];
+        if (!token) return res.status(401).json({ error: 'No token' });
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const userId = decoded.userId as string;
+
+        const session = sessions.get(gameId);
+        if (!session) return res.status(404).json({ error: 'Game not found' });
+
+        const success = session.server.handleAction(userId, action);
+        if (success) {
+            const state = session.server.engine.getState();
+            await repo.save(gameId, state, state.status === 'FINISHED');
+            res.json({ success: true, state: session.server.getPollingState(userId) });
+        } else {
+            res.status(400).json({ error: 'Invalid action or not your turn' });
+        }
+    } catch (err) {
+        res.status(401).json({ error: 'Invalid token' });
+    }
+});
+
 
 const updatePresence = (gameId: string) => {
     const room = io.sockets.adapter.rooms.get(gameId);
     const count = room ? room.size : 0;
-    
+
     // ルーム内の全員に現在の人数などを送信
     io.to(gameId).emit('metadata-update', {
         playerCount: Math.min(count, 2), // 例えば2人までをプレイヤーとする
@@ -102,8 +187,9 @@ io.on('connection', (socket) => {
 
         const gameId = Math.random().toString(36).substring(7);
         const engine = new UniversalEngine(def.ruleset, options);
-        sessions.set(gameId, { engine, type });
-        
+        const server = new SocketGameServer(gameId, engine);
+        sessions.set(gameId, { server, type });
+
         // 作成した本人に ID を送り返す
         socket.emit('game-created', gameId);
         console.log(`Game ${gameId} created via WebSocket by ${userId}`);
@@ -112,16 +198,17 @@ io.on('connection', (socket) => {
     // ルーム（ゲーム）への参加
     socket.on('join-game', async (gameId: string) => {
         socket.join(gameId);
-        
+
         // メモリになければDBから復元を試みる
         if (!sessions.has(gameId)) {
             const savedData = await repo.load(gameId);
             if (savedData) {
                 const def = gameRegistry.getDefinition(savedData.type);
-                if (def) { 
+                if (def) {
                     const engine = new UniversalEngine(def.ruleset);
-                    engine.loadState(savedData.state); 
-                    sessions.set(gameId, { engine, type: savedData.type });
+                    engine.loadState(savedData.state);
+                    const server = new SocketGameServer(gameId, engine);
+                    sessions.set(gameId, { server, type: savedData.type });
                     console.log(`Game ${gameId} restored from storage (${savedData.type})`);
                 }
             }
@@ -132,15 +219,15 @@ io.on('connection', (socket) => {
             socket.emit('error-message', 'Game session not found');
             return;
         }
-        
-        const state = session.engine.getState();
+
+        const state = session.server.engine.getState();
 
         // プレイヤーの自動割り当てロジック (空いている席に座る)
         if (state.players) {
             let updated = false;
             // 既に自分が割り当てられているかチェック
             const isAlreadyAssigned = Object.values(state.players).includes(userId);
-            
+
             if (!isAlreadyAssigned) {
                 // 黒番(1)が空いていれば座る。次に白番(-1)が空いていれば座る。
                 if (state.players[1] === null) {
@@ -162,9 +249,14 @@ io.on('connection', (socket) => {
 
         // 参加した瞬間に現在の状態を送信
         console.log(`User ${userId} (socket: ${socket.id}) joined room ${gameId}`);
-        socket.emit('state-update', state);
+        const players = state.players ? Object.values(state.players).filter(Boolean) as string[] : [];
+        const isPlayer = players.includes(userId);
+        const targetId = isPlayer ? userId : 'SPECTATOR';
+        const maskedState = session.server.engine.getMaskedState(targetId);
+        socket.emit('state-update', maskedState);
+
         if (state.players && Object.values(state.players).some(p => p !== null)) {
-             io.to(gameId).emit('state-update', state); // 割り当てがあった場合、全員に通知
+            session.server.broadcastState(); // 割り当てがあった場合、全員に通知 (マスク対応)
         }
         updatePresence(gameId);
     });
@@ -174,16 +266,13 @@ io.on('connection', (socket) => {
         const session = sessions.get(gameId);
         if (!session) return;
 
-        // 【セキュリティ強化】送信元のユーザーIDを強制的にアクションに付与する
-        const actionWithPlayerId = { ...action, playerId: socket.data.userId };
+        // GenericGameServer の handleAction は playerId の強制上書きや broadcastState() を内包する
+        const success = session.server.handleAction(socket.data.userId, action);
 
-        const success = session.engine.dispatch(actionWithPlayerId);
         if (success) {
-            const state = session.engine.getState();
+            const state = session.server.engine.getState();
             // 状態を永続化（終了フラグをチェックしてMongoDBへの保存判断）
             await repo.save(gameId, state, state.status === 'FINISHED');
-            // ルーム内の全員に最新の状態をブロードキャスト（リアルタイム反映！）
-            io.to(gameId).emit('state-update', state);
         } else {
             socket.emit('error-message', 'Invalid move or not your turn!');
         }
