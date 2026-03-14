@@ -118,6 +118,7 @@ const components: Record<string, any> = {
   'daifugo': defineAsyncComponent(() => import('./game/Daifugo/Daifugo.vue')),
   'high-low': defineAsyncComponent(() => import('./game/HighLow.vue')),
   'texas-holdem': defineAsyncComponent(() => import('./game/TexasHoldem.vue')),
+  'uno': defineAsyncComponent(() => import('./game/Uno.vue')),
 };
 
 const gameComponent = computed(() => components[props.gameType] || null);

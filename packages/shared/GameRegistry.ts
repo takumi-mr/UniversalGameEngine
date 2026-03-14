@@ -12,6 +12,7 @@ import { DaifugoRuleset } from './rules/DaifugoRuleset';
 import { RubiksRuleset } from './rules/RubicCubeRuleset';
 import { GoRuleset } from './rules/GoRuleset';
 import { EquilibriumRuleset } from './rules/EquilibriumRuleset';
+import { UnoRuleset } from './rules/UnoRuleset';
 
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
     type: string;
@@ -63,6 +64,15 @@ class GameRegistry {
             description: '引いたカードの強さで競うカードゲーム。',
             emoji: '🃏',
         });
+        this.register({
+            type: 'uno',
+            name: 'UNO',
+            ruleset: UnoRuleset,
+            minPlayers: 2,
+            maxPlayers: 10,
+            description: 'UNO。',
+            emoji: '🃏',
+        })
         this.register({
             type: 'texas_holdem',
             name: 'Texas Hold\'em',
