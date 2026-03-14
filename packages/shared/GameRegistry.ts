@@ -55,7 +55,7 @@ class GameRegistry {
             emoji: '♔',
         })
         this.register({
-            type: 'high-low',
+            type: 'high_low',
             name: 'High-Low Card',
             ruleset: HighLowRuleset,
             minPlayers: 1,
@@ -64,7 +64,7 @@ class GameRegistry {
             emoji: '🃏',
         });
         this.register({
-            type: 'texas-holdem',
+            type: 'texas_holdem',
             name: 'Texas Hold\'em',
             ruleset: TexasHoldemRuleset,
             minPlayers: 2,
