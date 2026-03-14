@@ -13,6 +13,7 @@ import { RubiksRuleset } from './rules/RubicCubeRuleset';
 import { GoRuleset } from './rules/GoRuleset';
 import { EquilibriumRuleset } from './rules/EquilibriumRuleset';
 import { UnoRuleset } from './rules/UnoRuleset';
+import { SudokuRuleset } from './rules/SudokuRuleset';
 
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
     type: string;
@@ -128,6 +129,16 @@ class GameRegistry {
             description: '1人用ルービックキューブ。',
             emoji: '🟥',
             rules: '6つの面の各色を揃える立体パズルです。',
+        });
+        this.register({
+            type: 'sudoku',
+            name: 'Sudoku',
+            ruleset: new SudokuRuleset(),
+            minPlayers: 1,
+            maxPlayers: 1,
+            description: '古典的な数独パズル。',
+            emoji: '🔢',
+            rules: '9x9のマス目に1から9の数字を、各行、各列、3x3のブロックで重複しないように配置します。',
         });
         this.register({
             type: 'tictactoe',

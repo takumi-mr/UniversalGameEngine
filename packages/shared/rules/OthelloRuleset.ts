@@ -68,7 +68,7 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
             scores: { 1: 2, [-1]: 2 },
             size,
             players: { 1: null, [-1]: null },
-            status: 'PLAYING',
+            status: 'WAITING',
             message: '',
             validMoves: []
         };

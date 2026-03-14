@@ -56,16 +56,17 @@ export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction
         }
 
         return {
-            status: 'PLAYING',
-            players: playerIds.reduce((acc: Record<string, string>, p: string) => ({ ...acc, [p]: p }), {}), // ID=Role
-            // 最初の行動者はディーラーの次の次の人（通常はUTG: Under The Gun）だが簡略化して[0]とする
+            status: 'WAITING',
+            players: playerIds.length > 0
+                ? playerIds.reduce((acc: Record<string, string>, p: string) => ({ ...acc, [p]: p }), {})
+                : { 1: null, 2: null, 3: null, 4: null, 5: null, 6: null }, // Default 6 slots
             activePlayers: playerIds.length > 0 ? [playerIds[0]] : [],
             playerIds,
             deck,
             communityCards: [],
             hands,
             pot: 0,
-            currentBet: 0, // ブラインドベットは簡略化のため省略
+            currentBet: 0,
             playerBets,
             playerChips,
             foldedPlayers: [],

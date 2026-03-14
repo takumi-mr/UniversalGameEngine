@@ -120,7 +120,7 @@ export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
         }
 
         return {
-            status: 'PLAYING',
+            status: 'WAITING',
             players: { [playerIds[0]]: playerIds[0], [playerIds[1]]: playerIds[1] },
             activePlayers: [playerIds[0]], // 最初は親の番
             playerIds,

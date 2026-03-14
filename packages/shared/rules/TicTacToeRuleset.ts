@@ -22,7 +22,7 @@ const WIN_LINES = [
 export const TicTacToeRuleset: GameRuleset<TicTacToeState, TicTacToeAction> = {
 
     getInitialState: (options?: any): TicTacToeState => ({
-        status: 'PLAYING',
+        status: 'WAITING',
         board: Array(9).fill(0),
         turn: 1,
         players: {

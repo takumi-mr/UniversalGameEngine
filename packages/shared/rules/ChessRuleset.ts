@@ -190,7 +190,7 @@ function isStrictlyLegal(state: ChessState, from: number, to: number): boolean {
 
 export const ChessRuleset: GameRuleset<ChessState, ChessAction> = {
     getInitialState: (): ChessState => ({
-        status: 'PLAYING',
+        status: 'WAITING',
         board: [...INITIAL_BOARD],
         turn: 1,
         castling: { wK: true, wQ: true, bK: true, bQ: true },

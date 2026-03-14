@@ -45,13 +45,14 @@ function createDeck(): Card[] {
 export const HighLowRuleset: GameRuleset<HighLowState, DrawAction> = {
     getInitialState: () => {
         return {
-            status: 'PLAYING',
+            status: 'WAITING',
             message: 'Game Start! Player 1, draw a card.',
             deck: createDeck(),
             currentTurn: 1,
             field: { 1: null, 2: null },
             scores: { 1: 0, 2: 0 },
-            round: 1
+            round: 1,
+            players: { 1: null, 2: null }
         };
     },
 

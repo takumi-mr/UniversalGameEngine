@@ -36,9 +36,8 @@ export class SudokuRuleset implements GameRuleset<SudokuState, SudokuAction> {
         );
 
         return {
-            status: 'PLAYING',
-            players: { "1": "player1" }, // 一人用なので固定
-            activePlayers: ["player1"],
+            status: 'WAITING',
+            players: { "1": null }, // 入室待ちにする
             board
         };
     }

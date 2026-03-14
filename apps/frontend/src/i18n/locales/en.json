@@ -22,7 +22,9 @@
     "join_match": "Join Match",
     "no_active_rooms": "No Active Rooms",
     "be_the_first": "Be the first to start a new match in this category!",
-    "create_first_room": "Create First Room"
+    "create_first_room": "Create First Room",
+    "waiting_for_players": "Waiting for other players...",
+    "min_players_required": "Minimum {min} players required"
   },
   "games": {
     "tictactoe": {
@@ -35,12 +37,12 @@
       "description": "3D Reversi game.",
       "rules": "Players take turns placing their colors on the board. Trapped opponent's colors are flipped. The player with more pieces wins."
     },
-    "othello-3d": {
+    "othello_3d": {
       "name": "3D Othello",
       "description": "3D Reversi in 26 directions!",
       "rules": "Similar to Othello but in a 3D grid. You can flip pieces in 26 directions including the Z-axis."
     },
-    "high-low": {
+    "high_low": {
       "name": "High-Low Card",
       "description": "Compare card values.",
       "rules": "Guess if the next card is higher or lower than the current one."
@@ -60,7 +62,7 @@
       "description": "Popular Japanese card game.",
       "rules": "A card game where the goal is to get rid of all your cards. Ranks range from Daifugo (Grand Millionaire) to Daihinmin (Extreme Needy)."
     },
-    "texas-holdem": {
+    "texas_holdem": {
       "name": "Texas Hold'em",
       "description": "Authentic poker experience.",
       "rules": "Make the best 5-card hand using 2 private cards and 5 community cards."
@@ -70,7 +72,7 @@
       "description": "Strategy board game of territory.",
       "rules": "Surround more territory than your opponent to win."
     },
-    "rubiks-cube": {
+    "rubiks_cube": {
       "name": "Rubik's Cube",
       "description": "3D logic puzzle.",
       "rules": "Solve the 3D puzzle by aligning all colors on each face."

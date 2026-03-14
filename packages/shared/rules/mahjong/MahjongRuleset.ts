@@ -98,10 +98,12 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
         }
 
         return {
-            status: 'PLAYING',
-            players: playerIds.reduce((acc: Record<string, string>, p: string) => ({ ...acc, [p]: p }), {}),
+            status: 'WAITING',
+            players: playerIds.length > 0
+                ? playerIds.reduce((acc: Record<string, string>, p: string) => ({ ...acc, [p]: p }), {})
+                : { 0: null, 1: null, 2: null, 3: null },
             playerIds,
-            activePlayers: [playerIds[0]], // 東場1局は [0] が最初のツモ番
+            activePlayers: playerIds.length > 0 ? [playerIds[0]] : [],
             turnIndex: 0,
             wall,
             deadWall,

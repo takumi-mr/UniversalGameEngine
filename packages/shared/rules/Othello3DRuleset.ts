@@ -51,7 +51,7 @@ export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
             scores,
             validMoves: [],
             players: { 1: null, [-1]: null }, // サーバーで割り当てる
-            status: 'PLAYING', // BaseGameState で要求される
+            status: 'WAITING', // BaseGameState で要求される
             message: ''        // BaseGameState で要求される
         };
         state.validMoves = calculateValidMoves(state, 1, size);

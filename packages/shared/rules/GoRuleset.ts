@@ -110,7 +110,7 @@ export const GoRuleset: GameRuleset<GoState, GoAction> = {
   getInitialState: (options?: any): GoState => {
     const size = options?.size ?? 9;
     return {
-      status: "PLAYING",
+      status: "WAITING",
       size,
       board: Array(size * size).fill(0),
       turn: 1,

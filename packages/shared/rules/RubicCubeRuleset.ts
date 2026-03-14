@@ -95,10 +95,10 @@ function setEdge(state: RubiksState, def: EdgeDef, colors: Color[]) {
 
 export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction> = {
     getInitialState: (): RubiksState => ({
-        status: 'PLAYING',
+        status: 'WAITING',
         faces: createSolvedFaces(),
         moveCount: 0,
-        players: { '1': null } // 1人用
+        players: { '1': null }
     }),
 
     isValidAction: (state, action) => {

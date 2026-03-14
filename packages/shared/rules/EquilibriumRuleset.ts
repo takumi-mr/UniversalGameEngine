@@ -181,7 +181,7 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
         });
 
         return {
-            status: 'PLAYING',
+            status: 'WAITING',
             players: Object.fromEntries(playerIds.map(id => [id, id])),
             activePlayers: [...playerIds],
             turnCount: 1,

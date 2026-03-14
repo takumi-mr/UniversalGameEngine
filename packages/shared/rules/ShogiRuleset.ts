@@ -129,7 +129,7 @@ function generateMoves(state: ShogiState, fromIndex: number): number[] {
 
 export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
   getInitialState: (): ShogiState => ({
-    status: "PLAYING",
+    status: "WAITING",
     turn: 1,
     board: structuredClone(initialBoard),
     hands: { 1: {}, "-1": {} },

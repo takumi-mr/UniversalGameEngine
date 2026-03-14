@@ -2,7 +2,7 @@
 // --- 1. エンジンが要求する「ルールの文法（契約）」 ---
 // エンジンが状態を扱うための最低限の約束
 export interface BaseGameState {
-    status: 'PLAYING' | 'FINISHED';
+    status: 'WAITING' | 'PLAYING' | 'FINISHED';
     message?: string;
     // { "1": "userIdA", "-1": "userIdB" } のようにロールとユーザーIDをマッピング
     players?: Record<string | number, string | null>;

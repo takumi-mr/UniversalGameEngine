@@ -20,7 +20,7 @@ export const availableGames = [
     rules: '相手の石を挟んで自分の色に変える、伝統的なボードゲームです。最後に石が多いほうが勝ち。'
   },
   { 
-    type: 'othello-3d', 
+    type: 'othello_3d', 
     name: '3D Othello', 
     description: '3D立体オセロ。26方向に挟める！', 
     emoji: '🟦', 
@@ -30,7 +30,7 @@ export const availableGames = [
     rules: '石を置いて、上下左右、斜めに加えて、高さ（Z軸）方向も含む26方向に相手の石を挟んで自分の色に変えます。'
   },
   { 
-    type: 'high-low', 
+    type: 'high_low', 
     name: 'High-Low Card', 
     description: '引いたカードの強さで競うカードゲーム。', 
     emoji: '🃏', 
@@ -70,7 +70,7 @@ export const availableGames = [
     rules: '手札を早く出し切り、大富豪を目指すトランプゲームです。革命や階段などの独自ルールもあります。'
   },
   { 
-    type: 'texas-holdem', 
+    type: 'texas_holdem', 
     name: "Texas Hold'em", 
     description: '本格ポーカー、テキサスホールデム。', 
     emoji: '🎰', 
@@ -90,7 +90,7 @@ export const availableGames = [
     rules: '石で盤面の囲いを広げ、陣地の広さを競います。'
   },
   { 
-    type: 'rubiks-cube', 
+    type: 'rubiks_cube', 
     name: "Rubik's Cube", 
     description: '1人用ルービックキューブ。3D。', 
     emoji: '🟥', 

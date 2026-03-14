@@ -12,15 +12,28 @@
 
       <!-- Specialized Game Component -->
       <div v-if="gameState" class="game-container">
+        <!-- Waiting Overlay -->
+        <div v-if="gameState.status === 'WAITING'" class="waiting-overlay">
+          <div class="waiting-content">
+            <div class="loader-ring"></div>
+            <h3>{{ $t('common.waiting_for_players') }}</h3>
+            <p v-if="gameMinPlayers">
+              {{ $t('common.min_players_required', { min: gameMinPlayers }) }}
+              <br>
+              <span class="player-count">({{ currentPlayerCount }} / {{ gameMinPlayers }})</span>
+            </p>
+          </div>
+        </div>
+
         <component 
+          v-if="gameComponent && gameState.status !== 'WAITING'"
           :is="gameComponent" 
-          v-if="gameComponent"
           :state="gameState"
           @action="onGameAction"
         />
         
         <!-- Fallback if no specialized component -->
-        <div v-else class="state-block">
+        <div v-else-if="!gameComponent && gameState.status !== 'WAITING'" class="state-block">
           <div class="state-header">
             <span class="tag">Raw Game State</span>
             <span class="status-badge" :class="gameState.status">{{ gameState.status }}</span>
@@ -72,6 +85,7 @@
 import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
 import { useRouter } from 'vue-router';
 import { SocketIoClient } from '../network/SocketIoClient';
+import { availableGames } from '../constants/games';
 import type { BaseGameState, BaseGameAction } from '@engine/shared/UniversalEngine';
 
 // 各ゲームの型をインポート
@@ -109,15 +123,15 @@ const connectionStatus = ref('Connecting');
 const components: Record<string, any> = {
   'tictactoe': defineAsyncComponent(() => import('./game/TicTacToe.vue')),
   'othello': defineAsyncComponent(() => import('./game/Othello.vue')),
-  'othello-3d': defineAsyncComponent(() => import('./game/Othello3D.vue')),
+  'othello_3d': defineAsyncComponent(() => import('./game/Othello3D.vue')),
   'shogi': defineAsyncComponent(() => import('./game/Shogi.vue')),
-  'rubiks-cube': defineAsyncComponent(() => import('./game/RubiksCube.vue')),
+  'rubiks_cube': defineAsyncComponent(() => import('./game/RubiksCube.vue')),
   'chess': defineAsyncComponent(() => import('./game/Chess.vue')),
   'go': defineAsyncComponent(() => import('./game/Go.vue')),
   'equilibrium': defineAsyncComponent(() => import('./game/Equilibrium.vue')),
   'daifugo': defineAsyncComponent(() => import('./game/Daifugo/Daifugo.vue')),
-  'high-low': defineAsyncComponent(() => import('./game/HighLow.vue')),
-  'texas-holdem': defineAsyncComponent(() => import('./game/TexasHoldem.vue')),
+  'high_low': defineAsyncComponent(() => import('./game/HighLow.vue')),
+  'texas_holdem': defineAsyncComponent(() => import('./game/TexasHoldem.vue')),
   'uno': defineAsyncComponent(() => import('./game/Uno.vue')),
 };
 
@@ -135,6 +149,16 @@ const prettyState = computed(() => JSON.stringify(gameState.value, null, 2));
 const playerEntries = computed<[string, string | null][]>(() => {
   if (!gameState.value?.players) return [];
   return Object.entries(gameState.value.players) as [string, string | null][];
+});
+
+const gameMinPlayers = computed(() => {
+  const game = availableGames.find(g => g.type === props.gameType);
+  return game?.minPlayers ?? 0;
+});
+
+const currentPlayerCount = computed(() => {
+  if (!gameState.value?.players) return 0;
+  return Object.values(gameState.value.players).filter(p => p !== null).length;
 });
 
 onMounted(() => {
@@ -376,6 +400,66 @@ function onGameAction(action: GameAction) {
 .player-row:last-child { border-bottom: none; }
 .player-role { color: #94a3b8; font-weight: 600; }
 .player-id   { font-family: 'JetBrains Mono', monospace; color: #64748b; font-size: 0.7rem; }
+
+/* === Waiting Overlay === */
+.waiting-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.waiting-content {
+  text-align: center;
+  color: #f1f5f9;
+}
+
+.waiting-content h3 {
+  margin: 20px 0 10px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #f1f5f9, #94a3b8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.waiting-content p {
+  color: #94a3b8;
+  font-size: 1rem;
+}
+
+.player-count {
+  font-family: 'JetBrains Mono', monospace;
+  color: #6366f1;
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin-top: 8px;
+  display: inline-block;
+}
+
+.loader-ring {
+  display: inline-block;
+  width: 80px;
+  height: 80px;
+  border: 4px solid rgba(99, 102, 241, 0.1);
+  border-radius: 50%;
+  border-top-color: #6366f1;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 .json-details summary {
   cursor: pointer;

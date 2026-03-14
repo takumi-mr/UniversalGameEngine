@@ -214,9 +214,10 @@ io.on('connection', (socket) => {
         try {
             console.log(`Creating game: ${type} for user ${userId}`);
             const gameId = Math.random().toString(36).substring(7);
+            const normalizedType = type.toLowerCase().replace(/-/g, '_');
             const engine = new UniversalEngine(def.ruleset, options);
             const server = new SocketGameServer(gameId, engine);
-            sessions.set(gameId, { server, type });
+            sessions.set(gameId, { server, type: normalizedType });
 
             // 作成した本人に ID を送り返す
             socket.emit('game-created', gameId);
@@ -239,8 +240,9 @@ io.on('connection', (socket) => {
                 if (def) {
                     const engine = new UniversalEngine(def.ruleset);
                     engine.loadState(savedData.state);
+                    const normalizedType = savedData.type.toLowerCase().replace(/-/g, '_');
                     const server = new SocketGameServer(gameId, engine);
-                    sessions.set(gameId, { server, type: savedData.type });
+                    sessions.set(gameId, { server, type: normalizedType });
                     console.log(`Game ${gameId} restored from storage (${savedData.type})`);
                 }
             }
@@ -261,19 +263,16 @@ io.on('connection', (socket) => {
             const isAlreadyAssigned = Object.values(state.players).includes(userId);
 
             if (!isAlreadyAssigned) {
-                // 1. 標準的なロール (1, -1) への割り当て試行
-                if (state.players[1] === null) {
-                    state.players[1] = userId;
+                // 1. 全てのスロットをチェックして最初の空いているスロット (null) に割り当てる
+                const emptySlotEntry = Object.entries(state.players).find(([_, val]) => val === null);
+                if (emptySlotEntry) {
+                    const [slotKey] = emptySlotEntry;
+                    state.players[slotKey] = userId;
                     updated = true;
-                    console.log(`Assigned ${userId} to Black (1) in game ${gameId}`);
-                } else if (state.players[-1] === null) {
-                    state.players[-1] = userId;
-                    updated = true;
-                    console.log(`Assigned ${userId} to White (-1) in game ${gameId}`);
+                    console.log(`Assigned ${userId} to slot "${slotKey}" in game ${gameId}`);
                 }
                 
                 // 2. ルールセットが JOIN アクションをサポートしている場合、それをディスパッチして playerData 等を初期化
-                // 既に割り当てられていない場合のみ実行
                 const joinAction = { type: 'JOIN', playerId: userId } as any;
                 if (session.server.engine.dispatch(joinAction)) {
                     updated = true;
@@ -283,6 +282,14 @@ io.on('connection', (socket) => {
 
             // 状態が更新された場合は保存し、全員にブロードキャスト
             if (updated) {
+                // Minimum player check and transition to 'PLAYING'
+                const currentPlayers = Object.values(state.players).filter(p => p !== null).length;
+                const normalizedType = session.type.toLowerCase().replace(/-/g, '_');
+                const def = gameRegistry.getDefinition(normalizedType);
+                if (state.status === 'WAITING' && def && currentPlayers >= def.minPlayers) {
+                    state.status = 'PLAYING';
+                    console.log(`Game ${gameId} transitioned to PLAYING status.`);
+                }
                 await repo.save(gameId, session.server.engine.getState(), false);
             }
         }
@@ -305,6 +312,14 @@ io.on('connection', (socket) => {
     socket.on('dispatch-action', async ({ gameId, action }) => {
         const session = sessions.get(gameId);
         if (!session) return;
+
+        // 【追加】PLAYING状態でない場合は、JOIN以外の全アクションを拒否
+        const currentState = session.server.engine.getState();
+        if (currentState.status !== 'PLAYING' && action.type !== 'JOIN') {
+            console.warn(`[Blocked] Action ${action.type} for game ${gameId} blocked - status is ${currentState.status}`);
+            socket.emit('error-message', 'Game is not in PLAYING status');
+            return;
+        }
 
         // GenericGameServer の handleAction は playerId の強制上書きや broadcastState() を内包する
         const success = session.server.handleAction(socket.data.userId, action);

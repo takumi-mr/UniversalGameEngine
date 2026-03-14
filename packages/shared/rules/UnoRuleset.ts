@@ -43,7 +43,7 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
     const first = deck.pop()!;
 
     return {
-      status: "PLAYING",
+      status: "WAITING",
       hands,
       deck,
       discard: [first],
@@ -52,7 +52,9 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
       currentColor: cardColor(first),
       drawStack: 0,
       playerOrder: players,
-      players: { ...players } as Record<number, string>
+      players: players.length > 0 
+        ? { ...players } as Record<number, string>
+        : { 0: null, 1: null, 2: null, 3: null } // 4 slots
     };
   },
 

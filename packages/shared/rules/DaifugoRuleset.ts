@@ -105,9 +105,11 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
         }
 
         return {
-            status: 'PLAYING',
-            players: playerIds.reduce((acc: Record<string, string>, p: string) => ({ ...acc, [p]: p }), {}),
-            activePlayers: [playerIds[0]], // 便宜上、最初のプレイヤーからスタート
+            status: 'WAITING',
+            players: playerIds.length > 0 
+                ? playerIds.reduce((acc: Record<string, string>, p: string) => ({ ...acc, [p]: p }), {})
+                : { 1: null, 2: null, 3: null, 4: null },
+            activePlayers: playerIds.length > 0 ? [playerIds[0]] : [],
             playerIds,
             hands,
             tableCards: [],
