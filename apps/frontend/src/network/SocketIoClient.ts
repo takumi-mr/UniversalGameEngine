@@ -38,9 +38,12 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
             await this.connect("");
         }
 
+        const gameType = options?.type ?? 'othello-3d';
+        const gameOptions = options?.gameOptions;
+
         return new Promise((resolve, reject) => {
             // サーバーに作成をリクエスト
-            this.socket.emit('request-create-game', { type: 'othello-3d', options });
+            this.socket.emit('request-create-game', { type: gameType, options: gameOptions });
 
             // 1回だけ返信を待つ
             this.socket.once('game-created', (gameId: string) => {
