@@ -261,7 +261,7 @@ onBeforeUnmount(() => {
 
 .bottom-bar { display: flex; align-items: flex-end; gap: 20px; }
 .hand-container { display: flex; gap: 10px; flex: 1; overflow-x: auto; padding-bottom: 5px; }
-.card { width: 120px; background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #475569; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; transition: transform 0.2s; }
+.card { width: 120px; background: linear-gradient(145deg, rgb(var(--v-theme-surface)), rgb(var(--v-theme-background))); border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; transition: transform 0.2s; }
 .card.disabled { opacity: 0.5; filter: grayscale(1); pointer-events: none; }
 .card:not(.disabled):hover { transform: translateY(-10px); }
 .card-title { font-weight: bold; font-size: 0.9rem; text-align: center; }

@@ -7,6 +7,9 @@
         {{ gameEmoji }} {{ translatedGameName }} {{ $t('common.rooms') }}
       </v-app-bar-title>
       <v-spacer></v-spacer>
+      
+      <!-- Theme Switcher -->
+      <ThemeSwitcher class="mr-2" />
 
       <!-- Language Switcher -->
       <v-menu>
@@ -41,7 +44,7 @@
       </div>
     </v-app-bar>
 
-    <v-main class="bg-grey-darken-4">
+    <v-main>
       <v-container class="pa-6" fluid>
         <v-row justify="center">
           <v-col cols="12" md="10" lg="8">
@@ -152,6 +155,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { availableGames } from '../constants/games';
 import { SocketIoClient } from '../network/SocketIoClient';
 import GameHelpDialog from '../components/game/GameHelpDialog.vue';
+import ThemeSwitcher from '../components/ThemeSwitcher.vue';
 
 const route = useRoute();
 const router = useRouter();

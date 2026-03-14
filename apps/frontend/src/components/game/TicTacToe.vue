@@ -121,7 +121,8 @@ const placePiece = (index: number) => {
 
 .vs {
   font-weight: 800;
-  color: #334155;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.5;
   font-size: 0.9rem;
 }
 
@@ -129,8 +130,8 @@ const placePiece = (index: number) => {
   text-align: center;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #c4b5fd;
-  text-shadow: 0 0 10px rgba(196, 181, 253, 0.3);
+  color: rgb(var(--v-theme-secondary));
+  text-shadow: 0 0 10px rgba(var(--v-theme-secondary), 0.3);
   min-height: 1.5em;
 }
 
@@ -142,22 +143,22 @@ const placePiece = (index: number) => {
   aspect-ratio: 1 / 1;
   gap: 12px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.03);
   backdrop-filter: blur(8px);
   border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   box-shadow: 0 20px 50px rgba(0,0,0,0.3);
 }
 
 .cell {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(var(--v-theme-surface), 0.6);
   border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   transition: all 0.2s ease;
-  border: 1px solid rgba(255,255,255,0.03);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   cursor: default;
 }
 
@@ -165,8 +166,8 @@ const placePiece = (index: number) => {
   cursor: pointer;
 }
 .cell.is-clickable:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border-color: rgba(var(--v-theme-on-surface), 0.1);
   transform: translateY(-2px);
 }
 .cell.is-clickable:active {
@@ -179,20 +180,20 @@ const placePiece = (index: number) => {
   user-select: none;
 }
 .piece-o {
-  color: #00f2fe;
-  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+  color: rgb(var(--v-theme-primary));
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgb(var(--v-theme-secondary)) 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 8px rgba(0, 242, 254, 0.4));
+  filter: drop-shadow(0 0 8px rgba(var(--v-theme-primary), 0.4));
 }
 .piece-x {
-  color: #f000ff;
-  background: linear-gradient(135deg, #f000ff 0%, #7000ff 100%);
+  color: rgb(var(--v-theme-secondary));
+  background: linear-gradient(135deg, rgb(var(--v-theme-secondary)) 0%, rgb(var(--v-theme-primary)) 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 8px rgba(240, 0, 255, 0.4));
+  filter: drop-shadow(0 0 8px rgba(var(--v-theme-secondary), 0.4));
 }
 
 /* === Animations === */
@@ -211,26 +212,24 @@ const placePiece = (index: number) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(15, 23, 42, 0.2);
+  background: rgba(var(--v-theme-background), 0.2);
   backdrop-filter: blur(4px);
   z-index: 100;
   pointer-events: none;
   border-radius: 24px;
 }
 .result-content {
-  background: rgba(15, 23, 42, 0.9);
+  background: rgb(var(--v-theme-surface));
   padding: 24px 40px;
   border-radius: 20px;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   box-shadow: 0 10px 40px rgba(0,0,0,0.5);
   animation: slide-up 0.5s ease-out;
 }
 .winner-text {
   font-size: 1.5rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 @keyframes slide-up {

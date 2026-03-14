@@ -344,7 +344,7 @@ const formatPhase = (phase: string) => {
 
 /* --- My Area --- */
 .my-player-area {
-  background: #1e293b;
+  background: rgb(var(--v-theme-surface));
   border-top: 1px solid rgba(255,255,255,0.1);
   padding: 20px;
   display: flex;

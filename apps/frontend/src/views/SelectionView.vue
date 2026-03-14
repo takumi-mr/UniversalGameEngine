@@ -1,7 +1,7 @@
 <template>
   <v-app>
     <!-- Sidebar for Game Categories -->
-    <v-navigation-drawer v-model="drawer" permanent border="none" color="grey-darken-4">
+    <v-navigation-drawer v-model="drawer" permanent border="none">
       <v-list density="compact" nav>
         <v-list-item
           prepend-icon="mdi-view-dashboard"
@@ -38,6 +38,9 @@
       </v-app-bar-title>
       <v-spacer></v-spacer>
       
+      <!-- Theme Switcher -->
+      <ThemeSwitcher class="mr-2" />
+      
       <!-- Language Switcher -->
       <v-menu>
         <template v-slot:activator="{ props }">
@@ -65,7 +68,7 @@
     </v-app-bar>
 
     <!-- Main Content -->
-    <v-main class="bg-grey-darken-4">
+    <v-main>
       <v-container class="pa-6" fluid>
         <div class="mb-6">
           <h2 class="text-h4 font-weight-bold mb-2">{{ $t('categories.' + selectedCategory) }}</h2>
@@ -109,6 +112,7 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { availableGames } from '../constants/games';
+import ThemeSwitcher from '../components/ThemeSwitcher.vue';
 
 const router = useRouter();
 const username = ref(localStorage.getItem('game_username') || 'Unknown');
@@ -140,8 +144,8 @@ const logout = () => {
 .game-card {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .game-card.on-hover {
@@ -151,6 +155,6 @@ const logout = () => {
 }
 
 .text-primary {
-  color: #6366f1 !important;
+  color: rgb(var(--v-theme-primary)) !important;
 }
 </style>

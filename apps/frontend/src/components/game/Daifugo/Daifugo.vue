@@ -331,7 +331,7 @@ const getMedal = (index: number) => ['🥇', '🥈', '🥉', '💩'][index] || '
 }
 
 .result-modal {
-  background: #1e293b;
+  background: rgb(var(--v-theme-surface));
   padding: 32px;
   border-radius: 16px;
   text-align: center;

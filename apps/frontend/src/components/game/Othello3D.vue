@@ -79,7 +79,7 @@ watch(() => props.state, (newState) => {
   width: 100%;
   height: 100%;
   position: relative;
-  background-color: #0f172a;
+  background-color: rgb(var(--v-theme-background));
 }
 
 .ui-overlay {

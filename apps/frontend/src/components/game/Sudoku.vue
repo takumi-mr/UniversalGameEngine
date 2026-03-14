@@ -220,7 +220,7 @@ onUnmounted(() => {
 
 /* --- マス目 --- */
 .cell {
-  background-color: #0f172a;
+  background-color: rgb(var(--v-theme-background));
   display: flex;
   align-items: center;
   justify-content: center;

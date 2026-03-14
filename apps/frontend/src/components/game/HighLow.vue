@@ -118,7 +118,7 @@ const drawCard = (playerNumber: 1 | 2) => {
   align-items: center;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at center, #1e3a8a 0%, #0f172a 100%); /* ネイビーのカジノ風 */
+  background: radial-gradient(circle at center, rgb(var(--v-theme-surface)) 0%, rgb(var(--v-theme-background)) 100%);
   color: white;
   font-family: 'Inter', sans-serif;
   padding: 24px;

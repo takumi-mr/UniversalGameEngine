@@ -8,6 +8,9 @@
       </v-app-bar-title>
       <v-spacer></v-spacer>
       
+      <!-- Theme Switcher -->
+      <ThemeSwitcher class="mr-2" />
+      
       <v-btn
         icon="mdi-help-circle-outline"
         variant="text"
@@ -22,7 +25,7 @@
       <v-btn icon="mdi-logout" color="error" variant="text" size="small" @click="logout"></v-btn>
     </v-app-bar>
 
-    <v-main class="bg-grey-darken-4 fill-height">
+    <v-main class="fill-height">
       <!-- Main Game View -->
       <GenericGameView
         :game-type="gameType"
@@ -50,6 +53,7 @@ import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import GenericGameView from '../components/GenericGameView.vue';
 import GameHelpDialog from '../components/game/GameHelpDialog.vue';
+import ThemeSwitcher from '../components/ThemeSwitcher.vue';
 import { availableGames } from '../constants/games';
 
 const route = useRoute();

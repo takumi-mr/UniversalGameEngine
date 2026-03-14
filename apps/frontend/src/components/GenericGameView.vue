@@ -204,9 +204,9 @@ function onGameAction(action: GameAction) {
   display: flex;
   width: 100%;
   height: 100%;
-  background: #0f172a;
+  background: rgb(var(--v-theme-background));
   font-family: 'Inter', sans-serif;
-  color: #e2e8f0;
+  color: rgb(var(--v-theme-on-background));
   overflow: hidden;
 }
 
@@ -229,16 +229,17 @@ function onGameAction(action: GameAction) {
 .game-title {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: rgb(var(--v-theme-primary));
 }
 .room-id {
   font-size: 0.8rem;
-  color: #64748b;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.7;
 }
 .room-id span {
   font-family: 'JetBrains Mono', monospace;
-  color: #94a3b8;
-  background: rgba(255,255,255,0.05);
+  color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-on-surface), 0.05);
   padding: 2px 6px;
   border-radius: 4px;
 }
@@ -249,15 +250,15 @@ function onGameAction(action: GameAction) {
   font-size: 0.7rem;
   font-weight: 600;
 }
-.status-pill.connected    { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
-.status-pill.disconnected { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.status-pill.connected    { background: rgba(var(--v-theme-success), 0.15); color: rgb(var(--v-theme-success)); }
+.status-pill.disconnected { background: rgba(var(--v-theme-warning), 0.15); color: rgb(var(--v-theme-warning)); }
 
 .error-banner {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(var(--v-theme-error), 0.1);
+  border: 1px solid rgba(var(--v-theme-error), 0.3);
   border-radius: 10px;
   padding: 10px 16px;
-  color: #f87171;
+  color: rgb(var(--v-theme-error));
   margin-bottom: 16px;
   font-size: 0.85rem;
 }
@@ -270,8 +271,8 @@ function onGameAction(action: GameAction) {
 
 /* === Default State Block === */
 .state-block {
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(var(--v-theme-surface), 0.7);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   border-radius: 16px;
   padding: 20px 24px;
 }
@@ -285,7 +286,8 @@ function onGameAction(action: GameAction) {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #475569;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.6;
 }
 .status-badge {
   padding: 2px 10px;
@@ -293,25 +295,27 @@ function onGameAction(action: GameAction) {
   font-size: 0.75rem;
   font-weight: 700;
 }
-.status-badge.PLAYING  { background: rgba(99,102,241,0.2); color: #818cf8; }
-.status-badge.FINISHED { background: rgba(251,191,36,0.2); color: #fbbf24; }
+.status-badge.PLAYING  { background: rgba(var(--v-theme-primary), 0.2); color: rgb(var(--v-theme-primary)); }
+.status-badge.FINISHED { background: rgba(var(--v-theme-warning), 0.2); color: rgb(var(--v-theme-warning)); }
 
 .current-player {
   font-size: 0.9rem;
-  color: #94a3b8;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.8;
   margin-bottom: 8px;
 }
 .game-message {
   font-size: 1rem;
-  color: #c4b5fd;
+  color: rgb(var(--v-theme-secondary));
   margin-bottom: 14px;
 }
 
 .json-view {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.75rem;
-  color: #94a3b8;
-  background: rgba(15, 23, 42, 0.8);
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.9;
+  background: rgba(var(--v-theme-on-surface), 0.05);
   border-radius: 10px;
   padding: 16px;
   overflow: auto;
@@ -325,13 +329,14 @@ function onGameAction(action: GameAction) {
   align-items: center;
   gap: 14px;
   padding-top: 80px;
-  color: #64748b;
+  color: rgb(var(--v-theme-on-background));
+  opacity: 0.6;
 }
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(99,102,241,0.2);
-  border-top-color: #6366f1;
+  border: 3px solid rgba(var(--v-theme-primary), 0.2);
+  border-top-color: rgb(var(--v-theme-primary));
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -341,18 +346,18 @@ function onGameAction(action: GameAction) {
 .sidebar {
   width: 240px;
   min-width: 240px;
-  border-left: 1px solid rgba(255,255,255,0.06);
+  border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   padding: 24px 16px;
   display: flex;
   flex-direction: column;
   gap: 14px;
   overflow-y: auto;
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(var(--v-theme-surface), 0.5);
 }
 
 .sidebar-panel {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(var(--v-theme-surface), 0.6);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   border-radius: 12px;
   padding: 16px;
 }
@@ -360,7 +365,8 @@ function onGameAction(action: GameAction) {
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #64748b;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.6;
   margin-bottom: 12px;
   font-weight: 700;
 }
@@ -377,17 +383,17 @@ function onGameAction(action: GameAction) {
   transition: all 0.2s ease;
 }
 .back-btn {
-  background: rgba(255,255,255,0.05);
-  color: #94a3b8;
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  color: rgb(var(--v-theme-on-surface));
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
-.back-btn:hover    { background: rgba(255,255,255,0.1); color: #e2e8f0; transform: translateY(-1px); }
+.back-btn:hover    { background: rgba(var(--v-theme-on-surface), 0.1); transform: translateY(-1px); }
 .new-game-btn {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.3);
 }
-.new-game-btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4); }
+.new-game-btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(var(--v-theme-primary), 0.4); }
 
 .player-row {
   display: flex;
@@ -395,11 +401,11 @@ function onGameAction(action: GameAction) {
   align-items: center;
   font-size: 0.8rem;
   padding: 6px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 .player-row:last-child { border-bottom: none; }
-.player-role { color: #94a3b8; font-weight: 600; }
-.player-id   { font-family: 'JetBrains Mono', monospace; color: #64748b; font-size: 0.7rem; }
+.player-role { color: rgb(var(--v-theme-on-surface)); opacity: 0.8; font-weight: 600; }
+.player-id   { font-family: 'JetBrains Mono', monospace; color: rgb(var(--v-theme-on-surface)); opacity: 0.6; font-size: 0.7rem; }
 
 /* === Waiting Overlay === */
 .waiting-overlay {
@@ -408,39 +414,36 @@ function onGameAction(action: GameAction) {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(var(--v-theme-background), 0.85);
   backdrop-filter: blur(8px);
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 16px;
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(var(--v-theme-primary), 0.2);
 }
 
 .waiting-content {
   text-align: center;
-  color: #f1f5f9;
+  color: rgb(var(--v-theme-on-background));
 }
 
 .waiting-content h3 {
   margin: 20px 0 10px;
   font-size: 1.5rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #f1f5f9, #94a3b8);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .waiting-content p {
-  color: #94a3b8;
+  color: rgb(var(--v-theme-on-background));
+  opacity: 0.8;
   font-size: 1rem;
 }
 
 .player-count {
   font-family: 'JetBrains Mono', monospace;
-  color: #6366f1;
+  color: rgb(var(--v-theme-primary));
   font-weight: 700;
   font-size: 1.2rem;
   margin-top: 8px;
@@ -451,9 +454,9 @@ function onGameAction(action: GameAction) {
   display: inline-block;
   width: 80px;
   height: 80px;
-  border: 4px solid rgba(99, 102, 241, 0.1);
+  border: 4px solid rgba(var(--v-theme-primary), 0.1);
   border-radius: 50%;
-  border-top-color: #6366f1;
+  border-top-color: rgb(var(--v-theme-primary));
   animation: spin 1s ease-in-out infinite;
 }
 
@@ -464,14 +467,16 @@ function onGameAction(action: GameAction) {
 .json-details summary {
   cursor: pointer;
   font-size: 0.75rem;
-  color: #475569;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.6;
   user-select: none;
 }
 .json-view-mini {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.65rem;
-  color: #64748b;
-  background: rgba(15, 23, 42, 0.6);
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.8;
+  background: rgba(var(--v-theme-on-surface), 0.05);
   border-radius: 8px;
   padding: 10px;
   overflow: auto;

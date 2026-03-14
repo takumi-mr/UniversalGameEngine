@@ -209,7 +209,7 @@ const passTurn = () => {
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at center, #2e1065 0%, #0f172a 100%); /* ダークパープル系 */
+  background: radial-gradient(circle at center, rgb(var(--v-theme-surface)) 0%, rgb(var(--v-theme-background)) 100%);
   color: white;
   font-family: 'Inter', 'Helvetica Neue', sans-serif;
   overflow: hidden;
@@ -353,7 +353,7 @@ const passTurn = () => {
   background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 100;
 }
 .color-picker-modal {
-  background: #1e293b; padding: 24px; border-radius: 12px; text-align: center;
+  background: rgb(var(--v-theme-surface)); padding: 24px; border-radius: 12px; text-align: center;
 }
 .color-options { display: flex; gap: 16px; margin: 20px 0; }
 .color-btn {
