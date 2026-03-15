@@ -114,8 +114,8 @@ export const availableGames = [
     name: 'Equilibrium',
     description: 'AIが考案した、魂を削り合う究極の心理戦ボードゲーム。',
     emoji: '⚖️',
-    minPlayers: 2,
-    maxPlayers: 2,
+    minPlayers: 3,
+    maxPlayers: 6,
     category: 'Special',
     rules: 'AIによって設計された戦略的なボードゲーム。相手の心理を読み、均衡を崩します。'
   },

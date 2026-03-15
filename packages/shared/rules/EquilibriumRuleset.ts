@@ -182,11 +182,18 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
 
         return {
             status: 'WAITING',
-            players: Object.fromEntries(playerIds.map((id, index) => [index.toString(), id])),
-            activePlayers: [...playerIds],
+            players: {
+                "0": null,
+                "1": null,
+                "2": null,
+                "3": null,
+                "4": null,
+                "5": null
+            },
+            activePlayers: [],
             turnCount: 1,
             phase: 'AUCTION',
-            auctionPool: Array.from({ length: Math.floor(playerIds.length / 2) + 1 }, () => generateRandomCard()),
+            auctionPool: [], // Will be filled when game starts
             currentBids: {},
             passedPlayers: [],
             playerData: initialPlayerData,
@@ -237,20 +244,19 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                     hiddenGoal: drawRandomGoal(),
                 };
 
-                // エンジンの基本プレイヤー情報も更新
-                if (!nextState.players) nextState.players = {};
-                const currentCount = Object.keys(nextState.playerData).length - 1; // 既に追加済みなので-1
-                const role = currentCount.toString();
-                nextState.players[role] = action.playerId;
-
-                // 最初のアクティブプレイヤーリストに追加（オークション参加資格）
-                if (!nextState.activePlayers) nextState.activePlayers = [];
-                if (!nextState.activePlayers.includes(action.playerId)) {
-                    nextState.activePlayers.push(action.playerId);
+                // 人数が揃った時点での初期化処理
+                const joinedIds = Object.values(nextState.playerData).map(p => p.id);
+                const playersCount = joinedIds.length;
+                
+                if (playersCount >= 3) {
+                    nextState.activePlayers = [...joinedIds];
+                    if (nextState.auctionPool.length === 0) {
+                        const poolSize = Math.floor(joinedIds.length / 2) + 1;
+                        nextState.auctionPool = Array.from({ length: poolSize }, () => generateRandomCard());
+                    }
+                } else {
+                    nextState.activePlayers = [];
                 }
-
-                // 人数が揃ったらステータスを更新（例：3人以上で開始可能、6人で即開始など）
-                // ただしエンジンの仕様に従い、ここではJOINの処理に留める
             }
             return nextState;
         }
@@ -377,6 +383,11 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
     },
 
     checkWinCondition(state: EquilibriumState): { isFinished: boolean; message?: string } {
+        // 待機中は勝敗判定を行わない（初期プレイヤーが1人の時に即終了するのを防ぐ）
+        if (state.status === 'WAITING') {
+            return { isFinished: false };
+        }
+
         const playerIds = Object.keys(state.playerData);
         const alivePlayers = playerIds.filter(id => state.playerData[id].hp > 0);
         if (alivePlayers.length === 1) {

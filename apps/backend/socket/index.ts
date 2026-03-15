@@ -118,10 +118,12 @@ export const setupSocketIO = (io: Server) => {
                 // 状態が更新された場合は保存し、全員にブロードキャスト
                 if (updated) {
                     // Minimum player check and transition to 'PLAYING'
-                    const currentPlayers = Object.values(state.players).filter(p => p !== null).length;
+                    // Use a Set to count unique non-null players
+                    const uniquePlayersCount = new Set(Object.values(state.players).filter(p => p !== null)).size;
                     const normalizedType = session.type.toLowerCase().replace(/-/g, '_');
                     const def = gameRegistry.getDefinition(normalizedType);
-                    if (state.status === 'WAITING' && def && currentPlayers >= def.minPlayers) {
+                    
+                    if (state.status === 'WAITING' && def && uniquePlayersCount >= def.minPlayers) {
                         state.status = 'PLAYING';
                         console.log(`Game ${gameId} transitioned to PLAYING status.`);
                     }

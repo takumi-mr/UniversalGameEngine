@@ -20,8 +20,9 @@
             <p v-if="gameMinPlayers">
               {{ $t('common.min_players_required', { min: gameMinPlayers }) }}
               <br>
-              <span class="player-count">({{ currentPlayerCount }} / {{ gameMinPlayers }})</span>
+              <span class="player-count">{{ currentPlayerCount }} / {{ gameMinPlayers }}</span>
             </p>
+            <div class="waiting-subtext">Game will start automatically when enough players join.</div>
           </div>
         </div>
 
@@ -491,14 +492,14 @@ function onSendChat({ message, channel }: { message: string, channel: 'public' |
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(var(--v-theme-background), 0.85);
-  backdrop-filter: blur(8px);
-  z-index: 100;
+  background: rgba(var(--v-theme-background), 0.95);
+  backdrop-filter: blur(12px);
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 16px;
-  border: 1px solid rgba(var(--v-theme-primary), 0.2);
+  border: 1px solid rgba(var(--v-theme-primary), 0.3);
 }
 
 .waiting-content {
