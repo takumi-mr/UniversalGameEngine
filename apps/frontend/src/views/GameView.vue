@@ -44,7 +44,11 @@
       :game-emoji="gameInfo?.emoji ?? '🎮'"
       :game-rules="(gameInfo as any)?.rules"
       :game-description="gameInfo?.description"
-    />
+    >
+      <template #custom>
+        <GameHelpTabs :game-type="gameType" />
+      </template>
+    </GameHelpDialog>
   </v-app>
 </template>
 
@@ -53,6 +57,7 @@ import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import GenericGameView from '../components/GenericGameView.vue';
 import GameHelpDialog from '../components/game/GameHelpDialog.vue';
+import GameHelpTabs from '../components/game/GameHelpTabs.vue';
 import ThemeSwitcher from '../components/ThemeSwitcher.vue';
 import { availableGames } from '../constants/games';
 

@@ -35,7 +35,24 @@
     "othello": {
       "name": "Othello",
       "description": "3D Reversi game.",
-      "rules": "Players take turns placing their colors on the board. Trapped opponent's colors are flipped. The player with more pieces wins."
+      "rules": "Players take turns placing their colors on the board. Trapped opponent's colors are flipped. The player with more pieces wins.",
+      "tabs": {
+        "summary": {
+          "label": "How to Play",
+          "title": "Trap and Flip!",
+          "content": "In Othello, you play as Black or White. Your goal is to 'trap' your opponent's pieces between your own. When you do, they flip to your color!"
+        },
+        "rules": {
+          "label": "Rules",
+          "title": "Where can I move?",
+          "content": "1. You can only place a piece where it traps at least one opponent piece.\n2. All trapped pieces are flipped to your color.\n3. If you can't move, you must 'Pass'.\n4. The game ends when the board is full or no one can move."
+        },
+        "win": {
+          "label": "Winning",
+          "title": "Most Pieces Wins!",
+          "content": "At the end, count the pieces. If you have more pieces than your opponent, you win! Getting every piece on the board is called a 'Perfect Game'."
+        }
+      }
     },
     "othello_3d": {
       "name": "3D Othello",
@@ -50,7 +67,24 @@
     "shogi": {
       "name": "Shogi",
       "description": "Traditional Japanese chess.",
-      "rules": "A traditional Japanese board game where you can use captured pieces as your own. Checkmate the opponent's King to win."
+      "rules": "A traditional Japanese board game where you can use captured pieces as your own. Checkmate the opponent's King to win.",
+      "tabs": {
+        "summary": {
+          "label": "How to Play",
+          "title": "Capture the King!",
+          "content": "Shogi is like Japanese Chess. Protect your King while trying to capture the opponent's King. The coolest part is that you can use pieces you capture as your own!"
+        },
+        "pieces": {
+          "label": "Pieces",
+          "title": "Master the Moves!",
+          "content": "🚶 [Pawn] Moves 1 space forward.\n🏇 [Knight] Jumps forward-diagonally.\n🏯 [Rook] Moves any distance vertically or horizontally.\n📐 [Bishop] Moves any distance diagonally.\n👑 [King] Moves 1 space in any of the 8 directions."
+        },
+        "rules": {
+          "label": "Special Rules",
+          "title": "Promotion and Drops!",
+          "content": "1. [Promotion] When a piece enters the opponent's territory, it can become much stronger!\n2. [Drops] You can place any piece you've captured back onto the board as your own piece on your turn."
+        }
+      }
     },
     "chess": {
       "name": "Chess",
@@ -60,7 +94,24 @@
     "daifugo": {
       "name": "Daifugo",
       "description": "Popular Japanese card game.",
-      "rules": "A card game where the goal is to get rid of all your cards. Ranks range from Daifugo (Grand Millionaire) to Daihinmin (Extreme Needy)."
+      "rules": "A card game where the goal is to get rid of all your cards. Ranks range from Daifugo (Grand Millionaire) to Daihinmin (Extreme Needy).",
+      "tabs": {
+        "summary": {
+          "label": "How to Play",
+          "title": "Discard Quickly!",
+          "content": "In Daifugo, players take turns playing cards. The first person to run out of cards becomes the 'Daifugo' (the Grand Millionaire)!"
+        },
+        "ranks": {
+          "label": "Strength",
+          "title": "Card Power Levels!",
+          "content": "In this game, '2' is the strongest and '3' is the weakest.\n(Strong) 2 > A > K > Q ... > 4 > 3 (Weak)\n*The Joker is special and stronger than any card!"
+        },
+        "special": {
+          "label": "Wild Rules",
+          "title": "Revolutionize the Game!",
+          "content": "1. [8-Stop] Playing an '8' ends the round immediately and it's your turn again!\n2. [Revolution] If someone plays 4 cards of the same number, the strength flips! '3' becomes the strongest card!"
+        }
+      }
     },
     "texas_holdem": {
       "name": "Texas Hold'em",
@@ -80,7 +131,29 @@
     "equilibrium": {
       "name": "Equilibrium",
       "description": "AI-designed psychological warfare.",
-      "rules": "A strategic board game designed by AI. Read your opponent's mind to break the balance."
+      "rules": "A strategic board game designed by AI. Read your opponent's mind to break the balance.",
+      "tabs": {
+        "summary": {
+          "label": "What is it?",
+          "title": "A Battle of Souls and Minds!",
+          "content": "Equilibrium is a strategic card game designed by an AI. Use your HP and Soul Points (SP) wisely to reach your goal before your opponents do!"
+        },
+        "goals": {
+          "label": "How to Win",
+          "title": "Four Ways to Victory!",
+          "content": "You win instantly if you achieve any ONE of these goals:\n1. [Annihilator] Reduce opponent's HP to 0!\n2. [Collector] Have 8 or more cards on your board!\n3. [Pacifist] Everyone survives until turn 15!\n4. [Soul Hoarder] Accumulate 25 or more Soul Points!"
+        },
+        "phases": {
+          "label": "Game Flow",
+          "title": "Two Phases Every Turn!",
+          "content": "1. [Auction] Bid your Soul Points for the rare card in the center. The highest bidder gets the card!\n2. [Main] Use cards from your hand by spending SP. You can attack, defend, or even 'Bluff' to trick your opponents!"
+        },
+        "cards": {
+          "label": "Card Types",
+          "title": "Master the 5 Card Types!",
+          "content": "💥 [Attack] Reduces opponent's HP!\n🛡️ [Defense] Restores your own HP!\n🔮 [Trick] Special effects like discarding opponent's cards!\n🎯 [Goal] Change your secret victory condition!\n⚖️ [Syphon] Steal Soul Points from your opponent!"
+        }
+      }
     },
     "uno": {
       "name": "UNO",

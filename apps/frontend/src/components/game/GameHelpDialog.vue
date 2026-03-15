@@ -21,25 +21,27 @@
       <v-divider></v-divider>
 
       <v-card-text class="py-6 rules-content">
-        <div class="rules-section">
-          <div class="d-flex align-center mb-3">
-            <v-icon color="primary" class="mr-2">mdi-book-open-variant</v-icon>
-            <span class="text-subtitle-1 font-weight-bold text-primary">{{ $t('help.how_to_play') }}</span>
+        <slot name="custom">
+          <div class="rules-section">
+            <div class="d-flex align-center mb-3">
+              <v-icon color="primary" class="mr-2">mdi-book-open-variant</v-icon>
+              <span class="text-subtitle-1 font-weight-bold text-primary">{{ $t('help.how_to_play') }}</span>
+            </div>
+            <p class="text-body-1 mb-0 line-height-relaxed whitespace-pre-wrap">
+              {{ gameRules || $t('help.no_rules') }}
+            </p>
           </div>
-          <p class="text-body-1 mb-0 line-height-relaxed">
-            {{ gameRules || $t('help.no_rules') }}
-          </p>
-        </div>
 
-        <div v-if="gameDescription" class="rules-section mt-6">
-          <div class="d-flex align-center mb-3">
-            <v-icon color="secondary" class="mr-2">mdi-information-outline</v-icon>
-            <span class="text-subtitle-1 font-weight-bold text-secondary">{{ $t('help.summary') }}</span>
+          <div v-if="gameDescription" class="rules-section mt-6">
+            <div class="d-flex align-center mb-3">
+              <v-icon color="secondary" class="mr-2">mdi-information-outline</v-icon>
+              <span class="text-subtitle-1 font-weight-bold text-secondary">{{ $t('help.summary') }}</span>
+            </div>
+            <p class="text-body-2 text-medium-emphasis mb-0">
+              {{ gameDescription }}
+            </p>
           </div>
-          <p class="text-body-2 text-medium-emphasis mb-0">
-            {{ gameDescription }}
-          </p>
-        </div>
+        </slot>
       </v-card-text>
 
       <v-divider></v-divider>
@@ -95,6 +97,10 @@ const internalModel = computed({
 
 .line-height-relaxed {
   line-height: 1.7;
+}
+
+.whitespace-pre-wrap {
+  white-space: pre-wrap;
 }
 
 .rules-section {
