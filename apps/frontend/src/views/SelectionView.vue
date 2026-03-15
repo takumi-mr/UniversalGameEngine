@@ -70,6 +70,56 @@
     <!-- Main Content -->
     <v-main style="height: 100vh; overflow-y: auto;">
       <v-container class="pa-6" fluid>
+        <!-- Active Games Section -->
+        <div v-if="joinedRooms.length > 0" class="mb-10">
+          <div class="d-flex align-center mb-4">
+            <v-icon icon="mdi-controller-classic" color="primary" class="mr-2"></v-icon>
+            <h2 class="text-h5 font-weight-bold">{{ $t('common.active_games') }}</h2>
+            <v-btn icon="mdi-refresh" variant="text" size="small" class="ml-2" @click="fetchJoinedRooms"></v-btn>
+          </div>
+          <v-row>
+            <v-col
+              v-for="room in joinedRooms"
+              :key="room.id"
+              cols="12"
+              sm="6"
+              md="4"
+              lg="3"
+            >
+              <v-card class="active-game-card rounded-xl pa-4" variant="outlined">
+                <div class="d-flex align-center mb-3">
+                  <div class="text-h4 mr-3">{{ getGameEmoji(room.type) }}</div>
+                  <div>
+                    <div class="text-subtitle-1 font-weight-bold">{{ $t('games.' + room.type.toLowerCase() + '.name') }}</div>
+                    <div class="text-caption text-medium-emphasis">ID: {{ room.id.slice(0, 8) }}</div>
+                  </div>
+                </div>
+                <div class="d-flex gap-2">
+                  <v-btn
+                    color="primary"
+                    variant="flat"
+                    size="small"
+                    class="rounded-lg flex-grow-1"
+                    @click="onGameSelected(room.type.toLowerCase(), room.id)"
+                  >
+                    {{ $t('common.join_match') }}
+                  </v-btn>
+                  <v-btn
+                    color="error"
+                    variant="tonal"
+                    size="small"
+                    icon="mdi-exit-run"
+                    class="rounded-lg"
+                    :loading="leavingId === room.id"
+                    @click="leaveRoom(room.id)"
+                  ></v-btn>
+                </div>
+              </v-card>
+            </v-col>
+          </v-row>
+          <v-divider class="mt-8"></v-divider>
+        </div>
+
         <div class="mb-6">
           <h2 class="text-h4 font-weight-bold mb-2">{{ $t('categories.' + selectedCategory) }}</h2>
           <p class="text-body-1 text-medium-emphasis">{{ $t('common.select_game_desc') }}</p>
@@ -109,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { availableGames } from '../constants/games';
 import ThemeSwitcher from '../components/ThemeSwitcher.vue';
@@ -118,6 +168,10 @@ const router = useRouter();
 const username = ref(localStorage.getItem('game_username') || 'Unknown');
 const drawer = ref(true);
 const selectedCategory = ref('All');
+const joinedRooms = ref<any[]>([]);
+const leavingId = ref<string | null>(null);
+
+const API_BASE = 'http://127.0.0.1:3000';
 
 const categories = computed(() => {
   const cats = new Set(availableGames.map(g => g.category));
@@ -129,8 +183,51 @@ const filteredGames = computed(() => {
   return availableGames.filter(g => g.category === selectedCategory.value);
 });
 
-const onGameSelected = (type: string) => {
-  router.push(`/rooms/${type}`);
+const fetchJoinedRooms = async () => {
+  try {
+    const token = localStorage.getItem('game_token');
+    const res = await fetch(`${API_BASE}/rooms/my`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    joinedRooms.value = data.rooms || [];
+  } catch (err) {
+    console.error('Failed to fetch joined rooms:', err);
+  }
+};
+
+onMounted(fetchJoinedRooms);
+
+const getGameEmoji = (type: string) => {
+  const game = availableGames.find(g => g.type === type.toLowerCase());
+  return game?.emoji || '🎮';
+};
+
+const onGameSelected = (type: string, roomId?: string) => {
+  if (roomId) {
+    router.push(`/game/${type}/${roomId}`);
+  } else {
+    router.push(`/rooms/${type}`);
+  }
+};
+
+const leaveRoom = async (roomId: string) => {
+  if (leavingId.value) return;
+  leavingId.value = roomId;
+  try {
+    const token = localStorage.getItem('game_token');
+    const res = await fetch(`${API_BASE}/game/${roomId}/leave`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) {
+      await fetchJoinedRooms();
+    }
+  } catch (err) {
+    console.error('Failed to leave room:', err);
+  } finally {
+    leavingId.value = null;
+  }
 };
 
 const logout = () => {

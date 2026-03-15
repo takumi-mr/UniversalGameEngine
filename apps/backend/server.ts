@@ -66,6 +66,82 @@ app.get('/rooms/:gameType', (req, res) => {
     res.json({ rooms: roomList });
 });
 
+// ログインユーザーが参加しているルーム一覧
+app.get('/rooms/my', (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'No token' });
+
+    try {
+        const token = authHeader.split(' ')[1];
+        if (!token) return res.status(401).json({ error: 'No token' });
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const userId = decoded.userId;
+        const myRooms = Array.from(sessions.entries())
+            .filter(([id, session]) => {
+                const state = session.server.engine.getState();
+                const players = state.players ? Object.values(state.players) : [];
+                // Case-insensitive comparison
+                return players.some(p => typeof p === 'string' && p.toLowerCase() === userId.toLowerCase());
+            })
+            .map(([id, session]) => ({
+                id,
+                type: session.type,
+                playerCount: io.sockets.adapter.rooms.get(id)?.size ?? 0
+            }));
+
+        res.json({ rooms: myRooms });
+    } catch (err) {
+        console.error('[/rooms/my] Error:', err);
+        res.status(401).json({ error: 'Invalid token' });
+    }
+});
+
+// ルームから退出する
+app.post('/game/:gameId/leave', async (req, res) => {
+    const gameId = req.params.gameId.toLowerCase();
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'No token' });
+
+    try {
+        const token = authHeader.split(' ')[1];
+        if (!token) return res.status(401).json({ error: 'No token' });
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const userId = decoded.userId as string;
+
+        const session = sessions.get(gameId);
+        if (!session) return res.status(404).json({ error: 'Game not found' });
+
+        const state = session.server.engine.getState();
+        if (state.players) {
+            let found = false;
+            for (const key in state.players) {
+                if (state.players[key] === userId) {
+                    state.players[key] = null;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (found) {
+                // 通知メッセージをセット
+                state.message = `${userId} has left the game`;
+                
+                await repo.save(gameId, state, false);
+                session.server.broadcastState();
+                
+                // 全員にエラー/通知として送信（フロントエンドのトースト用）
+                io.to(gameId).emit('error-message', `${userId} has left the game`);
+                
+                updatePresence(gameId);
+                return res.json({ success: true });
+            }
+        }
+        res.status(400).json({ error: 'User not in game' });
+    } catch (err) {
+        res.status(401).json({ error: 'Invalid token' });
+    }
+});
+
 // Socket.IO ミドルウェア: JWTの検証を行う
 io.use((socket, next) => {
     const token = socket.handshake.auth?.token;
@@ -384,10 +460,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        console.log(`User disconnected: ${socket.id} (User ID: ${userId})`);
+        // console.log(`User disconnected: ${socket.id} (User ID: ${userId})`);
     });
 });
 
-httpServer.listen(3000, () => {
-    console.log("🚀 Realtime Engine Platform running on port 3000");
+const PORT = process.env.PORT || 3000;
+httpServer.listen(PORT, () => {
+    console.log(`🚀 Realtime Engine Platform running on port ${PORT}`);
 });

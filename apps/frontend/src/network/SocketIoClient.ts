@@ -6,12 +6,12 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
     private socket: Socket;
     public gameId: string | null = null;
 
-    public onStateUpdate: (state: TState) => void = () => {};
+    public onStateUpdate: (state: TState) => void = () => { };
     public onError: (message: string) => void = () => { };
-    public onMetadataUpdate: (metadata: GameMetadata) => void = () => {};
+    public onMetadataUpdate: (metadata: GameMetadata) => void = () => { };
 
     constructor(url: string, authToken?: string) {
-        this.socket = io(url, { 
+        this.socket = io(url, {
             autoConnect: false,
             auth: { token: authToken } // JWTトークンをセット
         });
@@ -28,7 +28,7 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
         this.socket.on('metadata-update', (meta: GameMetadata) => {
             this.onMetadataUpdate(meta);
         });
-        
+
         this.socket.connect();
     }
 
@@ -53,7 +53,7 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
             });
 
             // タイムアウト処理（5秒待っても反応がなければ失敗）
-            setTimeout(() => reject(new Error("Create game timeout")), 5000);
+            setTimeout(() => reject(new Error("Create game timeout")), 3000);
         });
     }
 
@@ -68,8 +68,8 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
             } else {
                 this.socket.once('connect', () => {
                     if (gameId) {
-                         this.gameId = gameId;
-                         this.socket.emit('join-game', gameId);
+                        this.gameId = gameId;
+                        this.socket.emit('join-game', gameId);
                     }
                     resolve();
                 });

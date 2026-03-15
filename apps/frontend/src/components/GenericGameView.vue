@@ -90,6 +90,24 @@
         </details>
       </div>
     </div>
+
+    <!-- Notification Snackbar -->
+    <v-snackbar
+      v-model="showSnackbar"
+      :color="snackbarColor"
+      location="top"
+      class="rounded-lg"
+    >
+      {{ snackbarMsg }}
+      <template v-slot:actions>
+        <v-btn
+          variant="text"
+          @click="showSnackbar = false"
+        >
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
   </div>
 </template>
 
@@ -132,6 +150,9 @@ const roomId          = ref(props.roomId);
 const errorMsg        = ref('');
 const gameState       = ref<GameState | null>(null);
 const connectionStatus = ref('Connecting');
+const showSnackbar = ref(false);
+const snackbarMsg = ref('');
+const snackbarColor = ref('info');
 
 // 動的コンポーネントのマッピング
 const components: Record<string, any> = {
@@ -194,7 +215,13 @@ onMounted(() => {
     errorMsg.value = '';
   };
   client.onError = (msg) => {
-    errorMsg.value = msg;
+    if (msg.includes('has left the game')) {
+      snackbarMsg.value = msg;
+      snackbarColor.value = 'warning';
+      showSnackbar.value = true;
+    } else {
+      errorMsg.value = msg;
+    }
   };
 
   client.connect(props.roomId);

@@ -25,7 +25,10 @@
     "create_first_room": "Create First Room",
     "waiting_for_players": "Waiting for other players...",
     "min_players_required": "Minimum {min} players required",
-    "your_turn": "It's your turn!"
+    "your_turn": "It's your turn!",
+    "active_games": "Active Games",
+    "exit_match": "Exit",
+    "no_active_games": "You have no active games"
   },
   "games": {
     "tictactoe": {

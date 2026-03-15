@@ -25,7 +25,10 @@
     "create_first_room": "最初のルームを作成する",
     "waiting_for_players": "他のプレイヤーを待っています...",
     "min_players_required": "最低 {min} 人の参加が必要です",
-    "your_turn": "あなたの番です！"
+    "your_turn": "あなたの番です！",
+    "active_games": "参加中のゲーム",
+    "exit_match": "退出",
+    "no_active_games": "現在参加しているゲームはありません"
   },
   "games": {
     "tictactoe": {
