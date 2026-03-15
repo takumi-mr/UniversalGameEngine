@@ -139,8 +139,44 @@ export const setupSocketIO = (io: Server) => {
 
             if (state.players && Object.values(state.players).some(p => p !== null)) {
                 session.server.broadcastState(); // 割り当てがあった場合、全員に通知 (マスク対応)
+                
+                // プレイヤーとして割り当てられているならプレイヤー専用ルームにも入る
+                if (Object.values(state.players).includes(userId)) {
+                    socket.join(`${gameId}:players`);
+                    console.log(`User ${userId} joined players-only room for ${gameId}`);
+                }
             }
             updatePresence(gameId);
+        });
+
+        // チャットメッセージの送信
+        socket.on('send-chat', ({ gameId, message, channel }) => {
+            if (!message || typeof message !== 'string') return;
+            const session = sessions.get(gameId);
+            if (!session) return;
+
+            const chatPayload = {
+                userId,
+                message,
+                channel: channel === 'private' ? 'private' : 'public',
+                timestamp: new Date().toISOString()
+            };
+
+            if (channel === 'private') {
+                // プレイヤーかどうかチェック
+                const state = session.server.engine.getState();
+                const players = state.players ? (Object.values(state.players).filter(Boolean) as string[]) : [];
+                if (!players.includes(userId)) {
+                    console.warn(`[Chat] User ${userId} attempted to send private chat but is not a player in ${gameId}`);
+                    return;
+                }
+                // プレイヤー専用ルームに送信
+                io.to(`${gameId}:players`).emit('chat-message', chatPayload);
+            } else {
+                // 全体に送信
+                io.to(gameId).emit('chat-message', chatPayload);
+            }
+            console.log(`[Chat] ${userId} sent ${channel || 'public'} message to ${gameId}`);
         });
 
         // 着手アクションの受信

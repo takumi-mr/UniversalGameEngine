@@ -89,6 +89,15 @@
           <pre class="json-view-mini">{{ prettyState }}</pre>
         </details>
       </div>
+
+      <!-- チャットパネル -->
+      <div class="chat-container">
+        <ChatPanel
+          :messages="chatMessages"
+          :is-player="isPlayer"
+          @send="onSendChat"
+        />
+      </div>
     </div>
 
     <!-- Notification Snackbar -->
@@ -115,6 +124,7 @@
 import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
 import { useRouter } from 'vue-router';
 import { SocketIoClient } from '../network/SocketIoClient';
+import ChatPanel from './game/ChatPanel.vue';
 import { availableGames } from '../constants/games';
 import type { BaseGameState, BaseGameAction } from '@engine/shared/UniversalEngine';
 
@@ -153,6 +163,8 @@ const connectionStatus = ref('Connecting');
 const showSnackbar = ref(false);
 const snackbarMsg = ref('');
 const snackbarColor = ref('info');
+
+const chatMessages = ref<{ userId: string, message: string, channel: 'public' | 'private', timestamp: string }[]>([]);
 
 // 動的コンポーネントのマッピング
 const components: Record<string, any> = {
@@ -207,6 +219,11 @@ const isMyTurn = computed(() => {
   return gameState.value.activePlayers?.includes(myPlayerId.value);
 });
 
+const isPlayer = computed(() => {
+  if (!gameState.value?.players) return false;
+  return Object.values(gameState.value.players).includes(myPlayerId.value);
+});
+
 onMounted(() => {
   client = new SocketIoClient<GameState, GameAction>(API_BASE, props.authToken);
   client.onStateUpdate = (state) => {
@@ -222,6 +239,10 @@ onMounted(() => {
     } else {
       errorMsg.value = msg;
     }
+  };
+
+  client.onChatMessage = (chat) => {
+    chatMessages.value.push(chat);
   };
 
   client.connect(props.roomId);
@@ -246,6 +267,10 @@ async function createNewGame() {
 
 function onGameAction(action: GameAction) {
   client.sendAction(action);
+}
+
+function onSendChat({ message, channel }: { message: string, channel: 'public' | 'private' }) {
+  client.sendChat(message, channel);
 }
 </script>
 
@@ -544,6 +569,12 @@ function onGameAction(action: GameAction) {
   transform: translateX(-50%);
   z-index: 1000;
   pointer-events: none;
+}
+
+.chat-container {
+  flex: 1;
+  min-height: 300px;
+  margin-top: 10px;
 }
 
 .turn-content {

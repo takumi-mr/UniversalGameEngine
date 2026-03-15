@@ -9,6 +9,7 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
     public onStateUpdate: (state: TState) => void = () => { };
     public onError: (message: string) => void = () => { };
     public onMetadataUpdate: (metadata: GameMetadata) => void = () => { };
+    public onChatMessage: (chat: { userId: string, message: string, channel: 'public' | 'private', timestamp: string }) => void = () => { };
 
     constructor(url: string, authToken?: string) {
         this.socket = io(url, {
@@ -27,6 +28,10 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
 
         this.socket.on('metadata-update', (meta: GameMetadata) => {
             this.onMetadataUpdate(meta);
+        });
+
+        this.socket.on('chat-message', (chat: any) => {
+            this.onChatMessage(chat);
         });
 
         this.socket.connect();
@@ -91,6 +96,15 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
         this.socket.emit('dispatch-action', {
             gameId: this.gameId,
             action: action
+        });
+    }
+
+    public sendChat(message: string, channel: 'public' | 'private'): void {
+        if (!this.gameId) return;
+        this.socket.emit('send-chat', {
+            gameId: this.gameId,
+            message,
+            channel
         });
     }
 }
