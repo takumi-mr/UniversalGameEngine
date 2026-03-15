@@ -62,6 +62,16 @@ class GameRegistry {
             rules: 'キング、クイーン、ルーク、ビショップ、ナイト、ポーンを動かして、相手のキングをチェックメイトします。',
         })
         this.register({
+            type: 'chess_3d',
+            name: 'Chess 3D',
+            ruleset: ChessRuleset,
+            minPlayers: 2,
+            maxPlayers: 2,
+            description: '3Dチェス。',
+            emoji: '♔',
+            rules: 'キング、クイーン、ルーク、ビショップ、ナイト、ポーンを動かして、相手のキングをチェックメイトします。',
+        })
+        this.register({
             type: 'high_low',
             name: 'High-Low Card',
             ruleset: HighLowRuleset,

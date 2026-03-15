@@ -186,6 +186,7 @@ const components: Record<string, any> = {
   'shogi': defineAsyncComponent(() => import('./game/Shogi.vue')),
   'rubiks_cube': defineAsyncComponent(() => import('./game/RubiksCube.vue')),
   'chess': defineAsyncComponent(() => import('./game/Chess.vue')),
+  'chess_3d': defineAsyncComponent(() => import('./game/Chess3D.vue')),
   'go': defineAsyncComponent(() => import('./game/Go.vue')),
   'equilibrium': defineAsyncComponent(() => import('./game/Equilibrium.vue')),
   'daifugo': defineAsyncComponent(() => import('./game/Daifugo/Daifugo.vue')),

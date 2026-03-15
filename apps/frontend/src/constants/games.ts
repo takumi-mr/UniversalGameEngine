@@ -51,13 +51,23 @@ export const availableGames = [
   },
   {
     type: 'chess',
-    name: 'Chess',
+    name: 'Chess (2D)',
     description: '世界的に人気の伝統的なチェス。',
     emoji: '♟️',
     minPlayers: 2,
     maxPlayers: 2,
     category: 'Board Games',
     rules: 'キング、クイーン、ルーク、ビショップ、ナイト、ポーンを動かして、相手のキングをチェックメイトします。'
+  },
+  {
+    type: 'chess_3d',
+    name: 'Chess 3D',
+    description: '3D化されたチェス。駒のモデルをロード可能。',
+    emoji: '♔',
+    minPlayers: 2,
+    maxPlayers: 2,
+    category: 'Board Games',
+    rules: 'キング、クイーン、ルーク、ビショップ、ナイト、ポーンを動かして、相手のキングをチェックメイトします。3Dモデルの駒を使用します。'
   },
   {
     type: 'daifugo',
