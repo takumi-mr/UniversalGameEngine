@@ -30,7 +30,24 @@
     "tictactoe": {
       "name": "Tic Tac Toe",
       "description": "Simple and classic game.",
-      "rules": "Players take turns putting their marks (X or O) in the 3x3 grid. The first player to get 3 marks in a row wins."
+      "rules": "Players take turns putting their marks (X or O) in the 3x3 grid. The first player to get 3 marks in a row wins.",
+      "tabs": {
+        "summary": {
+          "label": "How to Play",
+          "title": "Connect 3 to Win!",
+          "content": "Tic Tac Toe is a simple game on a 3x3 grid. You play as O or X, trying to get 3 of your marks in a line!"
+        },
+        "rules": {
+          "label": "Rules",
+          "title": "Take Turns!",
+          "content": "1. On your turn, place your mark in any empty square.\n2. You cannot place your mark where someone has already played."
+        },
+        "win": {
+          "label": "Winning",
+          "title": "Aim for a Line!",
+          "content": "You win if you get 3 of your marks in a horizontal, vertical, or diagonal row!"
+        }
+      }
     },
     "othello": {
       "name": "Othello",
@@ -57,12 +74,46 @@
     "othello_3d": {
       "name": "3D Othello",
       "description": "3D Reversi in 26 directions!",
-      "rules": "Similar to Othello but in a 3D grid. You can flip pieces in 26 directions including the Z-axis."
+      "rules": "Similar to Othello but in a 3D grid. You can flip pieces in 26 directions including the Z-axis.",
+      "tabs": {
+        "summary": {
+          "label": "How to Play",
+          "title": "Flip in 3D!",
+          "content": "This is Othello but in a 3D cube! You have to think about up, down, and all around to trap your opponent's pieces."
+        },
+        "rules": {
+          "label": "Rules",
+          "title": "26 Directions!",
+          "content": "1. Place your piece to trap at least one opponent piece.\n2. In 3D, you can trap pieces vertically, horizontally, diagonally, and even through the layers! There are 26 directions in total!"
+        },
+        "win": {
+          "label": "Winning",
+          "title": "Look Behind!",
+          "content": "The player with the most pieces at the end wins! Rotate the camera to find any hidden pieces in the cube."
+        }
+      }
     },
     "high_low": {
       "name": "High-Low Card",
       "description": "Compare card values.",
-      "rules": "Guess if the next card is higher or lower than the current one."
+      "rules": "Guess if the next card is higher or lower than the current one.",
+      "tabs": {
+        "summary": {
+          "label": "How to Play",
+          "title": "Next Card: Big or Small?",
+          "content": "A simple card game where you guess the rank of the next card. Is it going to be higher or lower than the one on the table?"
+        },
+        "rules": {
+          "label": "Rules",
+          "title": "Know the Ranks!",
+          "content": "1. Cards rank from A (lowest) up to K (highest).\n2. Click 'High' if you think the next card is bigger, or 'Low' if you think it's smaller."
+        },
+        "tips": {
+          "label": "Tips",
+          "title": "Check the Odds!",
+          "content": "If the current card is a '2', the next card is very likely to be 'High'! Think about what cards haven't appeared yet."
+        }
+      }
     },
     "shogi": {
       "name": "Shogi",
@@ -89,7 +140,24 @@
     "chess": {
       "name": "Chess",
       "description": "Global strategy game.",
-      "rules": "A classic strategy game. Move your pieces (King, Queen, Rooks, etc.) to checkmate the opponent's King."
+      "rules": "A classic strategy game. Move your pieces (King, Queen, Rooks, etc.) to checkmate the opponent's King.",
+      "tabs": {
+        "summary": {
+          "label": "How to Play",
+          "title": "Become a Grandmaster!",
+          "content": "Chess is a game of strategy. Your goal is to trap the opponent's King while protecting your own. Lead your army to victory!"
+        },
+        "pieces": {
+          "label": "Pieces",
+          "title": "Learn the Moves!",
+          "content": "👑 [King] Moves 1 space in any direction. Most important!\n👸 [Queen] Moves any distance in any direction. Super strong!\n🏰 [Rook] Moves any distance vertically or horizontally.\n📐 [Bishop] Moves any distance diagonally.\n🏇 [Knight] Jumps in an 'L' shape.\n💂 [Pawn] Moves 1 space forward. Captures diagonally forward."
+        },
+        "win": {
+          "label": "Winning",
+          "title": "Checkmate!",
+          "content": "When the opponent's King cannot escape capture, it's 'Checkmate' and you win the game!"
+        }
+      }
     },
     "daifugo": {
       "name": "Daifugo",
@@ -116,17 +184,68 @@
     "texas_holdem": {
       "name": "Texas Hold'em",
       "description": "Authentic poker experience.",
-      "rules": "Make the best 5-card hand using 2 private cards and 5 community cards."
+      "rules": "Make the best 5-card hand using 2 private cards and 5 community cards.",
+      "tabs": {
+        "summary": {
+          "label": "How to Play",
+          "title": "Make the Best Hand!",
+          "content": "The most popular poker game! You get 2 hidden cards, and use them with 5 shared cards on the table to make the strongest 5-card combo."
+        },
+        "hands": {
+          "label": "Hands",
+          "title": "Master the Combos!",
+          "content": "✨ [Royal Flush] A, K, Q, J, 10 of the same suit. The best!\n🌈 [Flush] 5 cards of the same suit.\n🔢 [Straight] 5 cards in numerical order.\n👫 [One Pair] 2 cards of the same number."
+        },
+        "flow": {
+          "label": "Flow",
+          "title": "Bet Your Chips!",
+          "content": "1. When you get cards, choose to 'Bet' chips if you feel strong.\n2. Cards appear on the table in stages. Decide to stay in or 'Fold'.\n3. The strongest hand at the end takes all the chips in the pot!"
+        }
+      }
     },
     "go": {
       "name": "Go",
       "description": "Strategy board game of territory.",
-      "rules": "Surround more territory than your opponent to win."
+      "rules": "Surround more territory than your opponent to win.",
+      "tabs": {
+        "summary": {
+          "label": "How to Play",
+          "title": "Surround Territory!",
+          "content": "Go is a game of space. You and your opponent place stones to 'fence off' parts of the board. The one with the most territory wins!"
+        },
+        "rules": {
+          "label": "Rules",
+          "title": "Capture Stones!",
+          "content": "1. Take turns placing a stone on the intersections.\n2. If you completely surround an opponent's stone, you capture it!\n3. Once placed, stones cannot be moved."
+        },
+        "win": {
+          "label": "Winning",
+          "title": "Most Space Wins!",
+          "content": "At the end, count the empty spaces inside your territory. More space means more points!"
+        }
+      }
     },
     "rubiks_cube": {
       "name": "Rubik's Cube",
       "description": "3D logic puzzle.",
-      "rules": "Solve the 3D puzzle by aligning all colors on each face."
+      "rules": "Solve the 3D puzzle by aligning all colors on each face.",
+      "tabs": {
+        "summary": {
+          "label": "How to Play",
+          "title": "Solve the Cube!",
+          "content": "This is a classic 3D puzzle. Your goal is to scramble the cube and then get all the colors back to their original faces!"
+        },
+        "goal": {
+          "label": "Goal",
+          "title": "Match the Colors!",
+          "content": "Try to get each of the 6 faces to be one solid color. Start by solving one side first!"
+        },
+        "move": {
+          "label": "Controls",
+          "title": "Rotate and Solve!",
+          "content": "Click and drag on the cube to rotate a layer. Drag outside the cube to rotate your view. Can you solve it?"
+        }
+      }
     },
     "equilibrium": {
       "name": "Equilibrium",
@@ -158,17 +277,68 @@
     "uno": {
       "name": "UNO",
       "description": "Color and number card game.",
-      "rules": "The first player to discard all cards by matching color or number wins."
+      "rules": "The first player to discard all cards by matching color or number wins.",
+      "tabs": {
+        "summary": {
+          "label": "How to Play",
+          "title": "Empty Your Hand!",
+          "content": "Match cards by number or color to get rid of them. It's fast, fun, and competitive!"
+        },
+        "cards": {
+          "label": "Cards",
+          "title": "Action Cards!",
+          "content": "🔄 [Reverse] Changes the direction of play.\n🚫 [Skip] The next player loses their turn.\n➕2 [Draw Two] The next player must draw 2 cards.\n🌈 [Wild] Change the current color to anything you want!"
+        },
+        "win": {
+          "label": "Winning",
+          "title": "Shout 'UNO'!",
+          "content": "When you have only 1 card left, shout 'UNO!' before anyone else notices. Discard your last card to win!"
+        }
+      }
     },
     "mancala": {
       "name": "Mancala",
       "description": "One of the oldest board games. Sow seeds and collect them in your store.",
-      "rules": "Choose a pit on your side and drop seeds one by one in a clockwise direction. The player with the most seeds in their store at the end wins."
+      "rules": "Choose a pit on your side and drop seeds one by one in a clockwise direction. The player with the most seeds in their store at the end wins.",
+      "tabs": {
+        "summary": {
+          "label": "How to Play",
+          "title": "Sow and Collect!",
+          "content": "One of the oldest games in the world! You pick up seeds from a pit and 'sow' them one by one around the board to collect them in your 'Store'."
+        },
+        "flow": {
+          "label": "Flow",
+          "title": "Sow the Seeds!",
+          "content": "1. Pick all seeds from one pit on your side.\n2. Drop one seed into each pit moving counter-clockwise.\n3. If your last seed lands in your Store, you get another turn!"
+        },
+        "special": {
+          "label": "Capture",
+          "title": "Steal from Opponent!",
+          "content": "If your last seed lands in an empty pit on your side, you capture that seed and all seeds in the opposite pit for your Store!"
+        }
+      }
     },
     "sudoku": {
       "name": "Sudoku",
       "description": "Classic number placement puzzle on a 9×9 grid.",
-      "rules": "Fill the 9×9 grid so that every row, column, and 3×3 box contains the digits 1 through 9 exactly once."
+      "rules": "Fill the 9×9 grid so that every row, column, and 3×3 box contains the digits 1 through 9 exactly once.",
+      "tabs": {
+        "summary": {
+          "label": "How to Play",
+          "title": "Fill the Numbers!",
+          "content": "Sudoku is a logic puzzle where you place numbers from 1 to 9 into a grid. Use your brain to fill every square!"
+        },
+        "rules": {
+          "label": "Rules",
+          "title": "No Duplicates!",
+          "content": "1. [Row] Each horizontal line must have 1-9.\n2. [Column] Each vertical line must have 1-9.\n3. [Block] Each 3x3 square must also have 1-9."
+        },
+        "goal": {
+          "label": "Goal",
+          "title": "Sudoku Master!",
+          "content": "The game ends when all 81 squares are filled correctly. Double check for any mistakes!"
+        }
+      }
     }
   },
   "help": {
