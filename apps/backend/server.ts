@@ -116,6 +116,34 @@ interface GameSession {
 }
 const sessions = new Map<string, GameSession>();
 
+// --- Room Cleanup Logic ---
+const EMPTY_ROOM_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const cleanupTimers = new Map<string, NodeJS.Timeout>();
+
+const scheduleRoomCleanup = (gameId: string) => {
+    if (cleanupTimers.has(gameId)) return;
+    
+    console.log(`[Cleanup] Scheduling cleanup for room ${gameId} in 5 minutes`);
+    const timer = setTimeout(async () => {
+        console.log(`[Cleanup] Cleaning up room ${gameId}`);
+        sessions.delete(gameId);
+        cleanupTimers.delete(gameId);
+        await repo.delete(gameId);
+        // ルームが空であることを通知（もし誰か見ていれば）
+        io.to(gameId).emit('error-message', 'Room has been deleted due to inactivity.');
+    }, EMPTY_ROOM_TIMEOUT);
+    
+    cleanupTimers.set(gameId, timer);
+};
+
+const clearRoomCleanup = (gameId: string) => {
+    if (cleanupTimers.has(gameId)) {
+        console.log(`[Cleanup] Cancelling cleanup for room ${gameId}`);
+        clearTimeout(cleanupTimers.get(gameId));
+        cleanupTimers.delete(gameId);
+    }
+};
+
 const repo = new HybridGameRepository<any>(
     process.env.REDIS_URL || 'redis://localhost:6379',
     process.env.MONGO_URL || 'mongodb://localhost:27017'
@@ -196,6 +224,12 @@ const updatePresence = (gameId: string) => {
         spectatorCount: Math.max(0, count - 2),
         activePlayers: Array.from(room || [])
     });
+
+    if (count === 0) {
+        scheduleRoomCleanup(gameId);
+    } else {
+        clearRoomCleanup(gameId);
+    }
 };
 
 io.on('connection', (socket) => {
@@ -222,6 +256,9 @@ io.on('connection', (socket) => {
             // 作成した本人に ID を送り返す
             socket.emit('game-created', gameId);
             console.log(`Game ${gameId} created via WebSocket by ${userId}`);
+
+            // 誰もいない状態で作成されるため、すぐにクリーンアップ対象にする（参加しなければ5分後に消える）
+            scheduleRoomCleanup(gameId);
         } catch (error) {
             console.error(`Failed to create game ${type}:`, error);
             socket.emit('error-message', `Failed to create game: ${(error as any).message || error}`);
@@ -230,6 +267,7 @@ io.on('connection', (socket) => {
 
     // ルーム（ゲーム）への参加
     socket.on('join-game', async (gameId: string) => {
+        clearRoomCleanup(gameId);
         socket.join(gameId);
 
         // メモリになければDBから復元を試みる
@@ -333,14 +371,19 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnecting', () => {
         // 切断直前に所属していた全ルームに対して更新をかける
+        // disconnecting の時点では socket.rooms に所属ルームが入っている
         for (const room of socket.rooms) {
             if (sessions.has(room)) {
                 // 少し遅延させないと、自分自身が含まれたカウントになってしまう場合がある
                 process.nextTick(() => updatePresence(room));
             }
         }
+        console.log(`User disconnecting: ${socket.id} (User ID: ${userId})`);
+    });
+
+    socket.on('disconnect', () => {
         console.log(`User disconnected: ${socket.id} (User ID: ${userId})`);
     });
 });
