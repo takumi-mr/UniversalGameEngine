@@ -152,7 +152,7 @@ export const setupSocketIO = (io: Server) => {
         });
 
         // チャットメッセージの送信
-        socket.on('send-chat', ({ gameId, message, channel }) => {
+        socket.on('send-chat', async ({ gameId, message, channel, recipientId }) => {
             if (!message || typeof message !== 'string') return;
             const session = sessions.get(gameId);
             if (!session) return;
@@ -161,24 +161,41 @@ export const setupSocketIO = (io: Server) => {
                 userId,
                 message,
                 channel: channel === 'private' ? 'private' : 'public',
+                recipientId, // 指定された宛先
                 timestamp: new Date().toISOString()
             };
 
             if (channel === 'private') {
-                // プレイヤーかどうかチェック
                 const state = session.server.engine.getState();
                 const players = state.players ? (Object.values(state.players).filter(Boolean) as string[]) : [];
                 if (!players.includes(userId)) {
                     console.warn(`[Chat] User ${userId} attempted to send private chat but is not a player in ${gameId}`);
                     return;
                 }
-                // プレイヤー専用ルームに送信
-                io.to(`${gameId}:players`).emit('chat-message', chatPayload);
+
+                if (recipientId && recipientId !== 'all') {
+                    // 特定の個人への送信
+                    // 送信者と受信者にのみ送信する
+                    // Socket.IOでは room への emit が基本だが、個別送信の場合は to(userId) を使う
+                    // Note: userId は socket.data.userId に紐付いているので、
+                    // サーバー全体のソケットからその userId を持つソケットを探すか、
+                    // プレイヤーごとのIDをルーム名として使っている場合はそれを利用する。
+                    // ここではシンプルに、全てのソケットから userId が一致するものをフィルタリングして送信する。
+                    const targetSockets = await io.in(gameId).fetchSockets();
+                    for (const s of targetSockets) {
+                        if (s.data.userId === recipientId || s.data.userId === userId) {
+                            s.emit('chat-message', chatPayload);
+                        }
+                    }
+                } else {
+                    // プレイヤー全員に送信
+                    io.to(`${gameId}:players`).emit('chat-message', chatPayload);
+                }
             } else {
                 // 全体に送信
                 io.to(gameId).emit('chat-message', chatPayload);
             }
-            console.log(`[Chat] ${userId} sent ${channel || 'public'} message to ${gameId}`);
+            console.log(`[Chat] ${userId} sent ${channel || 'public'} message to ${gameId} (recipient: ${recipientId || 'all'})`);
         });
 
         // 着手アクションの受信

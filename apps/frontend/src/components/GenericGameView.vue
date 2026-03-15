@@ -96,6 +96,8 @@
         <ChatPanel
           :messages="chatMessages"
           :is-player="isPlayer"
+          :my-player-id="myPlayerId"
+          :players="currentPlayersList"
           @send="onSendChat"
         />
       </div>
@@ -225,6 +227,11 @@ const isPlayer = computed(() => {
   return Object.values(gameState.value.players).includes(myPlayerId.value);
 });
 
+const currentPlayersList = computed(() => {
+  if (!gameState.value?.players) return [];
+  return Object.values(gameState.value.players).filter(Boolean) as string[];
+});
+
 onMounted(() => {
   client = new SocketIoClient<GameState, GameAction>(API_BASE, props.authToken);
   client.onStateUpdate = (state) => {
@@ -270,8 +277,8 @@ function onGameAction(action: GameAction) {
   client.sendAction(action);
 }
 
-function onSendChat({ message, channel }: { message: string, channel: 'public' | 'private' }) {
-  client.sendChat(message, channel);
+function onSendChat({ message, channel, recipientId }: { message: string, channel: 'public' | 'private', recipientId?: string }) {
+  client.sendChat(message, channel, recipientId);
 }
 </script>
 
@@ -422,14 +429,14 @@ function onSendChat({ message, channel }: { message: string, channel: 'public' |
 
 /* === Sidebar === */
 .sidebar {
-  width: 240px;
-  min-width: 240px;
+  width: 280px;
+  min-width: 280px;
   border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  padding: 24px 16px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  overflow-y: auto;
+  gap: 12px;
+  overflow: hidden; /* Important: Sidebar itself shouldn't scroll if we want chat to be flex:1 */
   background: rgba(var(--v-theme-surface), 0.5);
 }
 

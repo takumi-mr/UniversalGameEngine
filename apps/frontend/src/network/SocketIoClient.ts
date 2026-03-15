@@ -9,7 +9,7 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
     public onStateUpdate: (state: TState) => void = () => { };
     public onError: (message: string) => void = () => { };
     public onMetadataUpdate: (metadata: GameMetadata) => void = () => { };
-    public onChatMessage: (chat: { userId: string, message: string, channel: 'public' | 'private', timestamp: string }) => void = () => { };
+    public onChatMessage: (chat: { userId: string, message: string, channel: 'public' | 'private', recipientId?: string, timestamp: string }) => void = () => { };
 
     constructor(url: string, authToken?: string) {
         this.socket = io(url, {
@@ -99,12 +99,13 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
         });
     }
 
-    public sendChat(message: string, channel: 'public' | 'private'): void {
+    public sendChat(message: string, channel: 'public' | 'private', recipientId?: string): void {
         if (!this.gameId) return;
         this.socket.emit('send-chat', {
             gameId: this.gameId,
             message,
-            channel
+            channel,
+            recipientId
         });
     }
 }
