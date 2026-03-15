@@ -39,6 +39,7 @@ export interface EquilibriumState extends BaseGameState {
 
     playerData: Record<string, PlayerState>;
     lastAction?: EquilibriumAction; // To support ECHO cards
+    lastPlayedCard?: Card;           // The last non-Echo card played
 }
 
 export interface PlayerState {
@@ -160,6 +161,40 @@ function resolveAuction(state: EquilibriumState): void {
     state.auctionPool = [];
     state.currentBids = {};
     state.phase = 'MAIN';
+}
+
+function executeCardEffect(state: EquilibriumState, player: PlayerState, card: Card, action: EquilibriumAction): void {
+    if (card.type === 'ATTACK' && (action as any).targetId) {
+        const targetId = (action as any).targetId;
+        const targetRecord = state.playerData[targetId];
+        if (targetRecord) {
+            state.playerData[targetId] = { ...targetRecord };
+            state.playerData[targetId].hp -= card.value;
+        }
+    } else if (card.type === 'DEFENSE') {
+        player.hp += card.value;
+    } else if (card.type === 'SYPHON' && (action as any).targetId) {
+        const targetId = (action as any).targetId;
+        const targetRecord = state.playerData[targetId];
+        if (targetRecord) {
+            state.playerData[targetId] = { ...targetRecord };
+            const target = state.playerData[targetId];
+            const drainAmount = Math.min(target.soulPoints, card.value);
+            target.soulPoints -= drainAmount;
+            player.soulPoints += drainAmount;
+        }
+    } else if (card.name === 'Corruption' && (action as any).targetId) {
+        const targetId = (action as any).targetId;
+        const targetRecord = state.playerData[targetId];
+        if (targetRecord && targetRecord.hand.length > 0) {
+            state.playerData[targetId] = { ...targetRecord, hand: [...targetRecord.hand] };
+            const target = state.playerData[targetId];
+            const discardCount = Math.floor(target.hand.length / 2);
+            for (let i = 0; i < discardCount; i++) {
+                target.hand.splice(Math.floor(Math.random() * target.hand.length), 1);
+            }
+        }
+    }
 }
 
 // ==========================================
@@ -320,44 +355,16 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                         player.board = [...player.board];
 
                         player.hand.splice(cardIndex, 1);
-                        if (card.type === 'ATTACK' && (action as any).targetId) {
-                            const targetId = (action as any).targetId;
-                            const targetRecord = nextState.playerData[targetId];
-                            if (targetRecord) {
-                                nextState.playerData[targetId] = { ...targetRecord };
-                                nextState.playerData[targetId].hp -= card.value;
+
+                        if (card.name === 'Echo_Whisper') {
+                            if (nextState.lastPlayedCard) {
+                                executeCardEffect(nextState, player, nextState.lastPlayedCard, action);
                             }
-                        } else if (card.type === 'DEFENSE') {
-                            player.hp += card.value;
-                        } else if (card.type === 'SYPHON' && (action as any).targetId) {
-                            const targetId = (action as any).targetId;
-                            const targetRecord = nextState.playerData[targetId];
-                            if (targetRecord) {
-                                nextState.playerData[targetId] = { ...targetRecord };
-                                const target = nextState.playerData[targetId];
-                                const drainAmount = Math.min(target.soulPoints, card.value);
-                                target.soulPoints -= drainAmount;
-                                player.soulPoints += drainAmount;
-                            }
-                        } else if (card.name === 'Corruption' && (action as any).targetId) {
-                            const targetId = (action as any).targetId;
-                            const targetRecord = nextState.playerData[targetId];
-                            if (targetRecord && targetRecord.hand.length > 0) {
-                                nextState.playerData[targetId] = { ...targetRecord, hand: [...targetRecord.hand] };
-                                const target = nextState.playerData[targetId];
-                                const discardCount = Math.floor(target.hand.length / 2);
-                                for (let i = 0; i < discardCount; i++) {
-                                    target.hand.splice(Math.floor(Math.random() * target.hand.length), 1);
-                                }
-                            }
-                        } else if (card.name === 'Echo_Whisper' && nextState.lastAction?.type === 'PLAY_CARD') {
-                            // Recursively call for simplicity in this demo, or just duplicate effect
-                            const lastAction = nextState.lastAction as any;
-                            const lastCardId = lastAction.cardId;
-                            // Find original card data from board/hand is hard, usually state should store it
-                            // For this level design demo, let's assume it echoes the last ATTACK/DEFENSE logic
-                            // (Implementation detail: Echo logic would normally be more robust)
+                        } else {
+                            executeCardEffect(nextState, player, card, action);
+                            nextState.lastPlayedCard = card; // Update last non-Echo card
                         }
+
                         if (card.type !== 'GOAL') {
                             player.board.push(card);
                         }
