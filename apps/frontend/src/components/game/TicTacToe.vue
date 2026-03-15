@@ -45,7 +45,10 @@
 <script setup lang="ts">
 import type { TicTacToeState, TicTacToeAction } from "@engine/shared/rules/TicTacToeRuleset";
 
-const props = defineProps<{ state: TicTacToeState }>();
+const props = defineProps<{ 
+  state: TicTacToeState,
+  myPlayerId?: string 
+}>();
 const emit = defineEmits<{ (e: 'action', action: TicTacToeAction): void }>();
 
 // 勝利マスのハイライト（シンプルに盤面がいっぱいかチェックするロジックなどはバックエンドにあるため、
@@ -56,6 +59,10 @@ const isWinningCell = (_index: number) => {
 
 const isClickable = (index: number): boolean => {
   if (props.state.status !== 'PLAYING') return false;
+  // 自分がプレイヤーリストに含まれているかチェック
+  const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
+  if (!isPlayer) return false;
+  
   return props.state.board[index] === 0;
 };
 

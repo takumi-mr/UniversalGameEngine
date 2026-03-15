@@ -23,6 +23,14 @@
               <span class="player-count">{{ currentPlayerCount }} / {{ gameMinPlayers }}</span>
             </p>
             <div class="waiting-subtext">Game will start automatically when enough players join.</div>
+            <v-btn
+              class="spectate-btn mt-4"
+              variant="tonal"
+              color="secondary"
+              @click="joinAsSpectator"
+            >
+              👁 観戦者として参加する
+            </v-btn>
           </div>
         </div>
 
@@ -218,7 +226,7 @@ const myPlayerId = computed(() => {
 });
 
 const isMyTurn = computed(() => {
-  if (!gameState.value || gameState.value.status !== 'PLAYING') return false;
+  if (!gameState.value || gameState.value.status !== 'PLAYING' || !isPlayer.value) return false;
   return gameState.value.activePlayers?.includes(myPlayerId.value);
 });
 
@@ -253,8 +261,20 @@ onMounted(() => {
     chatMessages.value.push(chat);
   };
 
-  client.connect(props.roomId);
+  const urlParams = new URLSearchParams(window.location.search);
+  const startAsSpectator = urlParams.get('spectate') === 'true';
+  client.connect(props.roomId, { asSpectator: startAsSpectator });
 });
+
+async function joinAsSpectator() {
+  // 再接続して観戦者として入り直す
+  connectionStatus.value = 'Reconnecting as Spectator...';
+  client.disconnect();
+  // しばらく待ってから再接続（Socket.ioの切断完了を待つ）
+  setTimeout(() => {
+    client.connect(props.roomId, { asSpectator: true });
+  }, 500);
+}
 
 onUnmounted(() => {
   client?.disconnect();

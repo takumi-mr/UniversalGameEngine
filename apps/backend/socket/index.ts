@@ -63,7 +63,8 @@ export const setupSocketIO = (io: Server) => {
         });
 
         // ルーム（ゲーム）への参加
-        socket.on('join-game', async (gameId: string) => {
+        socket.on('join-game', async (gameId: string, options?: { asSpectator?: boolean }) => {
+            const asSpectator = options?.asSpectator ?? false;
             clearRoomCleanup(gameId);
             socket.join(gameId);
 
@@ -92,7 +93,7 @@ export const setupSocketIO = (io: Server) => {
             const state = session.server.engine.getState();
 
             // プレイヤーの自動割り当てロジック (空いている席に座る)
-            if (state.players) {
+            if (state.players && !asSpectator) {
                 let updated = false;
                 // 既に自分が割り当てられているかチェック
                 const isAlreadyAssigned = Object.values(state.players).includes(userId);

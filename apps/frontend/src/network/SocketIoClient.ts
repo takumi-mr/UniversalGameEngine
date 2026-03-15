@@ -62,19 +62,19 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
         });
     }
 
-    public async connect(gameId: string): Promise<void> {
+    public async connect(gameId: string, options?: { asSpectator?: boolean }): Promise<void> {
         return new Promise((resolve, reject) => {
             if (this.socket.connected) {
                 if (gameId) {
                     this.gameId = gameId;
-                    this.socket.emit('join-game', gameId);
+                    this.socket.emit('join-game', gameId, options);
                 }
                 resolve();
             } else {
                 this.socket.once('connect', () => {
                     if (gameId) {
                         this.gameId = gameId;
-                        this.socket.emit('join-game', gameId);
+                        this.socket.emit('join-game', gameId, options);
                     }
                     resolve();
                 });
