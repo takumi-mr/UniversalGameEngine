@@ -9,7 +9,6 @@ export interface OthelloState extends BaseGameState {
     scores: Record<number, number>;
     size: number;
     players: Record<PlayerColor, string | null>;
-    validMoves: { x: number, y: number }[]; // UIハイライト用
 }
 
 export interface OthelloAction extends BaseGameAction {
@@ -27,7 +26,7 @@ const DIRECTIONS = [
 ];
 
 // 合法手リストを計算するヘルパー関数
-function calculateValidMoves(board: number[][], color: PlayerColor, size: number): { x: number, y: number }[] {
+function generateLegalMoves(board: number[][], color: PlayerColor, size: number): { x: number, y: number }[] {
     const validMoves = [];
     for (let y = 0; y < size; y++) {
         for (let x = 0; x < size; x++) {
@@ -70,11 +69,8 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
             players: { 1: null, [-1]: null },
             status: 'WAITING',
             message: '',
-            validMoves: []
         };
 
-        // 最初の合法手を計算してセット
-        initialState.validMoves = calculateValidMoves(board, 1, size);
         return initialState;
     },
 
@@ -86,8 +82,22 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
         const expectedPlayerId = state.players[action.color];
         if (expectedPlayerId !== null && action.playerId !== expectedPlayerId) return false;
 
-        // 計算済みの合法手リストに含まれているかチェック
-        return state.validMoves.some(m => m.x === action.x && m.y === action.y);
+        // その座標が合法かどうかだけをピンポイントでチェック
+        const { x, y, color } = action;
+        if (state.board[y][x] !== 0) return false;
+
+        return DIRECTIONS.some(d => {
+            let count = 0;
+            let cx = x + d.dx, cy = y + d.dy;
+            while (cx >= 0 && cx < state.size && cy >= 0 && cy < state.size) {
+                const t = state.board[cy][cx];
+                if (t === 0) break;
+                if (t === color) return count > 0;
+                count++;
+                cx += d.dx; cy += d.dy;
+            }
+            return false;
+        });
     },
 
     reduce: (state, action) => {
@@ -130,17 +140,16 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
         };
 
         const nextPlayer = (color * -1) as PlayerColor;
-        let nextValidMoves = calculateValidMoves(nextBoard, nextPlayer, state.size);
+        let nextValidMoves = generateLegalMoves(nextBoard, nextPlayer, state.size);
 
         let finalTurn = nextPlayer;
         let message = '';
-        let status = state.status;
 
         // パス判定
         if (nextValidMoves.length === 0) {
-            nextValidMoves = calculateValidMoves(nextBoard, color, state.size);
+            nextValidMoves = generateLegalMoves(nextBoard, color, state.size);
             if (nextValidMoves.length === 0) {
-                return { ...state, board: nextBoard, scores: nextScores, status: 'FINISHED', validMoves: [] };
+                return { ...state, board: nextBoard, scores: nextScores, status: 'FINISHED' };
             }
             message = `${nextPlayer === 1 ? '黒' : '白'} はパスです！`;
             finalTurn = color;
@@ -152,8 +161,6 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
             currentTurn: finalTurn,
             scores: nextScores,
             message,
-            status,
-            validMoves: nextValidMoves
         };
     },
 
@@ -171,7 +178,8 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
         const color = state.currentTurn;
         if (state.players && state.players[color] !== null && state.players[color] !== playerId) return [];
 
-        return state.validMoves.map(m => ({
+        const moves = generateLegalMoves(state.board, color, state.size);
+        return moves.map(m => ({
             type: 'PLACE_PIECE', color, x: m.x, y: m.y, playerId
         }));
     }

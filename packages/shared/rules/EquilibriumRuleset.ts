@@ -140,11 +140,14 @@ function resolveAuction(state: EquilibriumState): void {
     if (maxBid <= 0) {
         // No one bid or everyone passed
         Object.keys(state.playerData).forEach(pId => {
+            state.playerData[pId] = { ...state.playerData[pId] };
             state.playerData[pId].hp -= 1; // Penalty for soul fragility
         });
         const allPlayers = Object.keys(state.playerData);
         state.activePlayers = [allPlayers[0]];
     } else if (!isTie && winnerId !== '') {
+        const winnerRecord = state.playerData[winnerId];
+        state.playerData[winnerId] = { ...winnerRecord, hand: [...winnerRecord.hand] };
         const winner = state.playerData[winnerId];
         winner.soulPoints -= maxBid;
         winner.hand.push(...state.auctionPool);
@@ -231,10 +234,18 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
     },
 
     reduce(state: EquilibriumState, action: EquilibriumAction): EquilibriumState {
-        const nextState = JSON.parse(JSON.stringify(state)) as EquilibriumState;
+        const nextState: EquilibriumState = {
+            ...state,
+            playerData: { ...state.playerData },
+            auctionPool: [...state.auctionPool],
+            currentBids: { ...state.currentBids },
+            passedPlayers: [...state.passedPlayers],
+            activePlayers: state.activePlayers ? [...state.activePlayers] : []
+        };
 
         if (action.type === 'JOIN') {
             if (!nextState.playerData[action.playerId]) {
+                // Ensure the player record itself is a new object if we modify it
                 nextState.playerData[action.playerId] = {
                     id: action.playerId,
                     hp: 20,
@@ -247,7 +258,7 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                 // 人数が揃った時点での初期化処理
                 const joinedIds = Object.values(nextState.playerData).map(p => p.id);
                 const playersCount = joinedIds.length;
-                
+
                 if (playersCount >= 3) {
                     nextState.activePlayers = [...joinedIds];
                     if (nextState.auctionPool.length === 0) {
@@ -261,8 +272,12 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
             return nextState;
         }
 
+        const playerRecord = nextState.playerData[action.playerId];
+        if (!playerRecord) return nextState;
+
+        // 特定のプレイヤーの状態を更新する前に浅いコピーを作成
+        nextState.playerData[action.playerId] = { ...playerRecord };
         const player = nextState.playerData[action.playerId];
-        if (!player) return nextState;
 
         switch (action.type) {
             case 'BID':
@@ -299,22 +314,37 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                     if (cardIndex !== -1) {
                         const card = player.hand[cardIndex];
                         player.soulPoints -= card.cost;
+
+                        // Copy hand and board before mutation
+                        player.hand = [...player.hand];
+                        player.board = [...player.board];
+
                         player.hand.splice(cardIndex, 1);
                         if (card.type === 'ATTACK' && (action as any).targetId) {
-                            const target = nextState.playerData[(action as any).targetId];
-                            if (target) target.hp -= card.value;
+                            const targetId = (action as any).targetId;
+                            const targetRecord = nextState.playerData[targetId];
+                            if (targetRecord) {
+                                nextState.playerData[targetId] = { ...targetRecord };
+                                nextState.playerData[targetId].hp -= card.value;
+                            }
                         } else if (card.type === 'DEFENSE') {
                             player.hp += card.value;
                         } else if (card.type === 'SYPHON' && (action as any).targetId) {
-                            const target = nextState.playerData[(action as any).targetId];
-                            if (target) {
+                            const targetId = (action as any).targetId;
+                            const targetRecord = nextState.playerData[targetId];
+                            if (targetRecord) {
+                                nextState.playerData[targetId] = { ...targetRecord };
+                                const target = nextState.playerData[targetId];
                                 const drainAmount = Math.min(target.soulPoints, card.value);
                                 target.soulPoints -= drainAmount;
                                 player.soulPoints += drainAmount;
                             }
                         } else if (card.name === 'Corruption' && (action as any).targetId) {
-                            const target = nextState.playerData[(action as any).targetId];
-                            if (target && target.hand.length > 0) {
+                            const targetId = (action as any).targetId;
+                            const targetRecord = nextState.playerData[targetId];
+                            if (targetRecord && targetRecord.hand.length > 0) {
+                                nextState.playerData[targetId] = { ...targetRecord, hand: [...targetRecord.hand] };
+                                const target = nextState.playerData[targetId];
                                 const discardCount = Math.floor(target.hand.length / 2);
                                 for (let i = 0; i < discardCount; i++) {
                                     target.hand.splice(Math.floor(Math.random() * target.hand.length), 1);
@@ -340,6 +370,7 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                     const goalIndex = player.hand.findIndex(c => c.id === action.newGoalCardId && c.type === 'GOAL');
                     if (goalIndex !== -1) {
                         player.hiddenGoal = player.hand[goalIndex];
+                        player.hand = [...player.hand];
                         player.hand.splice(goalIndex, 1);
                     }
                 }
@@ -371,6 +402,8 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                     nextState.auctionPool = Array.from({ length: poolSize }, () => generateRandomCard());
                     nextState.activePlayers = [...allIds];
                     for (const pId of allIds) {
+                        const pRecord = nextState.playerData[pId];
+                        nextState.playerData[pId] = { ...pRecord, hand: [...pRecord.hand] };
                         nextState.playerData[pId].soulPoints += 1; // Reduced recovery
                         nextState.playerData[pId].hand.push(drawRandomBasicCard());
                     }

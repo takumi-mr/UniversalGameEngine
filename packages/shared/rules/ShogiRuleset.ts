@@ -131,7 +131,7 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
   getInitialState: (): ShogiState => ({
     status: "WAITING",
     turn: 1,
-    board: structuredClone(initialBoard),
+    board: [...initialBoard],
     hands: { 1: {}, "-1": {} },
     players: { 1: null, "-1": null }
   }),
@@ -199,7 +199,14 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
   },
 
   reduce: (state, action) => {
-    const newState = structuredClone(state);
+    const newState: ShogiState = {
+      ...state,
+      board: [...state.board],
+      hands: {
+        1: { ...state.hands[1] },
+        "-1": { ...state.hands["-1"] }
+      }
+    };
 
     if (action.type === "RESIGN") {
       newState.status = "FINISHED";
