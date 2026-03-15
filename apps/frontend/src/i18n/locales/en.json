@@ -24,7 +24,8 @@
     "be_the_first": "Be the first to start a new match in this category!",
     "create_first_room": "Create First Room",
     "waiting_for_players": "Waiting for other players...",
-    "min_players_required": "Minimum {min} players required"
+    "min_players_required": "Minimum {min} players required",
+    "your_turn": "It's your turn!"
   },
   "games": {
     "tictactoe": {

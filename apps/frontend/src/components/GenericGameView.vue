@@ -46,6 +46,16 @@
           <div v-if="gameState.message" class="game-message">{{ gameState.message }}</div>
           <pre class="json-view">{{ prettyState }}</pre>
         </div>
+
+        <!-- Your Turn Notification -->
+        <Transition name="slide-fade">
+          <div v-if="isMyTurn && gameState.status === 'PLAYING'" class="turn-notification">
+            <div class="turn-content">
+              <v-icon icon="mdi-star" class="turn-icon"></v-icon>
+              <span>{{ $t('common.your_turn') }}</span>
+            </div>
+          </div>
+        </Transition>
       </div>
 
       <div v-else class="connecting">
@@ -169,6 +179,11 @@ const currentPlayerCount = computed(() => {
 
 const myPlayerId = computed(() => {
   return localStorage.getItem('game_username') || '';
+});
+
+const isMyTurn = computed(() => {
+  if (!gameState.value || gameState.value.status !== 'PLAYING') return false;
+  return gameState.value.activePlayers?.includes(myPlayerId.value);
 });
 
 onMounted(() => {
@@ -492,5 +507,53 @@ function onGameAction(action: GameAction) {
   overflow: auto;
   max-height: 200px;
   margin-top: 8px;
+}
+
+/* === Turn Notification === */
+.turn-notification {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.turn-content {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)), rgb(var(--v-theme-secondary)));
+  color: white;
+  padding: 12px 24px;
+  border-radius: 50px;
+  box-shadow: 0 8px 32px rgba(var(--v-theme-primary), 0.4);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.turn-icon {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Transitions */
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+.slide-fade-leave-active {
+  transition: all 0.3s cubic-bezier(1, 0.5, 0.8, 1);
+}
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translate(-50%, -20px);
+  opacity: 0;
 }
 </style>
