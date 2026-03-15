@@ -29,7 +29,11 @@ import { ref, onMounted, onUnmounted, watch } from 'vue';
 import type { MancalaState, MancalaAction } from '@engine/shared/rules/MancalaRuleset';
 import { MancalaUI } from '../../three/MancalaUI';
 
-const props = defineProps<{ state: MancalaState }>();
+const props = defineProps<{ 
+  state: MancalaState,
+  gameId: string,
+  myPlayerId: string 
+}>();
 const emit = defineEmits<{ (e: 'action', action: MancalaAction): void }>();
 
 const canvasContainer = ref<HTMLElement | null>(null);
@@ -38,10 +42,14 @@ let mancala3D: MancalaUI;
 onMounted(() => {
   if (canvasContainer.value) {
     // Three.js UIの初期化
-    mancala3D = new MancalaUI(canvasContainer.value, (action) => {
-      // Three.js 側からのアクション（クリック）を親へemit
-      emit('action', action);
-    });
+    mancala3D = new MancalaUI(
+      canvasContainer.value,
+      (action) => {
+        // Three.js 側からのアクション（クリック）を親へemit
+        emit('action', action);
+      },
+      props.myPlayerId
+    );
     
     // 初回レンダリング
     mancala3D.renderState(props.state);

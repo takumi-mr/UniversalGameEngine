@@ -25,10 +25,12 @@
           </div>
         </div>
 
-        <component 
-          v-if="gameComponent && gameState.status !== 'WAITING'"
-          :is="gameComponent" 
+        <component
+          :is="gameComponent"
+          v-if="gameComponent && gameState && gameState.status !== 'WAITING'"
           :state="gameState"
+          :game-id="roomId"
+          :my-player-id="myPlayerId"
           @action="onGameAction"
         />
         
@@ -163,6 +165,10 @@ const gameMinPlayers = computed(() => {
 const currentPlayerCount = computed(() => {
   if (!gameState.value?.players) return 0;
   return Object.values(gameState.value.players).filter(p => p !== null).length;
+});
+
+const myPlayerId = computed(() => {
+  return localStorage.getItem('game_username') || '';
 });
 
 onMounted(() => {
