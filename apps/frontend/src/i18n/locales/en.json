@@ -343,6 +343,48 @@
           "content": "The game ends when all 81 squares are filled correctly. Double check for any mistakes!"
         }
       }
+    },
+    "mahjong": {
+      "name": "Mahjong",
+      "description": "Authentic 4-player Mahjong experience.",
+      "rules": "A traditional game where 4 players draw and discard tiles to complete a winning hand.",
+      "round": "{wind} {round}",
+      "dora": "Dora",
+      "remaining_tiles": "Left",
+      "finished": "Game Over",
+      "winds": {
+        "EAST": "East",
+        "SOUTH": "South",
+        "WEST": "West",
+        "NORTH": "North"
+      },
+      "actions": {
+        "DRAW": "Draw",
+        "DISCARD": "Discard",
+        "CHI": "Chii",
+        "PON": "Pon",
+        "KAN": "Kan",
+        "RON": "Ron",
+        "TSUMO": "Tsumo",
+        "PASS": "Pass"
+      },
+      "tabs": {
+        "summary": {
+          "label": "How to Play",
+          "title": "Match Tiles with 4 Players!",
+          "content": "Use 'Man', 'Pin', 'Sou', and 'Honor' tiles to complete a winning hand. 4 players take turns drawing and discarding tiles."
+        },
+        "rules": {
+          "label": "Rules",
+          "title": "Aim for a Winning Hand!",
+          "content": "1. A basic winning hand consists of 4 sets (melds) of 3 tiles and 1 pair (eye), totaling 14 tiles.\n2. You can call 'Pon' or 'Chii' on other players' discards, but be careful as it may limit your possible hands."
+        },
+        "win": {
+          "label": "Winning",
+          "title": "Build Hands for Points!",
+          "content": "The player with the most points at the end wins! Aim for high-scoring hands to secure victory."
+        }
+      }
     }
   },
   "help": {

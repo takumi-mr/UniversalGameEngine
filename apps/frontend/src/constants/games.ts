@@ -139,4 +139,14 @@ export const availableGames = [
     category: 'Board Games',
     rules: '自分の陣地の穴から石を選んで、時計回りに一つずつ置いていきます。最後に自分のストアに多くの石がある人の勝ちです。'
   },
+  {
+    type: 'mahjong',
+    name: 'Mahjong (麻雀)',
+    description: '本格的な四人麻雀。',
+    emoji: '🀄',
+    minPlayers: 4,
+    maxPlayers: 4,
+    category: 'Board Games',
+    rules: '4人で牌を引き合い、特定の役を揃える伝統的なゲームです。'
+  },
 ];
