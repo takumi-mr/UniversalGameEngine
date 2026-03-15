@@ -92,25 +92,30 @@ import { ref, computed } from 'vue';
 import type { DaifugoState, DaifugoAction, Card } from '@engine/shared/rules/DaifugoRuleset';
 import CardFace from './DaifugoCardFace.vue'; // 後述のカードコンポーネント
 
-const props = defineProps<{ state: DaifugoState }>();
+const props = defineProps<{ 
+  state: DaifugoState,
+  myPlayerId?: string
+}>();
 const emit = defineEmits<{ (e: 'action', action: DaifugoAction): void }>();
 
-// 自分のIDを推定（手札が "?" でマスクされていないプレイヤーを自分とする）
-const myPlayerId = computed(() => {
-  const ids = Object.keys(props.state.hands);
-  return ids.find(id => {
-    const hand = props.state.hands[id];
-    return hand.length > 0 && hand[0] !== '?';
-  }) || ids[0];
+// --- プレイヤー推論 ---
+const myId = computed(() => {
+  return props.myPlayerId || props.state.playerIds[0];
 });
 
-const isMyTurn = computed(() => props.state.activePlayers?.includes(myPlayerId.value));
-const myHand = computed(() => props.state.hands[myPlayerId.value] || []);
+const isPlayer = computed(() => {
+  return props.state.playerIds.includes(props.myPlayerId || '');
+});
+
+const isMyTurn = computed(() => {
+  return isPlayer.value && props.state.playerIds[props.state.turnIndex] === myId.value;
+});
+const myHand = computed(() => props.state.hands[myId.value] || []);
 
 // 相手プレイヤーのリスト
 const opponents = computed(() => {
   return props.state.playerIds
-    .filter(id => id !== myPlayerId.value)
+    .filter(id => id !== myId.value)
     .map(id => ({
       id,
       cardCount: props.state.hands[id]?.length || 0
@@ -121,6 +126,7 @@ const opponents = computed(() => {
 const selectedCards = ref<Set<Card>>(new Set());
 
 const toggleCard = (card: Card) => {
+  if (!isPlayer.value) return; // 観戦者ガード
   if (!isMyTurn.value) return; // 自分の番以外は触れない
   if (selectedCards.value.has(card)) {
     selectedCards.value.delete(card);
@@ -132,19 +138,21 @@ const toggleCard = (card: Card) => {
 const canPlay = computed(() => isMyTurn.value && selectedCards.value.size > 0);
 
 const playCards = () => {
+  if (!isPlayer.value) return; // 観戦者ガード
   if (!canPlay.value) return;
   emit('action', { type: 'PLAY', cards: Array.from(selectedCards.value) });
   selectedCards.value.clear();
 };
 
 const passTurn = () => {
+  if (!isPlayer.value) return; // 観戦者ガード
   if (!isMyTurn.value) return;
   emit('action', { type: 'PASS' });
   selectedCards.value.clear();
 };
 
 // 場のカードを少しずつズラして表示するためのスタイル計算
-const getCardStyle = (card: Card, index: number, total: number) => {
+const getCardStyle = (_card: Card, index: number, total: number) => {
   const offset = (index - (total - 1) / 2) * 20; // 1枚あたり20pxズラす
   const rotation = (Math.random() - 0.5) * 6; // ほんの少しランダムに傾ける（臨場感）
   return {

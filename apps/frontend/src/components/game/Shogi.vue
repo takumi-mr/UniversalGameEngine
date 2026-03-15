@@ -41,6 +41,7 @@ import type { ShogiState, ShogiAction } from "@engine/shared/rules/ShogiRuleset"
 
 const props = defineProps<{
   state: ShogiState;
+  myPlayerId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -94,6 +95,10 @@ watch(() => props.state, (newState) => {
 
 // Three.js 側からのアクション（クリック）を受け取る
 const handleActionFromUI = (action: ShogiAction, canPromote: boolean) => {
+  // 観戦者ガード
+  const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
+  if (!isPlayer) return;
+
   if (action.type === 'MOVE' && canPromote) {
     // 成れる移動の場合、ダイアログを表示して待機
     pendingMoveAction.value = action;

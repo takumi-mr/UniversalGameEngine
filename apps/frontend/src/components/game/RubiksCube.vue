@@ -58,6 +58,11 @@ import { RubiksRuleset } from '@engine/shared/rules/RubicCubeRuleset';
 import type { RubiksState, RubiksAction, FaceName } from '@engine/shared/rules/RubicCubeRuleset';
 import { RubiksCubeUI } from '../../three/RubiksCubeUI';
 
+const props = defineProps<{ 
+  state: RubiksState,
+  myPlayerId?: string
+}>();
+
 const FACES: FaceName[] = ['U', 'D', 'F', 'B', 'R', 'L'];
 
 // --- State ---
@@ -72,6 +77,11 @@ let timerInterval: ReturnType<typeof setInterval> | null = null;
 let startTime = 0;
 
 // --- Computed ---
+const isPlayer = computed(() => {
+  if (!props.state?.players) return true; // シングルプレイヤーモードなら常に真
+  return Object.values(props.state.players).includes(props.myPlayerId || '');
+});
+
 const formattedTime = computed(() => {
   const s = Math.floor(elapsed.value / 1000);
   const ms = Math.floor((elapsed.value % 1000) / 10);
@@ -91,6 +101,7 @@ function syncState() {
 }
 
 function sendRotate(face: FaceName, direction: 1 | -1) {
+  if (!isPlayer.value) return;
   const action: RubiksAction = { type: 'ROTATE', face, direction };
   engine.dispatch(action);
 
@@ -118,6 +129,7 @@ function stopTimer() {
 
 // --- Game control ---
 function reset() {
+  if (!isPlayer.value) return;
   engine = new UniversalEngine(RubiksRuleset);
   stopTimer();
   elapsed.value = 0;
@@ -125,6 +137,7 @@ function reset() {
 }
 
 async function scramble() {
+  if (!isPlayer.value) return;
   reset();
   isScrambling.value = true;
 
@@ -155,6 +168,7 @@ onMounted(() => {
   if (canvasContainer.value) {
     threeUI = new RubiksCubeUI(canvasContainer.value, (action) => {
       if (gameState.value?.status !== 'PLAYING') return;
+      if (!isPlayer.value) return; // 観戦者ガード
       engine.dispatch(action);
       if (gameState.value.moveCount === 0) startTimer();
       syncState();

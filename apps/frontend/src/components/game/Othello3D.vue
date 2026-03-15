@@ -32,17 +32,15 @@
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import { Othello3DUI } from "../../three/Othello3DUI";
 import type {
-  GameState as Othello3DState,
-  MoveAction as Othello3DAction,
+  GameState,
+  MoveAction,
 } from "@engine/shared/rules/Othello3DRuleset";
 
-const props = defineProps<{
-  state: Othello3DState;
+const props = defineProps<{ 
+  state: GameState,
+  myPlayerId?: string
 }>();
-
-const emit = defineEmits<{
-  (e: 'action', action: Othello3DAction): void;
-}>();
+const emit = defineEmits<{ (e: 'action', action: MoveAction): void }>();
 
 const canvasContainer = ref<HTMLElement | null>(null);
 const GAME_SIZE = 4;
@@ -51,7 +49,11 @@ let threeUI: Othello3DUI;
 
 onMounted(() => {
   if (canvasContainer.value) {
-    threeUI = new Othello3DUI(canvasContainer.value, GAME_SIZE, (action) => {
+    threeUI = new Othello3DUI(canvasContainer.value, GAME_SIZE, (action: MoveAction) => {
+      // 観戦者ガード
+      const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
+      if (!isPlayer) return;
+
       emit('action', action);
     });
     

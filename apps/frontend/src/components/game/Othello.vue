@@ -33,7 +33,10 @@ import { ref, onMounted, onUnmounted, watch } from "vue";
 import type { OthelloState, OthelloAction } from "@engine/shared/rules/OthelloRuleset";
 import { OthelloUI } from "../../three/OthelloUI";
 
-const props = defineProps<{ state: OthelloState }>();
+const props = defineProps<{ 
+  state: OthelloState,
+  myPlayerId?: string
+}>();
 const emit = defineEmits<{ (e: 'action', action: OthelloAction): void }>();
 
 const canvasContainer = ref<HTMLElement | null>(null);
@@ -42,6 +45,10 @@ let threeUI: OthelloUI;
 onMounted(() => {
   if (canvasContainer.value) {
     threeUI = new OthelloUI(canvasContainer.value, (action) => {
+      // 観戦者ガード
+      const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
+      if (!isPlayer) return;
+      
       emit('action', action);
     });
     // 初回レンダリング

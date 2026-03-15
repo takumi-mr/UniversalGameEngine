@@ -80,23 +80,16 @@
 import { ref, computed, defineComponent } from 'vue';
 import type { UnoState, UnoAction } from '@engine/shared/rules/UnoRuleset';
 
-const props = defineProps<{ state: UnoState }>();
+const props = defineProps<{ 
+  state: UnoState,
+  myPlayerId?: string
+}>();
 const emit = defineEmits<{ (e: 'action', action: UnoAction): void }>();
 
 // --- カードの描画用インラインコンポーネント ---
 const CardFace = defineComponent({
   props: { cardValue: { type: Number, required: true }, color: { type: Number, required: true } },
-  setup(props) {
-    const displayStr = computed(() => {
-      const v = props.cardValue;
-      if (v <= 9) return v.toString();
-      if (v === 10) return 'Ø'; // Skip
-      if (v === 11) return '⇄'; // Reverse
-      if (v === 12) return '+2';
-      if (v === 13) return 'W'; // Wild
-      if (v === 14) return '+4'; // Wild Draw 4
-      return '?';
-    });
+  setup() {
     return () => null; // テンプレート側で処理
   },
   template: `
@@ -131,17 +124,17 @@ const getColorName = (colorNum: number) => {
 };
 
 // --- プレイヤー状態 ---
-// 自分のIDを推定（手札が存在し、かつ空配列でも許容できるプレイヤー）
 const myPlayerId = computed(() => {
-  const ids = props.state.playerOrder;
-  // TODO: 実際のネットワーク環境では props.playerId などが渡ってくるのが理想ですが、
-  // ここでは先頭のプレイヤーを自分と仮定（マルチプレイ環境に合わせて適宜修正してください）
-  return ids[0];
+  return props.myPlayerId || props.state.playerOrder[0];
+});
+
+const isPlayer = computed(() => {
+  return props.state.playerOrder.includes(props.myPlayerId || '');
 });
 
 const myHand = computed(() => props.state.hands[myPlayerId.value] || []);
 const currentPlayerId = computed(() => props.state.playerOrder[props.state.turnIndex]);
-const isMyTurn = computed(() => currentPlayerId.value === myPlayerId.value);
+const isMyTurn = computed(() => isPlayer.value && currentPlayerId.value === myPlayerId.value);
 const topCard = computed(() => props.state.discard[props.state.discard.length - 1]);
 
 const opponents = computed(() => props.state.playerOrder.filter(id => id !== myPlayerId.value));
@@ -165,6 +158,7 @@ const pendingWildCard = ref<number | null>(null);
 const showColorPicker = computed(() => pendingWildCard.value !== null);
 
 const handleCardClick = (card: number) => {
+  if (!isPlayer.value) return; // 観戦者ガード
   if (!isPlayable(card)) return;
 
   const color = getCardColor(card);
@@ -178,6 +172,7 @@ const handleCardClick = (card: number) => {
 };
 
 const playWildCard = (selectedColor: number) => {
+  if (!isPlayer.value) return; // 観戦者ガード
   if (pendingWildCard.value === null) return;
   emit('action', { 
     type: 'PLAY', 
@@ -193,11 +188,13 @@ const cancelWildCard = () => {
 };
 
 const drawCard = () => {
+  if (!isPlayer.value) return; // 観戦者ガード
   if (!isMyTurn.value) return;
   emit('action', { type: 'DRAW', playerId: myPlayerId.value });
 };
 
 const passTurn = () => {
+  if (!isPlayer.value) return; // 観戦者ガード
   if (!isMyTurn.value) return;
   emit('action', { type: 'PASS', playerId: myPlayerId.value });
 };

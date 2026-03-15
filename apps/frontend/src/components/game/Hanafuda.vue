@@ -39,7 +39,7 @@
           </div>
         </div>
         <div class="hand-area">
-          <div v-for="(card, i) in oppHand" :key="`opp-hand-${i}`" class="card hidden"></div>
+          <div v-for="(_, i) in oppHand" :key="`opp-hand-${i}`" class="card hidden"></div>
         </div>
       </div>
 
@@ -90,21 +90,19 @@
 import { computed } from 'vue';
 import type { HanafudaState, HanafudaAction, Card } from '@engine/shared/rules/HanafudaRuleset';
 
-const props = defineProps<{ state: HanafudaState }>();
+const props = defineProps<{ 
+  state: HanafudaState,
+  myPlayerId?: string
+}>();
 const emit = defineEmits<{ (e: 'action', action: HanafudaAction): void }>();
 
 // --- プレイヤー推論ロジック ---
-// マスクされた状態（相手の手札は '?' になっている）を利用して、自分がどちらのIDかを判定する
 const myId = computed(() => {
-  const ids = props.state.playerIds;
-  if (!ids || ids.length < 2) return '';
-  
-  const hand0 = props.state.hands[ids[0]];
-  // hand0 に '?' 以外の具体的な札が含まれていれば、自分は ids[0]
-  if (hand0 && hand0.some(c => c !== '?')) return ids[0];
-  
-  // そうでなければ ids[1] (観戦者の場合は便宜上 ids[0] にフォールバック)
-  return ids[1] || ids[0];
+  return props.myPlayerId || props.state.playerIds[0];
+});
+
+const isPlayer = computed(() => {
+  return props.state.playerIds.includes(props.myPlayerId || '');
 });
 
 const oppId = computed(() => {
@@ -113,7 +111,7 @@ const oppId = computed(() => {
 
 // --- ステートの算出 ---
 const isMyTurn = computed(() => {
-  return props.state.playerIds[props.state.turnIndex] === myId.value;
+  return isPlayer.value && props.state.playerIds[props.state.turnIndex] === myId.value;
 });
 
 const myHand = computed(() => props.state.hands[myId.value] || []);
@@ -145,20 +143,24 @@ const renderCard = (card: Card) => {
 
 // --- アクション送信 ---
 const playCard = (card: Card) => {
+  if (!isPlayer.value) return; // 観戦者ガード
   if (!isMyTurn.value || props.state.phase !== 'PLAY_HAND') return;
   emit('action', { type: 'PLAY_CARD', card });
 };
 
 const drawDeck = () => {
+  if (!isPlayer.value) return; // 観戦者ガード
   if (!isMyTurn.value || props.state.phase !== 'DRAW_DECK') return;
   emit('action', { type: 'DRAW_DECK' });
 };
 
 const chooseMatch = (card: Card) => {
+  if (!isPlayer.value) return; // 観戦者ガード
   emit('action', { type: 'CHOOSE_MATCH', card });
 };
 
 const callKoiKoi = (isKoikoi: boolean) => {
+  if (!isPlayer.value) return; // 観戦者ガード
   emit('action', { type: isKoikoi ? 'CALL_KOIKOI' : 'STOP' });
 };
 </script>

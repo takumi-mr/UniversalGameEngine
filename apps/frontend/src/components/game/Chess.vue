@@ -48,6 +48,7 @@ import type { ChessState, ChessAction } from "@engine/shared/rules/ChessRuleset"
 
 const props = defineProps<{ 
   state: ChessState;
+  myPlayerId?: string;
 }>();
 
 const emit = defineEmits<{ (e: 'action', action: ChessAction): void }>();
@@ -102,6 +103,10 @@ const isKingInCheck = (_index: number): boolean => {
 // 盤面クリック時の処理
 const onSquareClick = (index: number) => {
   if (!props.state || props.state.status !== 'PLAYING') return;
+
+  // 観戦者ガード
+  const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
+  if (!isPlayer) return;
 
   const clickedPiece = props.state.board[index];
 
