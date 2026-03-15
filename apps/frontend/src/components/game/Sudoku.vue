@@ -55,11 +55,19 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import type { SudokuState, SudokuAction } from '@engine/shared/rules/SudokuRuleset';
 
-const props = defineProps<{ state: SudokuState }>();
+const props = defineProps<{ 
+  state: SudokuState,
+  myPlayerId?: string
+}>();
 const emit = defineEmits<{ (e: 'action', action: SudokuAction): void }>();
 
 // 選択中のマスの座標
 const selectedCell = ref<{ row: number; col: number } | null>(null);
+
+const isPlayer = computed(() => {
+  if (!props.state.players) return true; // シングルプレイヤー
+  return Object.values(props.state.players).includes(props.myPlayerId || '');
+});
 
 // --- ヘルパー: CSSクラスの計算 ---
 
@@ -104,12 +112,13 @@ const isSameNumber = (val: number) => {
 
 const selectCell = (r: number, c: number) => {
   if (props.state.status !== 'PLAYING') return;
+  if (!isPlayer.value) return; // 観戦者ガード
   selectedCell.value = { row: r, col: c };
 };
 
 // 入力可能か（マスが選択されており、かつ固定マスではないか）
 const canInput = computed(() => {
-  if (!selectedCell.value) return false;
+  if (!selectedCell.value || !isPlayer.value) return false;
   const { row, col } = selectedCell.value;
   return !props.state.board[row][col].isFixed && props.state.status === 'PLAYING';
 });

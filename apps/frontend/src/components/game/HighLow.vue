@@ -69,21 +69,16 @@
 import { defineComponent } from 'vue';
 import type { HighLowState, DrawAction, Card } from '@engine/shared/rules/HighLowRuleset';
 
-const props = defineProps<{ state: HighLowState }>();
+const props = defineProps<{ 
+  state: HighLowState,
+  myPlayerId?: string
+}>();
 const emit = defineEmits<{ (e: 'action', action: DrawAction): void }>();
 
 // カード描画用の軽量インラインコンポーネント（HighLow特有のデータ構造に対応）
 const CardInner = defineComponent({
   props: { card: { type: Object as () => Card, required: true } },
-  setup(props) {
-    const displayRank = (rank: number) => {
-      if (rank === 1) return 'A';
-      if (rank === 11) return 'J';
-      if (rank === 12) return 'Q';
-      if (rank === 13) return 'K';
-      return rank.toString();
-    };
-    const isRed = props.card.suit === '♥' || props.card.suit === '♦';
+  setup() {
     
     return () => {
       // JSXライクなレンダー関数（Vue 3）は使わず、シンプルなHTML文字列やクラス判定に回します
@@ -106,6 +101,10 @@ const CardInner = defineComponent({
 const drawCard = (playerNumber: 1 | 2) => {
   if (props.state.status !== 'PLAYING') return;
   if (props.state.currentTurn !== playerNumber) return;
+
+  // 観戦者ガード
+  const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
+  if (!isPlayer) return;
 
   emit('action', { type: 'DRAW', player: playerNumber });
 };

@@ -28,7 +28,7 @@
 
         <div class="opponents-container">
           <div 
-            v-for="(opponent, index) in opponents" 
+            v-for="opponent in opponents" 
             :key="opponent.id" 
             class="player-seat opponent-seat"
             :class="{ 
@@ -110,25 +110,16 @@
 import { ref, computed, defineComponent, watch } from 'vue';
 import type { TexasHoldemState, TexasHoldemAction } from '@engine/shared/rules/TexasHoldemRuleset';
 
-const props = defineProps<{ state: TexasHoldemState }>();
+const props = defineProps<{ 
+  state: TexasHoldemState,
+  myPlayerId?: string
+}>();
 const emit = defineEmits<{ (e: 'action', action: TexasHoldemAction): void }>();
 
 // --- カード描画用インラインコンポーネント ---
 const CardInner = defineComponent({
   props: { cardStr: { type: String, required: true } },
-  setup(props) {
-    const isBack = computed(() => props.cardStr === '?');
-    const rank = computed(() => isBack.value ? '' : props.cardStr.charAt(0) === 'T' ? '10' : props.cardStr.charAt(0));
-    const suitChar = computed(() => isBack.value ? '' : props.cardStr.charAt(1));
-    const suit = computed(() => {
-      if (suitChar.value === 'H') return '♥';
-      if (suitChar.value === 'D') return '♦';
-      if (suitChar.value === 'S') return '♠';
-      if (suitChar.value === 'C') return '♣';
-      return '';
-    });
-    const isRed = computed(() => suitChar.value === 'H' || suitChar.value === 'D');
-
+  setup() {
     return () => null; // 実際の描画は以下のtemplateで
   },
   template: `
@@ -144,12 +135,15 @@ const CardInner = defineComponent({
 
 // --- プレイヤー状態の算出 ---
 const myPlayerId = computed(() => {
-  const ids = Object.keys(props.state.hands);
-  return ids.find(id => props.state.hands[id] && props.state.hands[id][0] !== '?') || ids[0];
+  return props.myPlayerId || props.state.playerIds[0];
+});
+
+const isPlayer = computed(() => {
+  return props.state.playerIds.includes(props.myPlayerId || '');
 });
 
 const myHand = computed(() => props.state.hands[myPlayerId.value] || []);
-const isMyTurn = computed(() => props.state.activePlayers?.includes(myPlayerId.value));
+const isMyTurn = computed(() => isPlayer.value && props.state.activePlayers?.includes(myPlayerId.value));
 const isFolded = computed(() => props.state.foldedPlayers.includes(myPlayerId.value));
 
 const opponents = computed(() => {
@@ -179,6 +173,7 @@ watch(isMyTurn, (newVal) => {
 });
 
 const takeAction = (type: TexasHoldemAction['type']) => {
+  if (!isPlayer.value) return; // 観戦者ガード
   if (!isMyTurn.value) return;
   
   if (type === 'RAISE') {

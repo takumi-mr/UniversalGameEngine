@@ -43,7 +43,10 @@ import { ref, onMounted, onUnmounted, watch } from "vue";
 import { Go3DUI } from "../../three/GoUI";
 import type { GoState, GoAction } from "@engine/shared/rules/GoRuleset";
 
-const props = defineProps<{ state: GoState }>();
+const props = defineProps<{ 
+  state: GoState,
+  myPlayerId?: string
+}>();
 const emit = defineEmits<{ (e: 'action', action: GoAction): void }>();
 
 const canvasContainer = ref<HTMLElement | null>(null);
@@ -52,6 +55,10 @@ let threeUI: Go3DUI | null = null;
 onMounted(() => {
   if (canvasContainer.value && props.state) {
     threeUI = new Go3DUI(canvasContainer.value, props.state.size, (action) => {
+      // 観戦者ガード
+      const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
+      if (!isPlayer) return;
+
       emit('action', action);
     });
     threeUI.renderState(props.state);
@@ -70,6 +77,10 @@ watch(() => props.state, (newState) => {
 
 const passTurn = () => {
   if (props.state.status === 'PLAYING') {
+    // 観戦者ガード
+    const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
+    if (!isPlayer) return;
+
     emit('action', { type: 'PASS' });
   }
 };

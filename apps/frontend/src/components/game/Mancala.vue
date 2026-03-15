@@ -45,6 +45,10 @@ onMounted(() => {
     mancala3D = new MancalaUI(
       canvasContainer.value,
       (action) => {
+        // 観戦者ガード
+        const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
+        if (!isPlayer) return;
+
         // Three.js 側からのアクション（クリック）を親へemit
         emit('action', action);
       },

@@ -143,8 +143,13 @@ const pendingTargetCardId = ref<string | null>(null);
 
 // --- Computed ---
 const myPlayerId = computed(() => {
-  const me = Object.values(props.state.playerData).find((p: any) => p.hiddenGoal !== null);
-  return me ? me.id : Object.keys(props.state.playerData)[0];
+  // 自分が名指しで参加しているかチェック
+  const urlUsername = localStorage.getItem('game_username') || '';
+  if (props.state.playerData[urlUsername]) {
+    return urlUsername;
+  }
+  // 観戦者の場合、暫定的に適当なIDを返すか、nullを許容する
+  return urlUsername; 
 });
 
 const myData = computed(() => props.state.playerData[myPlayerId.value]);
@@ -156,33 +161,42 @@ const opponentData = computed(() => {
 const isMyTurn = computed(() => props.state.activePlayers?.includes(myPlayerId.value));
 
 // --- Helpers ---
+const isPlayer = computed(() => {
+  return !!props.state.playerData[myPlayerId.value];
+});
+
 const getRevealedCard = (opponentData: any) => {
   return opponentData.hand.find((c: any) => c.id !== 'hidden');
 };
 
 // --- Actions ---
 const submitBid = () => {
+  if (!isPlayer.value) return;
   emit('action', { type: 'BID', playerId: myPlayerId.value, amount: bidAmount.value });
   bidAmount.value = 1;
 };
-const passAuction = () => emit('action', { type: 'PASS_AUCTION', playerId: myPlayerId.value });
-const endTurn = () => emit('action', { type: 'END_TURN', playerId: myPlayerId.value });
+const passAuction = () => { if (!isPlayer.value) return; emit('action', { type: 'PASS_AUCTION', playerId: myPlayerId.value }); };
+const endTurn = () => { if (!isPlayer.value) return; emit('action', { type: 'END_TURN', playerId: myPlayerId.value }); };
 
 // サクリファイス処理
 const sacrifice = () => {
+  if (!isPlayer.value) return;
   emit('action', { type: 'SACRIFICE', playerId: myPlayerId.value });
 };
 
 const alterGoal = (newGoalCardId: string) => {
+  if (!isPlayer.value) return;
   emit('action', { type: 'ALTER_GOAL', playerId: myPlayerId.value, newGoalCardId });
 };
 
 const bluffReveal = (fakeCard: any) => {
+  if (!isPlayer.value) return;
   emit('action', { type: 'BLUFF_REVEAL', playerId: myPlayerId.value, fakeCard });
 };
 
 // ★ 変更: 対象選択が必要なカードの条件式を拡張
 const initiatePlay = (card: Card) => {
+  if (!isPlayer.value) return;
   // 攻撃、吸収(SYPHON)、または手札破壊(Corruption)の場合にターゲット選択UIを開く
   if (card.type === 'ATTACK' || card.type === 'SYPHON' || card.name === 'Corruption') {
     pendingTargetCardId.value = card.id;
