@@ -100,6 +100,16 @@ export const availableGames = [
     rules: '6つの面の各色を揃える立体パズルです。'
   },
   {
+    type: 'sudoku',
+    name: '数独 (Sudoku)',
+    description: '9×9マスに数字を配置する定番パズル。',
+    emoji: '🔢',
+    minPlayers: 1,
+    maxPlayers: 1,
+    category: 'Puzzles',
+    rules: '9x9のマス目に1から9の数字を、各行・各列・3x3ブロックで重複しないように配置します。'
+  },
+  {
     type: 'equilibrium',
     name: 'Equilibrium',
     description: 'AIが考案した、魂を削り合う究極の心理戦ボードゲーム。',

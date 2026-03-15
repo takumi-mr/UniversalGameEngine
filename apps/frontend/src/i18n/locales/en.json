@@ -91,6 +91,11 @@
       "name": "Mancala",
       "description": "One of the oldest board games. Sow seeds and collect them in your store.",
       "rules": "Choose a pit on your side and drop seeds one by one in a clockwise direction. The player with the most seeds in their store at the end wins."
+    },
+    "sudoku": {
+      "name": "Sudoku",
+      "description": "Classic number placement puzzle on a 9×9 grid.",
+      "rules": "Fill the 9×9 grid so that every row, column, and 3×3 box contains the digits 1 through 9 exactly once."
     }
   },
   "help": {

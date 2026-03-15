@@ -156,6 +156,18 @@ import { availableGames } from '../constants/games';
 import { SocketIoClient } from '../network/SocketIoClient';
 import GameHelpDialog from '../components/game/GameHelpDialog.vue';
 import ThemeSwitcher from '../components/ThemeSwitcher.vue';
+import { generatePuzzle } from '../utils/sudokuGenerator';
+
+// ゲーム起動前に呼ばれる汎用フック
+// 各ゲームの初期化処理を追加できる。戻り値は createGame の gameOptions に渡される
+type GameHookFn = () => Promise<Record<string, unknown> | undefined>;
+const gameHooks: Record<string, GameHookFn> = {
+  sudoku: async () => {
+    const initialBoard = generatePuzzle('medium');
+    console.log('[gameHook:sudoku] puzzle generated', initialBoard);
+    return { initialBoard };
+  },
+};
 
 const route = useRoute();
 const router = useRouter();
@@ -196,9 +208,16 @@ onMounted(fetchRooms);
 const createNewRoom = async () => {
   creating.value = true;
   try {
+    // ゲーム固有の起動前フックを実行（数独の場合は問題生成など）
+    const hookFn = gameHooks[gameType.value];
+    const gameOptions = hookFn ? await hookFn() : undefined;
+
     const token = localStorage.getItem('game_token') || '';
     const client = new SocketIoClient(API_BASE, token);
-    const id = await client.createGame({ type: gameType.value.toUpperCase().replace('-', '_') });
+    const id = await client.createGame({
+      type: gameType.value.toUpperCase().replace(/-/g, '_'),
+      gameOptions,
+    });
     router.push(`/game/${gameType.value}/${id}`);
   } catch (err) {
     console.error('Failed to create room:', err);
