@@ -43,11 +43,11 @@ bun run dev
 
 ## 🏗️ モノレポ構成
 
-本プロジェクトは機能ごとに分割されたモノレポ構成を採用しています。
+本プロジェクトは機能ごとに分割されたモノレポ構成を採用しています。各ディレクトリの詳細については、それぞれの `README.md` を参照してください。
 
-* **`apps/frontend`**: Vue 3 + Vite + TypeScript によるゲームクライアント。Three.jsを利用した3D表示もサポート。
-* **`apps/backend`**: Bun + WebSockets によるゲームサーバー。
-* **`packages/shared`**: エンジン本体および各ゲームのルールセット定義。フロントエンド・バックエンド間で共有されます。
+* **[`apps/frontend`](./apps/frontend/README.md)**: Vue 3 + Vite + TypeScript によるゲームクライアント。Three.jsを利用した3D表示もサポート。
+* **[`apps/backend`](./apps/backend/README.md)**: Bun + WebSockets によるゲームサーバー。
+* **[`packages/shared`](./packages/shared/README.md)**: エンジン本体および各ゲームのルールセット定義。フロントエンド・バックエンド間で共有されます。
 
 ---
 

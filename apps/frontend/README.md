@@ -1,5 +1,33 @@
-# Vue 3 + TypeScript + Vite
+# 🎨 Universal Game Engine - Frontend
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Vue 3 + Vite + TypeScript をベースとした、インタラクティブなゲームクライアントです。
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+## 🏗️ ディレクトリ構造
+
+- `/src/components`: 再利用可能な UI コンポーネントおよび各ゲームのメインコンポーネント。
+- `/src/ui`: Game-specific UI クラス。Three.js による 3D 描画や DOM 操作のロジックをカプセル化。
+- `/src/stores`: Pinia によるグローバルな状態管理（認証情報、マッチ情報など）。
+- `/src/api`: バックエンドとの通信（HTTP/WebSocket）をラップしたクライアント。
+- `vite.config.ts`: Vite の設定ファイル。
+
+## 🛠️ 開発ガイド
+
+### 依存関係のインストール
+
+```bash
+bun install
+```
+
+### 開発サーバーの起動
+
+```bash
+bun dev
+```
+
+## 🖼️ レンダラーの柔軟性
+
+本フロントエンドは、ゲームの性質に応じて最適なレンダリング方式を選択できます。
+現時点では以下のレンダラーで各ゲームを実装しています。
+- **Three.js**: 将棋、囲碁、オセロなどの 3D 表示
+- **SVG / Canvas**: 2D ボードゲーム
+- **Vanilla CSS / DOM**: カードゲームやパズル
