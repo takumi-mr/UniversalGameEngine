@@ -1,5 +1,5 @@
 // packages/shared/rules/HanafudaRuleset.ts
-import type { BaseGameState, BaseGameAction, GameRuleset } from '../UniversalEngine';
+import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
 
 // --- 1. 型定義 ---
 

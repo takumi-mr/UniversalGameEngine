@@ -1,4 +1,4 @@
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../UniversalEngine";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
 
 export interface GoState extends BaseGameState {
   board: number[];
@@ -244,7 +244,7 @@ export const GoRuleset: GameRuleset<GoState, GoAction> = {
 
   getLegalActions: (state, playerId) => {
     if (state.status !== "PLAYING") return [];
-    
+
     // 手番チェック
     if (state.players && state.players[state.turn] !== null && playerId !== state.players[state.turn]) {
       return [];

@@ -196,6 +196,7 @@ const components: Record<string, any> = {
   'mancala': defineAsyncComponent(() => import('./game/Mancala.vue')),
   'sudoku': defineAsyncComponent(() => import('./game/Sudoku.vue')),
   'mahjong': defineAsyncComponent(() => import('./game/Mahjong.vue')),
+  'shogi_3d': defineAsyncComponent(() => import('./game/Shogi3D.vue')),
 };
 
 const gameComponent = computed(() => components[props.gameType] || null);

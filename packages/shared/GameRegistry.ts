@@ -1,5 +1,5 @@
 // packages/shared/GameRegistry.ts
-import type { GameRuleset, BaseGameState, BaseGameAction } from './UniversalEngine';
+import type { GameRuleset, BaseGameState, BaseGameAction } from './GameRules';
 import { TicTacToeRuleset } from './rules/TicTacToeRuleset';
 import { ChessRuleset } from './rules/ChessRuleset';
 import { ShogiRuleset } from './rules/ShogiRuleset';
@@ -70,6 +70,16 @@ class GameRegistry {
             description: '3Dチェス。',
             emoji: '♔',
             rules: 'キング、クイーン、ルーク、ビショップ、ナイト、ポーンを動かして、相手のキングをチェックメイトします。',
+        })
+        this.register({
+            type: 'shogi_3d',
+            name: 'Shogi 3D',
+            ruleset: ShogiRuleset,
+            minPlayers: 2,
+            maxPlayers: 2,
+            description: '3D将棋。',
+            emoji: '☖',
+            rules: '自分の駒を動かして相手の玉将を詰ませます。相手から取った駒を自分の持ち駒として使うことができます。',
         })
         this.register({
             type: 'high_low',

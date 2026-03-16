@@ -1,4 +1,4 @@
-import { BaseGameState, BaseGameAction, GameRuleset } from '../UniversalEngine';
+import { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
 
 // --- 1. 型定義 ---
 

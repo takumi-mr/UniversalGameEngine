@@ -1,5 +1,5 @@
 // packages/shared/rules/DaifugoRuleset.ts
-import type { BaseGameState, BaseGameAction, GameRuleset } from '../UniversalEngine';
+import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
 
 export type Card = string;
 
@@ -88,7 +88,7 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
         // 手札を均等に配る
         if (playerIds.length > 0) {
             playerIds.forEach((pId: string) => (hands[pId] = []));
-            
+
             let i = 0;
             while (deck.length > 0) {
                 const targetPlayerId = playerIds[i % playerIds.length];
@@ -106,7 +106,7 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
 
         return {
             status: 'WAITING',
-            players: playerIds.length > 0 
+            players: playerIds.length > 0
                 ? playerIds.reduce((acc: Record<string, string>, p: string) => ({ ...acc, [p]: p }), {})
                 : { 1: null, 2: null, 3: null, 4: null },
             activePlayers: playerIds.length > 0 ? [playerIds[0]] : [],
@@ -292,7 +292,7 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
         if (!state.activePlayers || !state.activePlayers.includes(playerId)) return [];
 
         const actions: DaifugoAction[] = [];
-        
+
         // パスは常に合法
         const passAction: DaifugoAction = { type: 'PASS', playerId };
         if (DaifugoRuleset.isValidAction(state, passAction)) actions.push(passAction);

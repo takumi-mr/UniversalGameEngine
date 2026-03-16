@@ -1,5 +1,5 @@
 // packages/shared/rules/OthelloRuleset.ts
-import type { GameRuleset, BaseGameState, BaseGameAction } from '../UniversalEngine';
+import type { GameRuleset, BaseGameState, BaseGameAction } from '../GameRules';
 
 export type PlayerColor = 1 | -1; // 1: 黒, -1: 白
 

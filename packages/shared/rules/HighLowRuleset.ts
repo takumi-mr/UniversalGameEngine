@@ -1,5 +1,5 @@
 // packages/shared/rules/HighLowRuleset.ts
-import type { GameRuleset, BaseGameState, BaseGameAction } from '../UniversalEngine';
+import type { GameRuleset, BaseGameState, BaseGameAction } from '../GameRules';
 
 // --- 1. ドメイン（トランプ特有）の型定義 ---
 export type Suit = '♠' | '♥' | '♦' | '♣';
@@ -135,7 +135,7 @@ export const HighLowRuleset: GameRuleset<HighLowState, DrawAction> = {
 
     getLegalActions: (state, playerId) => {
         if (state.status !== 'PLAYING') return [];
-        
+
         const turn = state.currentTurn;
         if (state.players && state.players[turn] !== null && state.players[turn] !== playerId) {
             return [];

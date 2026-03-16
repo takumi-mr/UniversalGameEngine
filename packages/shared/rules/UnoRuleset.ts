@@ -1,4 +1,4 @@
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../UniversalEngine";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
 
 export interface UnoState extends BaseGameState {
   hands: Record<string, number[]>; // playerId -> cards
@@ -52,7 +52,7 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
       currentColor: cardColor(first),
       drawStack: 0,
       playerOrder: players,
-      players: players.length > 0 
+      players: players.length > 0
         ? { ...players } as Record<number, string>
         : { 0: null, 1: null, 2: null, 3: null } // 4 slots
     };

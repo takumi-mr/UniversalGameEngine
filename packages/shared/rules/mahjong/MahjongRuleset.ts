@@ -1,5 +1,5 @@
 // packages/shared/rules/MahjongRules.ts
-import type { BaseGameState, BaseGameAction, GameRuleset } from '../../UniversalEngine';
+import type { BaseGameState, BaseGameAction, GameRuleset } from '../../GameRules';
 import { MahjongHandEvaluator } from './MahjongHandEvaluator';
 
 // 麻雀の牌表現 (例: 萬子=m, 筒子=p, 索子=s, 字牌=z) 
@@ -389,7 +389,7 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
                     { type: 'CALL', meldType: 'KAN', tile: state.pendingDiscard.tile, playerId }
                 ];
                 for (const a of interruptActions) {
-                     if (MahjongRuleset.isValidAction(state, a)) actions.push(a);
+                    if (MahjongRuleset.isValidAction(state, a)) actions.push(a);
                 }
                 return actions;
             }
@@ -409,12 +409,12 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
                 const discardAction: MahjongAction = { type: 'DISCARD', tile, playerId };
                 if (MahjongRuleset.isValidAction(state, discardAction)) actions.push(discardAction);
             }
-            
+
             // 3. TSUMO
             const tsumoAction: MahjongAction = { type: 'TSUMO', playerId };
             if (MahjongRuleset.isValidAction(state, tsumoAction)) actions.push(tsumoAction);
         }
-        
+
         return actions;
     },
 

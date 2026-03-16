@@ -1,5 +1,5 @@
 // packages/shared/rules/TexasHoldemRules.ts
-import type { BaseGameState, BaseGameAction, GameRuleset } from '../UniversalEngine';
+import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
 
 // ポーカー特有の状態定義
 export interface TexasHoldemState extends BaseGameState {
@@ -77,12 +77,12 @@ export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction
 
     isValidAction: (state: TexasHoldemState, action: TexasHoldemAction) => {
         if (state.status !== 'PLAYING') return false;
-        
+
         // アクティブなプレイヤーからの（手番の）アクションか？
         if (!state.activePlayers || !state.activePlayers.includes(action.playerId!)) return false;
 
         const pId = action.playerId!;
-        
+
         // フォールド済みのプレイヤーは行動できない
         if (state.foldedPlayers.includes(pId)) return false;
 
@@ -162,7 +162,7 @@ export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction
                 message: `Game over. Player won by fold.`
             };
         }
-        
+
         // 本当は `SHOWDOWN` フェーズでの役判定ロジックなどが必要だが簡略化
         if (state.phase === 'SHOWDOWN') {
             return {
@@ -177,7 +177,7 @@ export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction
     // 隠匿情報（自分以外の他人の手札）をマスクするフック！
     maskState: (state: TexasHoldemState, targetPlayerId: string): TexasHoldemState => {
         const maskedHands: Record<string, string[]> = {};
-        
+
         for (const [pId, hand] of Object.entries(state.hands)) {
             if (pId === targetPlayerId) {
                 // 自分の手札はそのまま見せる
@@ -192,7 +192,7 @@ export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction
             ...state,
             hands: maskedHands,
             // 山札の中身も絶対に送信してはいけないので全マスクまたは空配列にする
-            deck: state.deck.map(() => '?') 
+            deck: state.deck.map(() => '?')
         };
 
         return maskedState;

@@ -1,5 +1,5 @@
 // packages/shared/rules/RubiksRuleset.ts
-import type { BaseGameState, BaseGameAction, GameRuleset } from '../UniversalEngine';
+import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
 
 export type FaceName = 'U' | 'D' | 'F' | 'B' | 'L' | 'R'; // Up, Down, Front, Back, Left, Right
 export type Color = 'W' | 'Y' | 'G' | 'B' | 'O' | 'R'; // White, Yellow, Green, Blue, Orange, Red
@@ -162,7 +162,7 @@ export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction> = {
         const actions: RubiksAction[] = [];
         const faces: FaceName[] = ['U', 'D', 'F', 'B', 'L', 'R'];
         const dirs: (1 | -1)[] = [1, -1];
-        
+
         for (const face of faces) {
             for (const direction of dirs) {
                 const action: RubiksAction = { type: 'ROTATE', face, direction, playerId };

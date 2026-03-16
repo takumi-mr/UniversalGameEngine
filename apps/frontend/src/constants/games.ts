@@ -50,6 +50,16 @@ export const availableGames = [
     rules: '取った駒を自駒として使えるのが特徴です。相手の玉将を詰ませれば勝利。'
   },
   {
+    type: 'shogi_3d',
+    name: 'Shogi 3D',
+    description: '3D化した将棋。高級感のある駒と盤面。',
+    emoji: '☖',
+    minPlayers: 2,
+    maxPlayers: 2,
+    category: 'Board Games',
+    rules: '日本の伝統的なボードゲーム「将棋」を3Dで楽しめます。'
+  },
+  {
     type: 'chess',
     name: 'Chess (2D)',
     description: '世界的に人気の伝統的なチェス。',

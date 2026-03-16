@@ -1,4 +1,4 @@
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../UniversalEngine";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
 
 // --- 定数定義 ---
 const PIECES = {

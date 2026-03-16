@@ -1,5 +1,5 @@
 // packages/shared/rules/ChessRuleset.ts
-import type { BaseGameState, BaseGameAction, GameRuleset } from '../UniversalEngine';
+import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
 
 // --- 定数定義 ---
 // 1: Pawn, 2: Knight, 3: Bishop, 4: Rook, 5: Queen, 6: King

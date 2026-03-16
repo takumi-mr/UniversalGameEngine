@@ -1,5 +1,5 @@
 // packages/shared/rules/MancalaRuleset.ts
-import type { BaseGameState, BaseGameAction, GameRuleset } from '../UniversalEngine';
+import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
 
 export interface MancalaState extends BaseGameState {
     board: number[]; // 長さ14の配列（0~5: P1陣地, 6: P1ストア, 7~12: P2陣地, 13: P2ストア）
