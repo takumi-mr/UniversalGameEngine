@@ -4,7 +4,7 @@
     <v-app-bar flat border="none" color="surface" density="compact">
       <v-btn icon="mdi-chevron-left" variant="text" @click="back"></v-btn>
       <v-app-bar-title class="text-subtitle-1 font-weight-bold">
-        {{ gameInfo?.emoji }} {{ gameInfo?.name }} — Room: {{ roomId }}
+        {{ gameInfo?.emoji }} {{ $t(`games.${gameType}.name`) }} — Room: {{ roomId }}
       </v-app-bar-title>
       <v-spacer></v-spacer>
       
@@ -41,10 +41,10 @@
     <!-- Help Dialog -->
     <GameHelpDialog
       v-model="showHelp"
-      :game-name="gameInfo?.name ?? gameType"
+      :game-name="$t(`games.${gameType}.name`)"
       :game-emoji="gameInfo?.emoji ?? '🎮'"
-      :game-rules="(gameInfo as any)?.rules"
-      :game-description="gameInfo?.description"
+      :game-rules="$t(`games.${gameType}.rules`)"
+      :game-description="$t(`games.${gameType}.description`)"
     >
       <template #custom>
         <GameHelpTabs :game-type="gameType" />

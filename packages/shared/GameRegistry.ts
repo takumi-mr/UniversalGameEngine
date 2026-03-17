@@ -15,6 +15,7 @@ import { EquilibriumRuleset } from './rules/EquilibriumRuleset';
 import { UnoRuleset } from './rules/UnoRuleset';
 import { SudokuRuleset } from './rules/SudokuRuleset';
 import { MancalaRuleset } from './rules/MancalaRuleset';
+import { WordleRuleset } from './rules/WordleRuleset';
 
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
     type: string;
@@ -200,6 +201,16 @@ class GameRegistry {
             description: '最古のボードゲームの一つ。石をまいて自分のストアに集めよう。',
             emoji: '🏺',
             rules: '自分の陣地の穴から石を選んで、時計回りに一つずつ置いていきます。最後に自分のストアに多くの石がある人の勝ちです。',
+        });
+        this.register({
+            type: 'wordle',
+            name: 'Wordle',
+            ruleset: WordleRuleset,
+            minPlayers: 1,
+            maxPlayers: 1,
+            description: '5文字の単語を当てるパズルゲーム。',
+            emoji: '🟩',
+            rules: '6回以内に5文字の英単語を当ててください。入力後、文字の位置が合っていれば緑、文字は含まれるが位置が違えば黄色、含まれていなければ灰色で表示されます。',
         });
     }
 

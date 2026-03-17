@@ -3,7 +3,7 @@
     <!-- Main Game Area -->
     <div class="panel">
       <div class="panel-header">
-        <div class="game-title">{{ gameEmoji }} {{ gameName }}</div>
+        <div class="game-title">{{ gameEmoji }} {{ $t(`games.${gameType}.name`) }}</div>
         <div class="room-id">🔑 Room: <span>{{ roomId }}</span></div>
         <div class="status-pill" :class="statusClass">{{ connectionStatus }}</div>
       </div>
@@ -69,7 +69,7 @@
     <div class="sidebar">
       <div class="sidebar-panel">
         <div class="sidebar-title">Controls</div>
-        <button class="back-btn" @click="goBack">← 選択画面へ戻る</button>
+        <button class="back-btn" @click="goBack">← {{ $t('common.back') }}</button>
         <button class="new-game-btn" @click="createNewGame">🆕 New Game</button>
       </div>
 
@@ -143,10 +143,11 @@ import type { HighLowState, DrawAction } from '@engine/shared/rules/HighLowRules
 import type { MancalaState, MancalaAction } from '@engine/shared/rules/MancalaRuleset';
 import type { SudokuState, SudokuAction } from '@engine/shared/rules/SudokuRuleset';
 import type { MahjongState, MahjongAction } from '@engine/shared/rules/mahjong/MahjongRuleset';
+import type { WordleState, WordleAction } from '@engine/shared/rules/WordleRuleset';
 
 // 共用体型の定義
-type GameState = TicTacToeState | OthelloState | Othello3DState | RubiksState | ChessState | EquilibriumState | ShogiState | BaseGameState | HighLowState | MancalaState | SudokuState | MahjongState;
-type GameAction = TicTacToeAction | OthelloAction | Othello3DAction | RubiksAction | ChessAction | EquilibriumAction | ShogiAction | BaseGameAction | DrawAction | MancalaAction | SudokuAction | MahjongAction;
+type GameState = TicTacToeState | OthelloState | Othello3DState | RubiksState | ChessState | EquilibriumState | ShogiState | BaseGameState | HighLowState | MancalaState | SudokuState | MahjongState | WordleState;
+type GameAction = TicTacToeAction | OthelloAction | Othello3DAction | RubiksAction | ChessAction | EquilibriumAction | ShogiAction | BaseGameAction | DrawAction | MancalaAction | SudokuAction | MahjongAction | WordleAction;
 
 const props = defineProps<{
   gameType: string;
@@ -190,6 +191,7 @@ const components: Record<string, any> = {
   'sudoku': defineAsyncComponent(() => import('./game/Sudoku.vue')),
   'mahjong': defineAsyncComponent(() => import('./game/Mahjong.vue')),
   'shogi_3d': defineAsyncComponent(() => import('./game/Shogi3D.vue')),
+  'wordle': defineAsyncComponent(() => import('./game/Wordle.vue')),
 };
 
 const gameComponent = computed(() => components[props.gameType] || null);

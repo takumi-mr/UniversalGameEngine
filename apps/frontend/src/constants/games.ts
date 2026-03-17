@@ -169,4 +169,14 @@ export const availableGames = [
     category: 'Board Games',
     rules: '4人で牌を引き合い、特定の役を揃える伝統的なゲームです。'
   },
+  {
+    type: 'wordle',
+    name: 'Wordle',
+    description: '5文字の単語を当てるパズルゲーム。',
+    emoji: '🟩',
+    minPlayers: 1,
+    maxPlayers: 1,
+    category: 'Puzzles',
+    rules: '6回以内に5文字の英単語を当ててください。入力後、文字の位置が合っていれば緑、文字は含まれるが位置が違えば黄色、含まれていなければ灰色で表示されます。'
+  },
 ];

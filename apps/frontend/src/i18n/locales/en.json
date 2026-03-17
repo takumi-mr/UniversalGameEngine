@@ -393,6 +393,29 @@
           "content": "The player with the most points at the end wins! Aim for high-scoring hands to secure victory."
         }
       }
+    },
+    "wordle": {
+      "name": "Wordle",
+      "description": "A puzzle game where you guess a 5-letter word.",
+      "rules": "Guess the 5-letter word in 6 tries. After each guess, the color of the tiles will change to show how close your guess was to the word.",
+      "play_again": "Play Again",
+      "tabs": {
+        "summary": {
+          "label": "Summary",
+          "title": "Guess the 5-letter Word!",
+          "content": "Wordle is a puzzle game where you have to uncover a hidden 5-letter English word. Use the feedback to narrow down the possibilities!"
+        },
+        "rules": {
+          "label": "Rules",
+          "title": "Use Color Hints!",
+          "content": "1. Enter a 5-letter word and press ENTER.\n2. Green tile: The letter is in the word and in the correct spot.\n3. Yellow tile: The letter is in the word but in the wrong spot.\n4. Gray tile: The letter is not in the word in any spot."
+        },
+        "win": {
+          "label": "Winning",
+          "title": "Find the word in 6 tries!",
+          "content": "The fewer guesses you take, the better! Think carefully before each entry."
+        }
+      }
     }
   },
   "help": {
