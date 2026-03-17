@@ -140,6 +140,9 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
     if (state.status !== "PLAYING") return false;
     if (action.type === "RESIGN") return true;
 
+    // プレイヤーの番かどうかをチェック
+    if (state.players && state.players[state.turn as 1 | -1] !== action.playerId) return false;
+
     if (action.type === "MOVE") {
       if (action.from === undefined || action.to === undefined) return false;
       const pieceVal = state.board[action.from];

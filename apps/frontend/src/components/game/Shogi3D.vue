@@ -104,15 +104,15 @@ watch(() => props.state, (newState) => {
 }, { deep: true });
 
 const handleActionFromUI = (action: ShogiAction) => {
-  const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
-  if (!isPlayer) return;
+  const isMyTurn = props.state.players && props.state.players[props.state.turn as 1 | -1] === props.myPlayerId;
+  if (!isMyTurn) return;
 
   emit('action', action);
 };
 
 const handleRequirePromotion = (from: number, to: number) => {
-  const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
-  if (!isPlayer || props.state.turn !== Math.sign(props.state.board[from])) return;
+  const isMyTurn = props.state.players && props.state.players[props.state.turn as 1 | -1] === props.myPlayerId;
+  if (!isMyTurn || props.state.turn !== Math.sign(props.state.board[from])) return;
 
   pendingMoveAction.value = { type: 'MOVE', from, to };
   showPromoteDialog.value = true;
@@ -129,7 +129,8 @@ const confirmMove = (promote: boolean) => {
 
 const selectHandPiece = (piece: number, owner: number) => {
   // Only allow selecting if it's my turn
-  if (props.state.turn !== owner) return;
+  const isMyTurn = props.state.players && props.state.players[props.state.turn as 1 | -1] === props.myPlayerId;
+  if (!isMyTurn || props.state.turn !== owner) return;
   
   if (selectedHandPiece.value?.piece === piece && selectedHandPiece.value?.owner === owner) {
     selectedHandPiece.value = null;

@@ -95,9 +95,9 @@ watch(() => props.state, (newState) => {
 
 // Three.js 側からのアクション（クリック）を受け取る
 const handleActionFromUI = (action: ShogiAction, canPromote: boolean) => {
-  // 観戦者ガード
-  const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
-  if (!isPlayer) return;
+  // 観戦者ガード & 手番ガード
+  const isMyTurn = props.state.players && props.state.players[props.state.turn as 1 | -1] === props.myPlayerId;
+  if (!isMyTurn) return;
 
   if (action.type === 'MOVE' && canPromote) {
     // 成れる移動の場合、ダイアログを表示して待機
