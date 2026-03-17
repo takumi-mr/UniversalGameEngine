@@ -90,6 +90,10 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
         this.socket.disconnect();
     }
 
+    public leaveGame(gameId: string): void {
+        this.socket.emit('leave-game', gameId);
+    }
+
     public sendAction(action: TAction): void {
         if (!this.gameId) return;
         // 汎用エンジンに合わせ、特定のゲームに依存しない汎用的なイベント名を使用

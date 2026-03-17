@@ -152,6 +152,33 @@ export const setupSocketIO = (io: Server) => {
             updatePresence(gameId);
         });
 
+        // ルームからの退出
+        socket.on('leave-game', async (gameId: string) => {
+            console.log(`User ${userId} requested to leave game ${gameId}`);
+            const session = sessions.get(gameId);
+            if (session) {
+                const state = session.server.engine.getState();
+                if (state.players) {
+                    // プレイヤーとして割り当てられていた場合、スロットをクリアする
+                    let updated = false;
+                    for (const [key, val] of Object.entries(state.players)) {
+                        if (val === userId) {
+                            state.players[key] = null;
+                            updated = true;
+                            console.log(`Cleared slot "${key}" for user ${userId} in game ${gameId}`);
+                        }
+                    }
+                    if (updated) {
+                        await repo.save(gameId, state, false);
+                        session.server.broadcastState();
+                    }
+                }
+            }
+            socket.leave(gameId);
+            socket.leave(`${gameId}:players`);
+            updatePresence(gameId);
+        });
+
         // チャットメッセージの送信
         socket.on('send-chat', async ({ gameId, message, channel, recipientId }) => {
             if (!message || typeof message !== 'string') return;

@@ -69,7 +69,7 @@
     <div class="sidebar">
       <div class="sidebar-panel">
         <div class="sidebar-title">Controls</div>
-        <button class="back-btn" @click="$emit('back')">← 選択画面へ戻る</button>
+        <button class="back-btn" @click="goBack">← 選択画面へ戻る</button>
         <button class="new-game-btn" @click="createNewGame">🆕 New Game</button>
       </div>
 
@@ -129,7 +129,7 @@ import { useRouter } from 'vue-router';
 import { SocketIoClient } from '../network/SocketIoClient';
 import ChatPanel from './game/ChatPanel.vue';
 import { availableGames } from '../constants/games';
-import type { BaseGameState, BaseGameAction } from '@engine/shared/UniversalEngine';
+import type { BaseGameState, BaseGameAction } from '@engine/shared/GameRules';
 
 // 各ゲームの型をインポート
 import type { TicTacToeState, TicTacToeAction } from '@engine/shared/rules/TicTacToeRuleset';
@@ -157,7 +157,7 @@ const props = defineProps<{
   spectate?: boolean;
 }>();
 
-defineEmits<{ (e: 'back'): void }>();
+const emit = defineEmits<{ (e: 'back'): void }>();
 
 const API_BASE = 'http://127.0.0.1:3000';
 
@@ -278,6 +278,13 @@ async function createNewGame() {
     errorMsg.value = 'Failed to create game';
     connectionStatus.value = 'Error';
   }
+}
+
+function goBack() {
+  if (client && props.roomId) {
+    client.leaveGame(props.roomId);
+  }
+  emit('back');
 }
 
 function onGameAction(action: GameAction) {

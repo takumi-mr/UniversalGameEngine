@@ -259,12 +259,13 @@ const createNewRoom = async () => {
     const gameOptions = hookFn ? await hookFn() : undefined;
 
     const token = localStorage.getItem('game_token') || '';
-    const client = new SocketIoClient(API_BASE, token);
-    const id = await client.createGame({
-      type: gameType.value.toUpperCase().replace(/-/g, '_'),
-      gameOptions,
-    });
-    router.push(`/game/${gameType.value}/${id}`);
+      const client = new SocketIoClient(API_BASE, token);
+      const id = await client.createGame({
+        type: gameType.value.toUpperCase().replace(/-/g, '_'),
+        gameOptions,
+      });
+      client.disconnect(); // 別のビューへ遷移するため、一時的な接続は解除する
+      router.push(`/game/${gameType.value}/${id}`);
   } catch (err) {
     console.error('Failed to create room:', err);
   } finally {
