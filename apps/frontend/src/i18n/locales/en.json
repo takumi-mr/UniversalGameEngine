@@ -353,6 +353,8 @@
       "name": "Mahjong",
       "description": "Authentic 4-player Mahjong experience.",
       "rules": "A traditional game where 4 players draw and discard tiles to complete a winning hand.",
+      "waiting_players": "Waiting for Players",
+      "empty_slot": "Empty Slot",
       "round": "{wind} {round}",
       "dora": "Dora",
       "remaining_tiles": "Left",
@@ -371,7 +373,8 @@
         "KAN": "Kan",
         "RON": "Ron",
         "TSUMO": "Tsumo",
-        "PASS": "Pass"
+        "PASS": "Pass",
+        "START": "Start Game"
       },
       "tabs": {
         "summary": {

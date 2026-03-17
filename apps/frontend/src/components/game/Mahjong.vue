@@ -1,95 +1,89 @@
 <template>
   <div class="mahjong-view" v-if="state">
-    <!-- Game Info Overlay -->
-    <div class="game-info-overlay">
-      <div class="round-indicator">
-        {{ $t('games.mahjong.round', { wind: $t(`games.mahjong.winds.${state.wind}`), round: state.round }) }}
-      </div>
-      <div class="dora-box">
-        <span class="dora-label">{{ $t('games.mahjong.dora') }}:</span>
-        <MahjongTile 
-          v-for="(tile, i) in state.doraIndicators" 
-          :key="'dora-'+i" 
-          :tile="tile" 
-          size="small"
-        />
-      </div>
-      <div class="wall-count">
-        🀫 {{ $t('games.mahjong.remaining_tiles') }}: {{ state.wall.length }}
-      </div>
-    </div>
-
     <!-- The Table -->
-    <div class="mahjong-table">
-      <!-- Top: Opponent (Across) -->
-      <div class="player-position top">
-        <div class="discards-grid">
-          <MahjongTile v-for="(tile, i) in discardsAcross" :key="'da-'+i" :tile="tile" />
-        </div>
-        <div class="hand-row opponent-hand">
-          <MahjongTile v-for="i in handCountAcross" :key="'ha-'+i" tile="?" hidden />
-        </div>
-        <div class="melds-row">
-          <MahjongTile v-for="(m, i) in meldsAcross" :key="'ma-'+i" :tile="m.tile" horizontal />
-        </div>
-      </div>
-
-      <!-- Left: Opponent (Kami-cha) -->
-      <div class="player-position left">
-        <div class="discards-grid">
-          <MahjongTile v-for="(tile, i) in discardsLeft" :key="'dl-'+i" :tile="tile" />
-        </div>
-        <div class="hand-row opponent-hand vertical">
-          <MahjongTile v-for="i in handCountLeft" :key="'hl-'+i" tile="?" hidden />
-        </div>
-        <div class="melds-row">
-          <MahjongTile v-for="(m, i) in meldsLeft" :key="'ml-'+i" :tile="m.tile" horizontal />
-        </div>
-      </div>
-
-      <!-- Right: Opponent (Shimo-cha) -->
-      <div class="player-position right">
-        <div class="discards-grid">
-          <MahjongTile v-for="(tile, i) in discardsRight" :key="'dr-'+i" :tile="tile" />
-        </div>
-        <div class="hand-row opponent-hand vertical">
-          <MahjongTile v-for="i in handCountRight" :key="'hr-'+i" tile="?" hidden />
-        </div>
-        <div class="melds-row">
-          <MahjongTile v-for="(m, i) in meldsRight" :key="'mr-'+i" :tile="m.tile" horizontal />
-        </div>
-      </div>
-
-      <!-- Bottom: Me (Jibun) -->
-      <div class="player-position bottom" :class="{ 'is-active': isMyTurn }">
-        <div class="discards-grid">
-          <MahjongTile v-for="(tile, i) in discardsMe" :key="'dm-'+i" :tile="tile" />
-        </div>
-        
-        <div class="actions-bar" v-if="availableActions.length > 0">
-          <v-btn 
-            v-for="action in availableActions" 
-            :key="action.type + (action.meldType || '')"
-            variant="elevated"
-            :color="getActionColor(action.type)"
-            class="action-btn"
-            @click="emitAction(action)"
-          >
-            {{ getActionLabel(action) }}
-          </v-btn>
+    <div class="mahjong-table-container">
+      <div class="mahjong-table">
+        <!-- Center Info Area -->
+        <div class="center-info">
+          <div class="round-indicator">
+            {{ $t('games.mahjong.round', { wind: $t(`games.mahjong.winds.${state.wind}`), round: state.round }) }}
+          </div>
+          <div class="dora-box">
+            <span class="dora-label">{{ $t('games.mahjong.dora') }}:</span>
+            <MahjongTile 
+              v-for="(tile, i) in state.doraIndicators" 
+              :key="'dora-'+i" 
+              :tile="tile" 
+              size="small"
+            />
+          </div>
+          <div class="wall-count">
+            🀫 {{ state.wall.length }}
+          </div>
         </div>
 
-        <div class="hand-row my-hand">
-          <MahjongTile 
-            v-for="(tile, i) in myHand" 
-            :key="'hm-'+i" 
-            :tile="tile" 
-            :clickable="isMyTurn && state.status === 'PLAYING'"
-            @click="handleTileClick(tile)"
-          />
+        <!-- Top: Opponent (Across) -->
+        <div class="player-area top">
+          <div class="player-label">{{ pIdAcross || '?' }}</div>
+          <div class="discards-grid">
+            <MahjongTile v-for="(tile, i) in discardsAcross" :key="'da-'+i" :tile="tile" />
+          </div>
+          <div class="hand-row">
+            <MahjongTile v-for="i in handCountAcross" :key="'ha-'+i" tile="?" hidden />
+          </div>
         </div>
-        <div class="melds-row">
-          <MahjongTile v-for="(m, i) in meldsMe" :key="'mm-'+i" :tile="m.tile" horizontal />
+
+        <!-- Left: Opponent (Kami-cha) -->
+        <div class="player-area left">
+          <div class="player-label">{{ pIdLeft || '?' }}</div>
+          <div class="discards-grid">
+            <MahjongTile v-for="(tile, i) in discardsLeft" :key="'dl-'+i" :tile="tile" />
+          </div>
+          <div class="hand-row">
+            <MahjongTile v-for="i in handCountLeft" :key="'hl-'+i" tile="?" hidden />
+          </div>
+        </div>
+
+        <!-- Right: Opponent (Shimo-cha) -->
+        <div class="player-area right">
+          <div class="player-label">{{ pIdRight || '?' }}</div>
+          <div class="discards-grid">
+            <MahjongTile v-for="(tile, i) in discardsRight" :key="'dr-'+i" :tile="tile" />
+          </div>
+          <div class="hand-row">
+            <MahjongTile v-for="i in handCountRight" :key="'hr-'+i" tile="?" hidden />
+          </div>
+        </div>
+
+        <!-- Bottom: Me (Jibun) -->
+        <div class="player-area bottom" :class="{ 'is-active': isMyTurn }">
+          <div class="player-label">{{ myPlayerId }}</div>
+          <div class="discards-grid">
+            <MahjongTile v-for="(tile, i) in discardsMe" :key="'dm-'+i" :tile="tile" />
+          </div>
+          
+          <div class="actions-bar" v-if="availableActions.length > 0">
+            <v-btn 
+              v-for="action in availableActions" 
+              :key="action.type + (action.meldType || '')"
+              variant="elevated"
+              :color="getActionColor(action.type)"
+              class="action-btn"
+              @click="emitAction(action)"
+            >
+              {{ getActionLabel(action) }}
+            </v-btn>
+          </div>
+
+          <div class="hand-row my-hand">
+            <MahjongTile 
+              v-for="(tile, i) in myHand" 
+              :key="'hm-'+i" 
+              :tile="tile" 
+              :clickable="isMyTurn && state.status === 'PLAYING'"
+              @click="handleTileClick(tile)"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -109,61 +103,98 @@
         </div>
       </div>
     </div>
+
+    <!-- Start Game Overlay -->
+    <div v-if="showStartOverlay" class="start-overlay">
+      <div class="start-card">
+        <h2>{{ $t('games.mahjong.waiting_players') }}</h2>
+        <div class="player-slots">
+          <div v-for="i in 4" :key="i - 1" class="slot" :class="{ 'filled': playerAtSlot(i - 1) }">
+            {{ playerAtSlot(i - 1) || $t('games.mahjong.empty_slot') }}
+          </div>
+        </div>
+        <v-btn 
+          v-if="canStart"
+          color="primary" 
+          size="large" 
+          @click="emitAction({ type: 'START', playerId: myPlayerId })"
+        >
+          {{ $t('games.mahjong.actions.START') }}
+        </v-btn>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { MahjongState, MahjongAction } from '@engine/shared/rules/mahjong/MahjongRuleset';
 import MahjongTile from './MahjongTile.vue';
-import { useI18n } from 'vue-i18n';
 
 const { t: $t } = useI18n();
 
 const props = defineProps<{
   state: MahjongState;
-  myPlayerId?: string;
+  myPlayerId: string;
 }>();
 
 const emit = defineEmits<{ (e: 'action', action: MahjongAction): void }>();
 
 // --- Helpers ---
-const playerIndexMe = computed(() => props.state.playerIds.indexOf(props.myPlayerId || ''));
+const playerIndexMe = computed(() => {
+  if (!props.myPlayerId) return 0;
+  const idx = props.state.playerIds.indexOf(props.myPlayerId);
+  return idx === -1 ? 0 : idx;
+});
 const isMyTurn = computed(() => props.state.activePlayers?.includes(props.myPlayerId || ''));
 
 const getPlayerAtOffset = (offset: number) => {
+  if (props.state.playerIds.length < 4) return '';
   const idx = (playerIndexMe.value + offset) % 4;
   return props.state.playerIds[idx];
 };
 
+const playerAtSlot = (i: number) => {
+  return props.state.players?.[i];
+};
+
+const isUninitialized = computed(() => {
+  return props.state.status === 'PLAYING' && Object.keys(props.state.hands || {}).length === 0;
+});
+
+const showStartOverlay = computed(() => {
+  return props.state.status === 'WAITING' || isUninitialized.value;
+});
+
+const canStart = computed(() => {
+  const players = props.state.players || {};
+  const joinedCount = Object.values(players).filter(p => p !== null).length;
+  return joinedCount === 4 && showStartOverlay.value;
+});
+
 // Data for each position
 const myHand = computed(() => props.state.hands[props.myPlayerId || ''] || []);
 const discardsMe = computed(() => props.state.discards[props.myPlayerId || ''] || []);
-const meldsMe = computed(() => props.state.melds[props.myPlayerId || ''] || []);
 
 const pIdAcross = computed(() => getPlayerAtOffset(2));
 const discardsAcross = computed(() => props.state.discards[pIdAcross.value] || []);
 const handCountAcross = computed(() => props.state.hands[pIdAcross.value]?.length || 0);
-const meldsAcross = computed(() => props.state.melds[pIdAcross.value] || []);
 
 const pIdLeft = computed(() => getPlayerAtOffset(3));
 const discardsLeft = computed(() => props.state.discards[pIdLeft.value] || []);
 const handCountLeft = computed(() => props.state.hands[pIdLeft.value]?.length || 0);
-const meldsLeft = computed(() => props.state.melds[pIdLeft.value] || []);
 
 const pIdRight = computed(() => getPlayerAtOffset(1));
 const discardsRight = computed(() => props.state.discards[pIdRight.value] || []);
 const handCountRight = computed(() => props.state.hands[pIdRight.value]?.length || 0);
-const meldsRight = computed(() => props.state.melds[pIdRight.value] || []);
 
 // Actions
 const availableActions = computed(() => {
   if (!props.myPlayerId) return [];
-  // Normally we'd use getLegalActions from ruleset, but here we can simulate/filter
   const actions: MahjongAction[] = [];
   
   if (props.state.pendingDiscard && props.state.pendingDiscard.playerId !== props.myPlayerId) {
-    // Interruption phase
     const hasActed = props.state.pendingDiscard.pendingActions.some(a => a.playerId === props.myPlayerId);
     if (!hasActed) {
       actions.push({ type: 'PASS', playerId: props.myPlayerId });
@@ -172,7 +203,6 @@ const availableActions = computed(() => {
       actions.push({ type: 'CALL', meldType: 'CHI', tile: props.state.pendingDiscard.tile, playerId: props.myPlayerId });
     }
   } else if (isMyTurn.value) {
-    // Tsmo phase
     const hand = myHand.value;
     if (hand.length === 13) {
       actions.push({ type: 'DRAW', playerId: props.myPlayerId });
@@ -209,88 +239,115 @@ const getActionColor = (type: string) => {
 .mahjong-view {
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle, #2e7d32 0%, #1b5e20 100%);
+  background-color: #1a1a1a;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  overflow: hidden;
+  overflow: auto; /* Allow scrolling if table is larger than window */
   color: white;
+  padding: 40px;
+}
+
+.mahjong-table-container {
+  width: 800px;
+  height: 800px;
+  background-color: #2e7d32;
+  border: 12px solid #5d4037;
+  border-radius: 12px;
+  box-shadow: 0 0 50px rgba(0,0,0,0.6);
+  position: relative;
+  flex-shrink: 0; /* Prevent from shrinking in the flex container */
 }
 
 .mahjong-table {
-  width: 90%;
-  height: 90%;
+  width: 100%;
+  height: 100%;
   position: relative;
-  border: 15px solid #5d4037;
-  border-radius: 20px;
-  background-color: #1b5e20;
 }
 
-.player-position {
+/* Center Area */
+.center-info {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 180px;
+  height: 180px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border: 2px solid rgba(255,255,255,0.1);
+}
+
+.round-indicator {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.dora-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.player-area {
   position: absolute;
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: box-shadow 0.3s ease;
 }
 
-.player-position.is-active {
-  box-shadow: 0 0 20px rgba(255, 255, 0, 0.3);
-}
+.bottom { bottom: 10px; left: 50%; transform: translateX(-50%); }
+.top    { top: 10px; left: 50%; transform: translateX(-50%) rotate(180deg); }
+.left   { left: 60px; top: 50%; transform: translate(-50%, -50%) rotate(90deg); }
+.right  { right: 60px; top: 50%; transform: translate(50%, -50%) rotate(-90deg); }
 
-.bottom { bottom: 10px; left: 50%; transform: translateX(-50%); width: 100%; }
-.top    { top: 10px; left: 50%; transform: translateX(-50%) rotate(180deg); width: 100%; }
-.left   { left: 10px; top: 50%; transform: translateY(-50%) rotate(90deg); width: 100%; }
-.right  { right: 10px; top: 50%; transform: translateY(-50%) rotate(-90deg); width: 100%; }
+.player-label {
+  background: rgba(0,0,0,0.7);
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
 
 .hand-row {
   display: flex;
   justify-content: center;
   gap: 2px;
+  z-index: 2;
 }
 
 .discards-grid {
   display: grid;
-  grid-template-columns: repeat(6, 40px);
-  grid-auto-rows: 54px;
-  gap: 2px;
-  margin-bottom: 10px;
-  justify-content: center;
+  grid-template-columns: repeat(6, 32px);
+  grid-auto-rows: 44px;
+  gap: 1px;
+  margin-bottom: 8px;
+  z-index: 1;
+  background: rgba(255,255,255,0.05);
+  padding: 4px;
+  border-radius: 4px;
 }
 
-/* Info Overlay */
-.game-info-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 5;
-  background: rgba(0,0,0,0.5);
-  padding: 10px 20px;
-  border-radius: 8px;
-  text-align: center;
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255,255,255,0.1);
+.left .discards-grid, .right .discards-grid {
+  grid-template-columns: repeat(3, 32px);
 }
 
-.round-indicator { font-size: 1.5rem; font-weight: bold; margin-bottom: 8px; }
-.wall-count { font-size: 0.9rem; opacity: 0.8; }
-.dora-box { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
-
-/* Actions */
 .actions-bar {
-  position: absolute;
-  top: -60px;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
-  gap: 12px;
-  z-index: 10;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
-/* Result Card */
-.result-overlay {
+.result-overlay, .start-overlay {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,0.8);
@@ -300,18 +357,36 @@ const getActionColor = (type: string) => {
   z-index: 100;
 }
 
-.result-card {
+.result-card, .start-card {
   background: white;
   color: #333;
-  padding: 32px;
-  border-radius: 16px;
-  min-width: 320px;
+  padding: 30px;
+  border-radius: 12px;
   text-align: center;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  min-width: 320px;
 }
 
-.scores-list { margin-top: 20px; text-align: left; }
-.score-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
-.score.positive { color: #2e7d32; font-weight: bold; }
-.score.negative { color: #c62828; }
+.player-slots {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.slot {
+  padding: 10px;
+  border: 2px dashed #ccc;
+  border-radius: 6px;
+  color: #666;
+}
+
+.slot.filled {
+  border-style: solid;
+  border-color: #2e7d32;
+  color: #2e7d32;
+  font-weight: bold;
+}
+
+.scores-list { margin-top: 15px; text-align: left; }
+.score-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
 </style>

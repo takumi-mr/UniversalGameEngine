@@ -27,6 +27,7 @@ const props = defineProps<{
   hidden?: boolean;
   horizontal?: boolean;
   clickable?: boolean;
+  size?: 'normal' | 'small';
 }>();
 
 // Unicode Mahjong Tiles: U+1F000 to U+1F02B
@@ -74,6 +75,16 @@ const colorClass = computed(() => {
   height: 48px;
   transform: rotate(-90deg);
   margin: 10px -6px; /* Adjust for rotation */
+}
+
+/* Small size variant */
+.mahjong-tile[size="small"] {
+  width: 32px;
+  height: 44px;
+}
+.mahjong-tile[size="small"].is-horizontal {
+  width: 44px;
+  height: 32px;
 }
 
 .mahjong-tile.is-clickable {
@@ -124,6 +135,8 @@ const colorClass = computed(() => {
 .tile-char {
   font-size: 3rem;
   line-height: 1;
+  font-family: serif; /* Better for Unicode tiles */
+  text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.2);
 }
 
 /* Colors based on traditional Mahjong sets */
@@ -133,8 +146,8 @@ const colorClass = computed(() => {
 .color-hatsu { color: #2e7d32; } /* Green Dragon */
 .color-chun { color: #c62828; }  /* Red Dragon */
 
-/* Adjust font size for horizontal tiles */
-.is-horizontal .tile-char {
-  font-size: 2.5rem;
-}
+/* Adjust font sizes */
+.is-horizontal .tile-char { font-size: 2.5rem; }
+[size="small"] .tile-char { font-size: 2rem; }
+[size="small"].is-horizontal .tile-char { font-size: 1.8rem; }
 </style>

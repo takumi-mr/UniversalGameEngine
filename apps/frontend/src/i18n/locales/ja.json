@@ -353,6 +353,8 @@
       "name": "麻雀",
       "description": "本格的な四人麻雀。",
       "rules": "4人で牌を引き合い、特定の役を揃える伝統的なゲームです。",
+      "waiting_players": "対局準備中",
+      "empty_slot": "空き",
       "round": "{wind}{round}局",
       "dora": "ドラ",
       "remaining_tiles": "残り",
@@ -371,7 +373,8 @@
         "KAN": "カン",
         "RON": "ロン",
         "TSUMO": "ツモアガリ",
-        "PASS": "パス"
+        "PASS": "パス",
+        "START": "対局開始"
       },
       "tabs": {
         "summary": {
