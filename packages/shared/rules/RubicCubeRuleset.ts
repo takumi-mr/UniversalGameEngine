@@ -9,11 +9,9 @@ export interface RubiksState extends BaseGameState {
     moveCount: number;
 }
 
-export interface RubiksAction extends BaseGameAction {
-    type: 'ROTATE';
-    face: FaceName;
-    direction: 1 | -1; // 1: 時計回り(CW), -1: 反時計回り(CCW)
-}
+export type RubiksAction = 
+    | { type: 'ROTATE'; face: FaceName; direction: 1 | -1; playerId?: string }
+    | { type: 'RESET'; playerId?: string };
 
 // 初期状態の生成（揃った状態）
 const createSolvedFaces = (): Record<FaceName, Color[][]> => {
@@ -53,21 +51,43 @@ type EdgeDef = { face: FaceName; type: 'row' | 'col'; index: number; reverse: bo
 
 const ADJACENCY_MAP: Record<FaceName, EdgeDef[]> = {
     // F(Front)を時計回りに回すと、Uの「下」、Rの「左」、Dの「上」、Lの「右」が影響を受ける
+    // D(Down), B(Back), L(Left), R(Right) も含めた完全な定義
     F: [
         { face: 'U', type: 'row', index: 2, reverse: false },
         { face: 'R', type: 'col', index: 0, reverse: false },
-        { face: 'D', type: 'row', index: 0, reverse: true }, // 下に折り返すので逆順
+        { face: 'D', type: 'row', index: 0, reverse: true },
         { face: 'L', type: 'col', index: 2, reverse: true }
     ],
-    // ※他の面も同様に展開図の折り紙を想像しながら定義します（簡略化のためFとUのみ記載）
     U: [
         { face: 'B', type: 'row', index: 0, reverse: true },
         { face: 'R', type: 'row', index: 0, reverse: false },
         { face: 'F', type: 'row', index: 0, reverse: false },
         { face: 'L', type: 'row', index: 0, reverse: false }
     ],
-    D: [ /* ... Fのrow 2, Rのrow 2, Bのrow 2, Lのrow 2 ... */] as any,
-    B: [ /* ... */] as any, L: [ /* ... */] as any, R: [ /* ... */] as any,
+    D: [
+        { face: 'F', type: 'row', index: 2, reverse: false },
+        { face: 'R', type: 'row', index: 2, reverse: false },
+        { face: 'B', type: 'row', index: 2, reverse: true },
+        { face: 'L', type: 'row', index: 2, reverse: false }
+    ],
+    B: [
+        { face: 'U', type: 'row', index: 0, reverse: true },
+        { face: 'L', type: 'col', index: 0, reverse: false },
+        { face: 'D', type: 'row', index: 2, reverse: false },
+        { face: 'R', type: 'col', index: 2, reverse: true }
+    ],
+    L: [
+        { face: 'U', type: 'col', index: 0, reverse: false },
+        { face: 'F', type: 'col', index: 0, reverse: false },
+        { face: 'D', type: 'col', index: 0, reverse: false },
+        { face: 'B', type: 'col', index: 2, reverse: true }
+    ],
+    R: [
+        { face: 'U', type: 'col', index: 2, reverse: true },
+        { face: 'B', type: 'col', index: 0, reverse: false },
+        { face: 'D', type: 'col', index: 2, reverse: true },
+        { face: 'F', type: 'col', index: 2, reverse: false }
+    ],
 };
 
 // 辺の抽出関数
@@ -95,13 +115,15 @@ function setEdge(state: RubiksState, def: EdgeDef, colors: Color[]) {
 
 export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction> = {
     getInitialState: (): RubiksState => ({
-        status: 'WAITING',
+        status: 'PLAYING',
         faces: createSolvedFaces(),
         moveCount: 0,
         players: { '1': null }
     }),
 
     isValidAction: (state, action) => {
+        if (action.type === 'RESET') return true; // RESETはいつでも可能
+        
         if (state.status !== 'PLAYING') return false;
         if (action.type !== 'ROTATE') return false;
         if (!['U', 'D', 'F', 'B', 'L', 'R'].includes(action.face)) return false;
@@ -110,7 +132,14 @@ export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction> = {
     },
 
     reduce: (state, action) => {
-        // 1. ディープコピーして不変性を維持（Bun環境なら structuredClone が最速）
+        if (action.type === 'RESET') {
+            return {
+                ...RubiksRuleset.getInitialState(),
+                players: state.players // プレイヤー割り当ては引き継ぐ
+            };
+        }
+
+        // 1. ディープコピーして不変性を維持
         const newState = structuredClone(state);
 
         // 2. 指定された面（3x3の行列）自体の回転

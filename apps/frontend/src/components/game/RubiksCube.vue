@@ -7,13 +7,13 @@
         <div class="logo">🟥 Rubik's Cube</div>
         <div class="move-counter">
           <span class="label">Moves</span>
-          <span class="value">{{ gameState?.moveCount ?? 0 }}</span>
+          <span class="value">{{ state?.moveCount ?? 0 }}</span>
         </div>
         <div class="timer-block">
           <span class="label">Time</span>
           <span class="value">{{ formattedTime }}</span>
         </div>
-        <div v-if="gameState?.status === 'FINISHED'" class="solved-badge">
+        <div v-if="state?.status === 'FINISHED'" class="solved-badge">
           🎉 Solved!
         </div>
         <div class="actions">
@@ -52,9 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { UniversalEngine } from '@engine/shared/UniversalEngine';
-import { RubiksRuleset } from '@engine/shared/rules/RubicCubeRuleset';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import type { RubiksState, RubiksAction, FaceName } from '@engine/shared/rules/RubicCubeRuleset';
 import { RubiksCubeUI } from '../../three/RubiksCubeUI';
 
@@ -63,15 +61,16 @@ const props = defineProps<{
   myPlayerId?: string
 }>();
 
+const emit = defineEmits<{ (e: 'action', action: RubiksAction): void }>();
+
 const FACES: FaceName[] = ['U', 'D', 'F', 'B', 'R', 'L'];
 
 // --- State ---
 const canvasContainer = ref<HTMLElement | null>(null);
-const gameState      = ref<RubiksState | null>(null);
 const elapsed        = ref(0);
 const isScrambling   = ref(false);
 
-let engine: UniversalEngine<RubiksState, RubiksAction>;
+// let engine: UniversalEngine<RubiksState, RubiksAction>; // サーバーとの同期に移行
 let threeUI: RubiksCubeUI | null = null;
 let timerInterval: ReturnType<typeof setInterval> | null = null;
 let startTime = 0;
@@ -91,24 +90,10 @@ const formattedTime = computed(() => {
 });
 
 // --- Engine & rendering ---
-function syncState() {
-  gameState.value = engine.getState();
-  threeUI?.renderState(gameState.value);
-
-  if (gameState.value.status === 'FINISHED') {
-    stopTimer();
-  }
-}
-
 function sendRotate(face: FaceName, direction: 1 | -1) {
   if (!isPlayer.value) return;
   const action: RubiksAction = { type: 'ROTATE', face, direction };
-  engine.dispatch(action);
-
-  // タイマー開始 (初手のみ)
-  if (gameState.value?.moveCount === 0) startTimer();
-
-  syncState();
+  emit('action', action);
 }
 
 // --- Timer ---
@@ -130,53 +115,61 @@ function stopTimer() {
 // --- Game control ---
 function reset() {
   if (!isPlayer.value) return;
-  engine = new UniversalEngine(RubiksRuleset);
-  stopTimer();
-  elapsed.value = 0;
-  syncState();
+  emit('action', { type: 'RESET' });
 }
 
 async function scramble() {
   if (!isPlayer.value) return;
-  reset();
+  emit('action', { type: 'RESET' });
   isScrambling.value = true;
 
-  const MOVE_COUNT = 25;
+  const MOVE_COUNT = 20;
   const faces: FaceName[] = ['U', 'D', 'F', 'B', 'R', 'L'];
   const dirs: (1 | -1)[] = [1, -1];
 
   for (let i = 0; i < MOVE_COUNT; i++) {
     const face = faces[Math.floor(Math.random() * faces.length)];
     const direction = dirs[Math.floor(Math.random() * dirs.length)];
-    engine.dispatch({ type: 'ROTATE', face, direction });
+    emit('action', { type: 'ROTATE', face, direction });
 
-    // 少し間を置いてアニメーション的に見せる
-    await new Promise(r => setTimeout(r, 25));
-    syncState();
+    await new Promise(r => setTimeout(r, 100));
   }
 
-  // スクランブル後はムーブカウントをリセット
-  elapsed.value = 0;
   isScrambling.value = false;
-  syncState();
 }
 
 // --- Lifecycle ---
 onMounted(() => {
-  engine = new UniversalEngine(RubiksRuleset);
-
   if (canvasContainer.value) {
     threeUI = new RubiksCubeUI(canvasContainer.value, (action) => {
-      if (gameState.value?.status !== 'PLAYING') return;
-      if (!isPlayer.value) return; // 観戦者ガード
-      engine.dispatch(action);
-      if (gameState.value.moveCount === 0) startTimer();
-      syncState();
+      if (props.state?.status !== 'PLAYING') return;
+      if (!isPlayer.value) return;
+      emit('action', action);
     });
   }
 
-  syncState();
+  if (props.state) {
+    threeUI?.renderState(props.state);
+  }
 });
+
+watch(() => props.state, (newState) => {
+  if (threeUI && newState) {
+    threeUI.renderState(newState);
+    
+    // Timer Control Logic
+    if (newState.status === 'PLAYING') {
+      if (newState.moveCount > 0 && !timerInterval && !isScrambling.value) {
+        startTimer();
+      } else if (newState.moveCount === 0) {
+        elapsed.value = 0;
+        stopTimer();
+      }
+    } else if (newState.status === 'FINISHED') {
+      stopTimer();
+    }
+  }
+}, { deep: true });
 
 onUnmounted(() => {
   stopTimer();

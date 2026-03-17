@@ -232,7 +232,7 @@ export const setupSocketIO = (io: Server) => {
             if (!session) return;
 
             const currentState = session.server.engine.getState();
-            if (currentState.status !== 'PLAYING' && action.type !== 'JOIN') {
+            if (currentState.status !== 'PLAYING' && action.type !== 'JOIN' && action.type !== 'RESET') {
                 console.warn(`[Blocked] Action ${action.type} for game ${gameId} blocked - status is ${currentState.status}`);
                 socket.emit('error-message', 'Game is not in PLAYING status');
                 return;

@@ -76,7 +76,8 @@ export class RubiksCubeUI {
         this.container = container;
         this.onAction = onActionCallback;
         
-        this.onClick = this.onClick.bind(this);
+        this.onPointerDown = this.onPointerDown.bind(this);
+        this.onPointerUp = this.onPointerUp.bind(this);
         this.onMouseMove = this.onMouseMove.bind(this);
         this.onResize = this.onResize.bind(this);
         
@@ -116,8 +117,9 @@ export class RubiksCubeUI {
         dir2.position.set(-8, -5, -8);
         this.scene.add(dir2);
 
-        window.addEventListener('click', this.onClick);
-        window.addEventListener('mousemove', this.onMouseMove);
+        this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
+        this.renderer.domElement.addEventListener('pointerup', this.onPointerUp);
+        this.renderer.domElement.addEventListener('pointermove', this.onMouseMove);
         window.addEventListener('resize', this.onResize);
 
         this.animate();
@@ -238,7 +240,17 @@ export class RubiksCubeUI {
         }
     }
 
-    private onClick(event: MouseEvent) {
+    private pointerDownPos = new THREE.Vector2();
+
+    private onPointerDown(event: PointerEvent) {
+        this.pointerDownPos.set(event.clientX, event.clientY);
+    }
+
+    private onPointerUp(event: PointerEvent) {
+        // ドラッグ（視点回転）とクリックを区別する
+        const dragDist = Math.hypot(event.clientX - this.pointerDownPos.x, event.clientY - this.pointerDownPos.y);
+        if (dragDist > 5) return; // 5px以上動いたらドラッグとみなす
+
         const rect = this.renderer.domElement.getBoundingClientRect();
         this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -273,8 +285,9 @@ export class RubiksCubeUI {
         if (this.animationId !== null) {
             cancelAnimationFrame(this.animationId);
         }
-        window.removeEventListener('click', this.onClick);
-        window.removeEventListener('mousemove', this.onMouseMove);
+        this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDown);
+        this.renderer.domElement.removeEventListener('pointerup', this.onPointerUp);
+        this.renderer.domElement.removeEventListener('pointermove', this.onMouseMove);
         window.removeEventListener('resize', this.onResize);
         
         this.renderer.dispose();
