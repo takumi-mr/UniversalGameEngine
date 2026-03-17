@@ -224,12 +224,17 @@ export const setupSocketIO = (io: Server) => {
         });
 
         socket.on('disconnecting', () => {
-            // 切断直前に所属していた全ルームに対して更新をかける
-            for (const room of socket.rooms) {
-                if (sessions.has(room)) {
-                    process.nextTick(() => updatePresence(room));
+            // 切断直前に所属していた全ルームを取得
+            const rooms = Array.from(socket.rooms);
+            
+            socket.on('disconnect', () => {
+                // 完全に切断（ルームから退出）した後に、各ルームの人数を更新する
+                for (const room of rooms) {
+                    if (sessions.has(room)) {
+                        updatePresence(room);
+                    }
                 }
-            }
+            });
             console.log(`User disconnecting: ${socket.id} (User ID: ${userId})`);
         });
 
