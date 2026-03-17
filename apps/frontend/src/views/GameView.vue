@@ -33,6 +33,7 @@
         :game-name="gameInfo?.name ?? gameType"
         :auth-token="authToken"
         :room-id="roomId"
+        :spectate="spectate"
         @back="back"
       />
     </v-main>
@@ -66,6 +67,7 @@ const router = useRouter();
 
 const gameType = ref(route.params.gameType as string);
 const roomId = ref(route.params.roomId as string);
+const spectate = ref(route.query.spectate === 'true');
 const authToken = ref(localStorage.getItem('game_token') || '');
 const username = ref(localStorage.getItem('game_username') || '');
 

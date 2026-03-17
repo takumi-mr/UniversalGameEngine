@@ -28,7 +28,12 @@
     "your_turn": "あなたの番です！",
     "active_games": "参加中のゲーム",
     "exit_match": "退出",
-    "no_active_games": "現在参加しているゲームはありません"
+    "no_active_games": "現在参加しているゲームはありません",
+    "join_room": "ルームに参加",
+    "choose_join_mode": "プレイするか、観戦するか選んでください。",
+    "join_as_player": "プレイヤーとして参加",
+    "join_as_spectator": "観戦者として参加",
+    "cancel": "キャンセル"
   },
   "games": {
     "tictactoe": {

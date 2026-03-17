@@ -28,7 +28,12 @@
     "your_turn": "It's your turn!",
     "active_games": "Active Games",
     "exit_match": "Exit",
-    "no_active_games": "You have no active games"
+    "no_active_games": "You have no active games",
+    "join_room": "Join Room",
+    "choose_join_mode": "Choose whether to play or spectate.",
+    "join_as_player": "Join as Player",
+    "join_as_spectator": "Join as Spectator",
+    "cancel": "Cancel"
   },
   "games": {
     "tictactoe": {

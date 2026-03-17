@@ -146,6 +146,50 @@
       :game-rules="translatedGameRules"
       :game-description="translatedGameDescription"
     />
+
+    <!-- Join Mode Dialog -->
+    <v-dialog v-model="showJoinDialog" max-width="400">
+      <v-card class="rounded-xl pa-4">
+        <v-card-title class="text-h5 font-weight-bold text-center">
+          {{ $t('common.join_room') }}
+        </v-card-title>
+        <v-card-text class="text-center text-medium-emphasis">
+          {{ $t('common.choose_join_mode') }}
+        </v-card-text>
+        <v-card-actions class="flex-column gap-2 mt-4">
+          <v-btn
+            block
+            color="primary"
+            variant="flat"
+            size="large"
+            class="rounded-lg font-weight-bold"
+            prepend-icon="mdi-controller"
+            @click="confirmJoin(false)"
+          >
+            {{ $t('common.join_as_player') }}
+          </v-btn>
+          <v-btn
+            block
+            color="secondary"
+            variant="tonal"
+            size="large"
+            class="rounded-lg font-weight-bold"
+            prepend-icon="mdi-eye"
+            @click="confirmJoin(true)"
+          >
+            {{ $t('common.join_as_spectator') }}
+          </v-btn>
+          <v-btn
+            block
+            variant="text"
+            class="mt-2"
+            @click="showJoinDialog = false"
+          >
+            {{ $t('common.cancel') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-app>
 </template>
 
@@ -178,6 +222,8 @@ const rooms = ref<any[]>([]);
 const loading = ref(true);
 const creating = ref(false);
 const showHelp = ref(false);
+const showJoinDialog = ref(false);
+const selectedRoomId = ref<string | null>(null);
 
 const gameInfo = computed(() => availableGames.find(g => g.type === gameType.value));
 const gameEmoji = computed(() => gameInfo.value?.emoji || '🎮');
@@ -227,7 +273,17 @@ const createNewRoom = async () => {
 };
 
 const joinRoom = (roomId: string) => {
-  router.push(`/game/${gameType.value}/${roomId}`);
+  selectedRoomId.value = roomId;
+  showJoinDialog.value = true;
+};
+
+const confirmJoin = (asSpectator: boolean) => {
+  if (!selectedRoomId.value) return;
+  router.push({
+    path: `/game/${gameType.value}/${selectedRoomId.value}`,
+    query: asSpectator ? { spectate: 'true' } : {}
+  });
+  showJoinDialog.value = false;
 };
 
 const back = () => {
