@@ -179,4 +179,14 @@ export const availableGames = [
     category: 'Puzzles',
     rules: '6回以内に5文字の英単語を当ててください。入力後、文字の位置が合っていれば緑、文字は含まれるが位置が違えば黄色、含まれていなければ灰色で表示されます。'
   },
+  {
+    type: 'speed',
+    name: 'Speed',
+    description: 'トランプの「スピード」。場札と±1の数字のカードを素早く出せ！',
+    emoji: '⚡',
+    minPlayers: 2,
+    maxPlayers: 2,
+    category: 'Card Games',
+    rules: '台札と数字が1つ違い（A-2-3...K-A）のカードを、手札から場に出します。手札は山札から自動で5枚まで補充されます。先に全て出し切った方の勝ちです。詰まったら「めくる」ボタンで脇の札を台札に移動します。'
+  },
 ];

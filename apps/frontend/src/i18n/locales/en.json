@@ -416,6 +416,28 @@
           "content": "The fewer guesses you take, the better! Think carefully before each entry."
         }
       }
+    },
+    "speed": {
+      "name": "Speed",
+      "description": "The classic card game 'Speed'. Race to play cards with rank ±1!",
+      "rules": "Play cards from your hand to the center piles if the rank is one higher or lower (A-2...K-A). Hand is auto-refilled from the deck. First to empty hand and deck wins. Use the 'Stuck' button to flip new cards if no moves are possible.",
+      "tabs": {
+        "summary": {
+          "label": "What kind of game?",
+          "title": "A high-speed card race!",
+          "content": "A two-player card game where you race to play all your cards. Match the center piles with sequential numbers as fast as you can!"
+        },
+        "rules": {
+          "label": "Rules",
+          "title": "Play ±1 rank cards!",
+          "content": "1. Look at your 5-card hand. You can play a card if it's one rank different from either center pile.\n2. A (Ace) connects to both '2' and 'K' (King).\n3. Your hand automatically replenishes from your personal deck."
+        },
+        "stuck": {
+          "label": "Stuck?",
+          "title": "Click the 'Stuck' button!",
+          "content": "If neither player has a valid move, both should click the 'Stuck' button to flip new cards from the side piles to the center."
+        }
+      }
     }
   },
   "help": {
