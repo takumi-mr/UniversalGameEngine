@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package universal_game_engine;
+
+// 基本的なゲームアクションの表現
+message GameAction {
+    string type = 1;
+    string payload_json = 2; // アクションの詳細データをJSON文字列として保持（汎用性のため）
+}
+
+// ゲーム状態のリクエストとレスポンス
+message CreateGameRequest {
+    string game_type = 1;
+    string options_json = 2;
+}
+
+message CreateGameResponse {
+    string game_id = 1;
+}
+
+message JoinGameRequest {
+    string game_id = 1;
+    bool as_spectator = 2;
+    string user_token = 3;
+}
+
+message DispatchActionRequest {
+    string game_id = 1;
+    GameAction action = 2;
+}
+
+message CommonResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+// サーバーからのゲーム状態ストリーム
+message GameStateUpdate {
+    string state_json = 1;
+    GameMetadata metadata = 2;
+}
+
+message GameMetadata {
+    int32 player_count = 1;
+    int32 spectator_count = 2;
+    repeated string active_players = 3;
+}
+
+// チャットメッセージ
+message ChatMessage {
+    string user_id = 1;
+    string message = 2;
+    string channel = 3;
+    string recipient_id = 4;
+    string timestamp = 5;
+}
+
+service GameService {
+    // 単発のRPC
+    rpc CreateGame(CreateGameRequest) returns (CreateGameResponse);
+    rpc DispatchAction(DispatchActionRequest) returns (CommonResponse);
+    rpc SendChat(ChatMessage) returns (CommonResponse);
+
+    // サーバーからのプッシュ（gRPC-webではサーバーサイドストリーミングを常用）
+    rpc StreamEvents(JoinGameRequest) returns (stream GameEvent);
+}
+
+message GameEvent {
+    oneof event {
+        GameStateUpdate state_update = 1;
+        ChatMessage chat_message = 2;
+        string error_message = 3;
+    }
+}
