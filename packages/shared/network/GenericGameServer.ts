@@ -1,5 +1,6 @@
 // packages/shared/network/GenericGameServer.ts
-import { UniversalEngine, BaseGameState, BaseGameAction } from '../UniversalEngine';
+import { BaseGameState, BaseGameAction } from '../GameRules';
+import { UniversalEngine } from '../UniversalEngine';
 
 /**
  * 汎用的なゲームサーバー（あるいはルーム管理者）の基盤クラス。
@@ -9,7 +10,7 @@ import { UniversalEngine, BaseGameState, BaseGameAction } from '../UniversalEngi
 export class GenericGameServer<TState extends BaseGameState, TAction extends BaseGameAction> {
     public engine: UniversalEngine<TState, TAction>;
     public roomId: string;
-    
+
     // プレイヤーIDと、そのプレイヤーへの通信手段（コールバック等）の管理
     // WebSocketなどの場合はここに接続クライアントの参照を保持する
     private connectionMapping: Map<string, any> = new Map();
@@ -98,7 +99,7 @@ export class GenericGameServer<TState extends BaseGameState, TAction extends Bas
     // 観戦者全体にメッセージを送信する処理
     private sendToSpectators(payload: any) {
         // 例: broadcast to all non-player connections
-         console.log(`[GenericGameServer] 観戦者に状態を送信`);
+        console.log(`[GenericGameServer] 観戦者に状態を送信`);
     }
 
     // （参考）クライアント接続時の登録処理
