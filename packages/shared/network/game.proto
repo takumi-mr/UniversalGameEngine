@@ -24,6 +24,11 @@ message JoinGameRequest {
     string user_token = 3;
 }
 
+message JoinSuccess {
+    string assigned_player_id = 1; // "1" や "O" など
+    string game_id = 2;
+}
+
 message DispatchActionRequest {
     string game_id = 1;
     GameAction action = 2;
@@ -38,6 +43,11 @@ message CommonResponse {
 message GameStateUpdate {
     string state_json = 1;
     GameMetadata metadata = 2;
+    // AI・強化学習用
+    repeated float state_tensor = 3;      // 盤面を1次元の数値配列化したもの
+    repeated int32 legal_action_ids = 4;  // 選択可能な合法手のインデックスのリスト
+    map<string, float> rewards = 5;       // 各プレイヤーが得た報酬（勝敗やスコア）
+    bool is_finished = 6;                 // エピソードの終了フラグ（RLの done に相当）
 }
 
 message GameMetadata {
@@ -53,6 +63,33 @@ message ChatMessage {
     string channel = 3;
     string recipient_id = 4;
     string timestamp = 5;
+    string game_id = 6;
+}
+
+message StepRequest {
+    string game_id = 1;
+    string player_id = 2;
+    int32 action_id = 3; // AIはJSONではなく数値インデックスで手を指定
+}
+
+message StepResponse {
+    repeated float next_state_tensor = 1;
+    repeated int32 legal_action_ids = 2;
+    float reward = 3;
+    bool is_finished = 4;
+    // この状態において行動権があるプレイヤーのID（自分以外ならAIは待機する）
+    repeated string active_players = 5;
+}
+
+// ゲームを初期状態にリセットする（AIの自己対戦ループ用）
+message ResetGameRequest {
+    string game_id = 1;
+}
+
+message ResetGameResponse {
+    repeated float initial_state_tensor = 1;
+    repeated int32 initial_legal_action_ids = 2;
+    repeated string active_players = 3;
 }
 
 service GameService {
@@ -63,12 +100,17 @@ service GameService {
 
     // サーバーからのプッシュ（gRPC-webではサーバーサイドストリーミングを常用）
     rpc StreamEvents(JoinGameRequest) returns (stream GameEvent);
+
+    // AI学習ループ専用のエンドポイント
+    rpc Step(StepRequest) returns (StepResponse);
+    rpc Reset(ResetGameRequest) returns (ResetGameResponse);
 }
 
 message GameEvent {
     oneof event {
-        GameStateUpdate state_update = 1;
-        ChatMessage chat_message = 2;
-        string error_message = 3;
+        JoinSuccess joined = 1;
+        GameStateUpdate state_update = 2;
+        ChatMessage chat_message = 3;
+        string error_message = 4;
     }
 }
