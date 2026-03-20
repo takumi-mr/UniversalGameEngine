@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@engine/shared": "workspace:*",
+    "@grpc/grpc-js": "^1.14.3",
+    "@grpc/proto-loader": "^0.8.0",
     "@mdi/font": "^7.4.47",
     "@types/jsonwebtoken": "^9.0.10",
     "fast-json-patch": "^3.1.1",

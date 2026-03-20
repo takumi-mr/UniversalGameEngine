@@ -1,86 +1,118 @@
 // src/network/GrpcNetworkClient.ts
-// この実装には grpc-web と google-protobuf が必要です。
-// また、game.proto からプロト生成された GameServiceClient および 各種Messageクラス をインポートする必要があります。
-
+import * as grpc from '@grpc/grpc-js';
+import * as protoLoader from '@grpc/proto-loader';
+import path from 'path';
 import type { INetworkClient, GameMetadata as SharedGameMetadata } from '@engine/shared/network/INetworkClient';
+import type { BaseGameAction, BaseGameState } from '@engine/shared';
 
-// モック的なインポート（実際には protoc で生成したコードを使用）
-/*
-import { GameServiceClient } from '../generated/game_grpc_web_pb';
-import { CreateGameRequest, JoinGameRequest, DispatchActionRequest, GameAction as ProtoAction, ChatMessage as ProtoChat } from '../generated/game_pb';
-*/
+// ※ Electron実行時のパス解決に注意してください（__dirnameの扱いやasar化の影響など）
+const PROTO_PATH = path.resolve(__dirname, '../../packages/shared/network/game.proto');
 
-export class GrpcNetworkClient<TState, TAction> implements INetworkClient<TState, TAction> {
-    private client: any; // 本来は GameServiceClient
+const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
+    keepCase: true,
+    longs: String,
+    enums: String,
+    defaults: true,
+    oneofs: true,
+});
+
+const protoDescriptor = grpc.loadPackageDefinition(packageDefinition) as any;
+const GameService = protoDescriptor.universal_game_engine.GameService;
+
+export class GrpcNetworkClient<TState extends BaseGameState, TAction extends BaseGameAction> implements INetworkClient<TState, TAction> {
+    private client: any; // GameServiceClient
     public gameId: string | null = null;
-    private eventStream: any = null;
+    public playerId: string | null = null;
+    private eventStream: grpc.ClientReadableStream<any> | null = null;
+    private token: string;
 
     public onStateUpdate: (state: TState) => void = () => { };
     public onError: (message: string) => void = () => { };
     public onMetadataUpdate?: (metadata: SharedGameMetadata) => void;
     public onChatMessage?: (chat: any) => void;
 
-    constructor(baseUrl: string) {
-        // gRPC-web クライアントの初期化
-        // this.client = new GameServiceClient(baseUrl);
-        console.log("GrpcNetworkClient initialized for:", baseUrl);
+    constructor(baseUrl: string = 'localhost:50051', token: string = '') {
+        // Node.js用のネイティブgRPCクライアントを初期化（開発時はInsecure）
+        this.client = new GameService(baseUrl, grpc.credentials.createInsecure());
+        this.token = token;
+        console.log("GrpcNetworkClient (Node.js) initialized for:", baseUrl);
+    }
+
+    private buildGrpcMetadata(): grpc.Metadata {
+        const meta = new grpc.Metadata();
+        if (this.token) {
+            meta.add('authorization', `Bearer ${this.token}`);
+        }
+        return meta;
     }
 
     public async createGame(options?: any): Promise<string> {
         return new Promise((resolve, reject) => {
-            /* 
-            const req = new CreateGameRequest();
-            req.setGameType(options?.type ?? 'speed');
-            req.setOptionsJson(JSON.stringify(options?.gameOptions ?? {}));
+            // @grpc/grpc-js ではプレーンなオブジェクトをそのまま渡せる！
+            const req = {
+                gameType: options?.type ?? 'tictactoe',
+                optionsJson: JSON.stringify(options?.gameOptions ?? {})
+            };
 
-            this.client.createGame(req, {}, (err: any, response: any) => {
+            this.client.CreateGame(req, this.buildGrpcMetadata(), (err: grpc.ServiceError | null, response: any) => {
                 if (err) return reject(err);
-                const gameId = response.getGameId();
-                this.connect(gameId); // 接続も開始
-                resolve(gameId);
+                resolve(response.gameId);
             });
-            */
-            console.log("Mock: createGame called", options);
-            resolve("mock-game-id-123");
         });
     }
 
     public async connect(gameId: string, options?: { asSpectator?: boolean }): Promise<void> {
         this.gameId = gameId;
 
-        // イベントストリームの開始
-        /*
-        const req = new JoinGameRequest();
-        req.setGameId(gameId);
-        req.setAsSpectator(!!options?.asSpectator);
+        const req = {
+            gameId: gameId,
+            asSpectator: !!options?.asSpectator,
+            userToken: this.token
+        };
 
-        this.eventStream = this.client.streamEvents(req, {});
-        this.eventStream.on('data', (event: any) => {
-            if (event.hasStateUpdate()) {
-                const update = event.getStateUpdate();
-                const state = JSON.parse(update.getStateJson());
+        // サーバーサイドストリーミングの開始
+        this.eventStream = this.client.StreamEvents(req, this.buildGrpcMetadata());
+
+        this.eventStream!.on('data', (event: any) => {
+            if (event.joined) {
+                this.playerId = event.joined.assignedPlayerId;
+                console.log("Joined game as player:", this.playerId);
+            }
+            else if (event.stateUpdate) {
+                const update = event.stateUpdate;
+                const state = JSON.parse(update.stateJson);
                 this.onStateUpdate(state);
-                
-                if (this.onMetadataUpdate && update.hasMetadata()) {
-                    const meta = update.getMetadata();
+
+                if (this.onMetadataUpdate && update.metadata) {
                     this.onMetadataUpdate({
-                        playerCount: meta.getPlayerCount(),
-                        spectatorCount: meta.getSpectatorCount(),
-                        activePlayers: meta.getActivePlayersList()
+                        playerCount: update.metadata.playerCount,
+                        spectatorCount: update.metadata.spectatorCount,
+                        activePlayers: update.metadata.activePlayers || []
                     });
                 }
-            } else if (event.hasChatMessage()) {
-                this.onChatMessage?.(JSON.parse(event.getChatMessage().getMessage()));
-            } else if (event.hasErrorMessage()) {
-                this.onError(event.getErrorMessage());
+            }
+            else if (event.chatMessage) {
+                this.onChatMessage?.(event.chatMessage);
+            }
+            else if (event.errorMessage) {
+                this.onError(event.errorMessage);
             }
         });
 
-        this.eventStream.on('error', (err: any) => {
-            this.onError(err.message);
+        this.eventStream!.on('error', (err: any) => {
+            // gRPCの正常終了(CANCELLED)はエラーとして扱わない
+            if (err.code === grpc.status.CANCELLED) return;
+
+            console.error("gRPC Stream Error:", err);
+            this.onError(err.details || err.message || 'Stream connection error');
+            this.disconnect();
         });
-        */
-        console.log("Mock: Starting gRPC stream for game", gameId);
+
+        this.eventStream!.on('end', () => {
+            console.log("gRPC Stream ended by server");
+            this.disconnect();
+        });
+
         return Promise.resolve();
     }
 
@@ -90,24 +122,28 @@ export class GrpcNetworkClient<TState, TAction> implements INetworkClient<TState
             this.eventStream = null;
         }
         this.gameId = null;
+        this.playerId = null;
     }
 
     public sendAction(action: TAction): void {
         if (!this.gameId) return;
 
-        /*
-        const req = new DispatchActionRequest();
-        req.setGameId(this.gameId);
-        
-        const protoAction = new ProtoAction();
-        protoAction.setType((action as any).type);
-        protoAction.setPayloadJson(JSON.stringify(action));
-        req.setAction(protoAction);
+        const req = {
+            gameId: this.gameId,
+            action: {
+                type: (action as any).type,
+                payloadJson: JSON.stringify(action)
+            }
+        };
 
-        this.client.dispatchAction(req, {}, (err: any) => {
-            if (err) this.onError(err.message);
+        this.client.DispatchAction(req, this.buildGrpcMetadata(), (err: grpc.ServiceError | null, response: any) => {
+            if (err) {
+                this.onError(err.details || err.message);
+                return;
+            }
+            if (!response.success) {
+                this.onError(response.message);
+            }
         });
-        */
-        console.log("Mock: Sending gRPC action", action);
     }
 }
