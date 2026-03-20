@@ -259,8 +259,14 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
     const king1 = state.board.includes(PIECES.OU);
     const king2 = state.board.includes(-PIECES.OU);
 
-    if (!king1) return { isFinished: true, message: "Gote Wins" };
-    if (!king2) return { isFinished: true, message: "Sente Wins" };
+    if (!king1) {
+      const winnerId = state.players?.["-1"];
+      return { isFinished: true, winnerIds: winnerId ? [winnerId] : [], message: "Gote Wins" };
+    }
+    if (!king2) {
+      const winnerId = state.players?.["1"];
+      return { isFinished: true, winnerIds: winnerId ? [winnerId] : [], message: "Sente Wins" };
+    }
     return { isFinished: false };
   },
 

@@ -240,12 +240,15 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
 
         if (remainingPlayers.length <= 1) {
             // 最後に残った人を最下位としてランクに追加
+            const finalRanks = [...state.ranks];
             if (remainingPlayers.length === 1) {
-                state.ranks.push(remainingPlayers[0]);
+                finalRanks.push(remainingPlayers[0]);
             }
+            const winnerId = finalRanks[0];
             return {
                 isFinished: true,
-                message: `Game Finished! Winner: ${state.ranks[0]}, Loser: ${state.ranks[state.ranks.length - 1]}`
+                winnerIds: winnerId ? [winnerId] : [],
+                message: `Game Finished! Winner: ${finalRanks[0]}, Loser: ${finalRanks[finalRanks.length - 1]}`
             };
         }
         return { isFinished: false };

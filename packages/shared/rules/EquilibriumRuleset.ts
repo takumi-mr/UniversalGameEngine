@@ -13,7 +13,7 @@
  * The World's Most Interesting Game, According to AI
  */
 
-import { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
+import type { BaseGameState, GameRuleset } from '../GameRules';
 
 // ==========================================
 // 1. 型定義 (Types & Interfaces)
@@ -422,7 +422,7 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
         return { ...nextState, lastAction: action };
     },
 
-    checkWinCondition(state: EquilibriumState): { isFinished: boolean; message?: string } {
+    checkWinCondition(state: EquilibriumState): { isFinished: boolean; winnerIds?: string[]; message?: string } {
         // 待機中は勝敗判定を行わない（初期プレイヤーが1人の時に即終了するのを防ぐ）
         if (state.status === 'WAITING') {
             return { isFinished: false };
@@ -431,9 +431,9 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
         const playerIds = Object.keys(state.playerData);
         const alivePlayers = playerIds.filter(id => state.playerData[id].hp > 0);
         if (alivePlayers.length === 1) {
-            return { isFinished: true, message: `Player ${alivePlayers[0]} won by Last Man Standing!` };
+            return { isFinished: true, winnerIds: [alivePlayers[0]], message: `Player ${alivePlayers[0]} won by Last Man Standing!` };
         } else if (alivePlayers.length === 0) {
-            return { isFinished: true, message: `Draw! All players died.` };
+            return { isFinished: true, winnerIds: [], message: `Draw! All players died.` };
         }
 
         // 各プレイヤーの秘密の勝利条件（hiddenGoal）を評価
@@ -446,25 +446,25 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                 case 'Annihilator':
                     // 相手のHPを0にする（上の共通ルールでほぼカバーされるが、明示的な目標として）
                     if (alivePlayers.length === 1 && alivePlayers[0] === pId) {
-                        return { isFinished: true, message: `Player ${pId} achieved GOAL: Annihilator!` };
+                        return { isFinished: true, winnerIds: [pId], message: `Player ${pId} achieved GOAL: Annihilator!` };
                     }
                     break;
                 case 'Collector':
                     // 自分の場(Board)にカードを8枚以上並べれば即座に勝利
                     if (player.board.length >= 8) {
-                        return { isFinished: true, message: `Player ${pId} achieved GOAL: Collector (8+ cards on board)!` };
+                        return { isFinished: true, winnerIds: [pId], message: `Player ${pId} achieved GOAL: Collector (8+ cards on board)!` };
                     }
                     break;
                 case 'Pacifist':
                     // 誰も死なない平和な状態のまま、15ターン目に到達すれば勝利
                     if (state.turnCount >= 15 && alivePlayers.length === playerIds.length) {
-                        return { isFinished: true, message: `Player ${pId} achieved GOAL: Pacifist (Survived 15 turns peacefully)!` };
+                        return { isFinished: true, winnerIds: [pId], message: `Player ${pId} achieved GOAL: Pacifist (Survived 15 turns peacefully)!` };
                     }
                     break;
                 case 'Soul_Hoarder':
                     // 競り（オークション）を我慢し、Soul Pointを25以上溜め込めば勝利
                     if (player.soulPoints >= 25) {
-                        return { isFinished: true, message: `Player ${pId} achieved GOAL: Soul Hoarder (25+ Soul Points)!` };
+                        return { isFinished: true, winnerIds: [pId], message: `Player ${pId} achieved GOAL: Soul Hoarder (25+ Soul Points)!` };
                     }
                     break;
             }

@@ -157,16 +157,20 @@ export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction
         // 全員フォールドして残り1人になったらゲーム終了
         const activeCount = state.playerIds.length - state.foldedPlayers.length;
         if (activeCount <= 1) {
+            const winner = state.playerIds.find(id => !state.foldedPlayers.includes(id));
             return {
                 isFinished: true,
+                winnerIds: winner ? [winner] : [],
                 message: `Game over. Player won by fold.`
             };
         }
 
         // 本当は `SHOWDOWN` フェーズでの役判定ロジックなどが必要だが簡略化
         if (state.phase === 'SHOWDOWN') {
+            const winners = state.playerIds.filter(id => !state.foldedPlayers.includes(id));
             return {
                 isFinished: true,
+                winnerIds: winners,
                 message: `Game over. Showdown.`
             };
         }

@@ -300,10 +300,16 @@ export const ChessRuleset: GameRuleset<ChessState, ChessAction> = {
             const isCheck = isAttacked(state.board, kingIndex, state.turn * -1);
             if (isCheck) {
                 // チェックメイト
-                return { isFinished: true, message: `Checkmate! ${state.turn === 1 ? 'Black' : 'White'} wins.` };
+                const winnerKey = (state.turn * -1) as 1 | -1;
+                const winnerId = state.players?.[winnerKey];
+                return {
+                    isFinished: true,
+                    winnerIds: winnerId ? [winnerId] : [],
+                    message: `Checkmate! ${state.turn === 1 ? 'Black' : 'White'} wins.`
+                };
             } else {
                 // ステイルメイト（王手されていないが動かせる駒がない）
-                return { isFinished: true, message: "Stalemate. Draw." };
+                return { isFinished: true, winnerIds: [], message: "Stalemate. Draw." };
             }
         }
 

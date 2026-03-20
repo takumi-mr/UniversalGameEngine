@@ -9,7 +9,10 @@ export interface BaseGameState {
     activePlayers?: string[];
     // ターンの制限時間（タイムスタンプ）。麻雀などの割り込みアクション（ポン・チー）待機時間に有用
     turnDeadline?: number;
-    // 必要に応じて updatedAt などもここに入れる
+    // 状態のバージョン（差分更新の一貫性チェック用）
+    version?: number;
+    // 状態のハッシュ値（デスキンス検知用）
+    hash?: string;
 }
 
 // エンジンがアクションを識別するための最低限の約束
@@ -17,6 +20,39 @@ export interface BaseGameAction {
     type: string;
     playerId?: string; // サーバー側で検証・付与された送信元のユーザーID
     timestamp?: number; // アクションが発生した時刻
+}
+
+// 勝敗結果を表す専用の型
+export interface GameResult {
+    isFinished: boolean;
+    // 勝利したプレイヤーのIDリスト。
+    // undefined: 勝敗未決 (isFinished: false時)
+    // []: 引き分け (isFinished: true時)
+    // ["playerId"]: 単独勝利
+    // ["playerId1", "playerId2"]: 同時勝利（ゲームによる）
+    winnerIds?: string[];
+    message?: string;
+}
+
+/**
+ * 閲覧制限のある情報を包むラッパー型
+ * エンジンはこの型を見つけると、対象プレイヤー以外に対して自動的にマスク処理を行う。
+ */
+export interface Secret<T> {
+    __isSecret: true;
+    value: T;
+    // 閲覧可能なプレイヤーIDのリスト。 "*" は全員。
+    visibleTo: string[];
+    // マスク時の代替値。未指定の場合はデフォルト（"?" など）が使用される
+    maskedValue?: any;
+}
+
+export function createSecret<T>(value: T, visibleTo: string[], maskedValue?: any): Secret<T> {
+    return { __isSecret: true, value, visibleTo, maskedValue };
+}
+
+export function isSecret(obj: any): obj is Secret<any> {
+    return !!(obj && typeof obj === 'object' && (obj as any).__isSecret === true);
 }
 
 export interface GameRuleset<TState extends BaseGameState, TAction extends BaseGameAction> {
@@ -30,10 +66,10 @@ export interface GameRuleset<TState extends BaseGameState, TAction extends BaseG
     reduce: (state: TState, action: TAction) => TState;
 
     // ゲームが終了したかどうか、誰が勝ったかを判定する関数
-    checkWinCondition: (state: TState) => { isFinished: boolean; message?: string };
+    checkWinCondition: (state: TState) => GameResult;
 
     // ゲームが終了したかどうか、誰が勝ったかを判定する関数
-    applyWinResult?: (state: TState, result: { isFinished: boolean, message?: string }) => TState;
+    applyWinResult?: (state: TState, result: GameResult) => TState;
 
     // 隠匿情報（相手の手牌など）をマスク（伏せた）状態を作成する関数 (オプショナル)
     maskState?: (state: TState, playerId: string) => TState;

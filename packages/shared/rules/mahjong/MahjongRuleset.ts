@@ -298,7 +298,15 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
     },
 
     checkWinCondition: (state: MahjongState) => {
-        if (state.status === 'FINISHED') return { isFinished: true, message: state.message || 'Game finished.' };
+        if (state.status === 'FINISHED') {
+            const winnerIds: string[] = [];
+            // メッセージから勝者を特定（RON! または TSUMO! の直前のプレイヤー名）
+            const match = state.message?.match(/Player (.+?) won/);
+            if (match) {
+                winnerIds.push(match[1]);
+            }
+            return { isFinished: true, winnerIds, message: state.message || 'Game finished.' };
+        }
         return { isFinished: false };
     },
 

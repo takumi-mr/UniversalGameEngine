@@ -29,8 +29,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from "vue";
+import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import type { OthelloState, OthelloAction } from "@engine/shared/rules/OthelloRuleset";
+import { OthelloRuleset } from "@engine/shared/rules/OthelloRuleset";
 import { OthelloUI } from "../../three/OthelloUI";
 
 const props = defineProps<{ 
@@ -42,6 +43,11 @@ const emit = defineEmits<{ (e: 'action', action: OthelloAction): void }>();
 const canvasContainer = ref<HTMLElement | null>(null);
 let threeUI: OthelloUI;
 
+const legalActions = computed(() => {
+  if (!props.state || !props.myPlayerId) return [];
+  return OthelloRuleset.getLegalActions(props.state, props.myPlayerId);
+});
+
 onMounted(() => {
   if (canvasContainer.value) {
     threeUI = new OthelloUI(canvasContainer.value, (action) => {
@@ -52,7 +58,7 @@ onMounted(() => {
       emit('action', action);
     });
     // 初回レンダリング
-    threeUI.renderState(props.state);
+    threeUI.renderState(props.state, legalActions.value);
   }
 });
 
@@ -65,7 +71,7 @@ onUnmounted(() => {
 // stateが更新されたらThree.js側に通知
 watch(() => props.state, (newState) => {
   if (threeUI) {
-    threeUI.renderState(newState);
+    threeUI.renderState(newState, legalActions.value);
   }
 }, { deep: true });
 </script>

@@ -1,5 +1,5 @@
 // packages/shared/ai/IAIPlayer.ts
-import type { BaseGameState, BaseGameAction } from '../UniversalEngine';
+import type { BaseGameState, BaseGameAction } from '../GameRules';
 
 /**
  * すべてのAI・探索ソルバーが実装すべき共通インターフェース

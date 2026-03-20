@@ -167,7 +167,7 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
     checkWinCondition: (state) => {
         for (const pId of state.playerIds) {
             if (state.hands[pId].length === 0 && state.personalDecks[pId].length === 0) {
-                return { isFinished: true, message: `${pId} wins!` };
+                return { isFinished: true, winnerIds: [pId], message: `${pId} wins!` };
             }
         }
         
@@ -175,7 +175,7 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
         const allStuck = state.playerIds.length === 2 && state.playerIds.every(id => state.isStuck[id]);
         const sidePilesEmpty = state.sidePiles.every(p => p.length === 0);
         if (allStuck && sidePilesEmpty) {
-            return { isFinished: true, message: "It's a draw! (No more cards to flip)" };
+            return { isFinished: true, winnerIds: [], message: "It's a draw! (No more cards to flip)" };
         }
 
         return { isFinished: false };

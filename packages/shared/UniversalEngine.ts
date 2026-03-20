@@ -1,5 +1,6 @@
 // packages/shared/UniversalEngine.ts
-import { BaseGameState, BaseGameAction, GameRuleset } from "./GameRules";
+import { isSecret } from "./GameRules";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "./GameRules";
 
 // --- 2. 汎用エンジン本体 ---
 export class UniversalEngine<TState extends BaseGameState, TAction extends BaseGameAction> {
@@ -10,6 +11,9 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
     constructor(rules: GameRuleset<TState, TAction>, options?: any) {
         this.rules = rules;
         this.state = this.rules.getInitialState(options);
+        if (this.state.version === undefined) {
+            this.state.version = 0;
+        }
     }
 
     /**
@@ -32,10 +36,47 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
      * @param playerId マスク処理の対象となるプレイヤーID
      */
     public getMaskedState(playerId: string): TState {
+        // 1. Secret 型を用いた自動マスク処理
+        let maskedState = this.autoMask(this.state, playerId);
+
+        // 2. 既存のルールセット固有のマスク処理があれば適用 (互換性維持)
         if (this.rules.maskState) {
-            return this.rules.maskState(this.state, playerId);
+            maskedState = this.rules.maskState(maskedState, playerId);
         }
-        return this.state;
+        return maskedState;
+    }
+
+    /**
+     * オブジェクト内を再帰的に走査し、Secret型を見つけたら閲覧権限に応じてマスクする
+     */
+    private autoMask(obj: any, playerId: string): any {
+        if (obj === null || typeof obj !== 'object') {
+            return obj;
+        }
+
+        // Secret型の処理
+        if (isSecret(obj)) {
+            const isVisible = obj.visibleTo.includes('*') || obj.visibleTo.includes(playerId);
+            if (isVisible) {
+                // 閲覧権限がある場合は中身を展開（再帰的にさらにマスクが必要か確認）
+                return this.autoMask(obj.value, playerId);
+            } else {
+                // 権限がない場合はマスク値（デフォルト "?"）を返す
+                return obj.maskedValue !== undefined ? obj.maskedValue : '?';
+            }
+        }
+
+        // 配列の処理
+        if (Array.isArray(obj)) {
+            return obj.map(item => this.autoMask(item, playerId));
+        }
+
+        // 通常のオブジェクトの処理
+        const result: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+            result[key] = this.autoMask(value, playerId);
+        }
+        return result;
     }
 
     // クライアントからの通信を受け取る汎用エンドポイント
@@ -65,6 +106,9 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
             }
             console.log("Game Finished!", this.state.message);
         }
+
+        // 3.5 状態のバージョンをインクリメント
+        this.state.version = (this.state.version ?? 0) + 1;
 
         return true;
     }

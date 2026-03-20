@@ -296,7 +296,7 @@ export class PokemonTCGRuleset implements GameRuleset<PokemonTCGState, PokemonTC
         return remainingTotal >= colorlessNeeded;
     }
 
-    public checkWinCondition(state: PokemonTCGState): { isFinished: boolean; message?: string } {
+    public checkWinCondition(state: PokemonTCGState): { isFinished: boolean; winnerIds?: string[]; message?: string } {
         const playerIds = Object.keys(state.playerData);
 
         for (const playerId of playerIds) {
@@ -304,7 +304,11 @@ export class PokemonTCGRuleset implements GameRuleset<PokemonTCGState, PokemonTC
 
             // 1. サイドカードを取り切ったら勝利
             if (player.prizes.length === 0) {
-                return { isFinished: true, message: `Player ${playerId} won by taking all Prize cards!` };
+                return {
+                    isFinished: true,
+                    winnerIds: [playerId],
+                    message: `Player ${playerId} won by taking all Prize cards!`
+                };
             }
 
             // 2. バトル場にポケモンがおらず、ベンチにもいない場合は敗北（相手の勝利）
@@ -314,6 +318,7 @@ export class PokemonTCGRuleset implements GameRuleset<PokemonTCGState, PokemonTC
                 const opponentId = playerIds.find(id => id !== playerId) || 'Opponent';
                 return {
                     isFinished: true,
+                    winnerIds: [opponentId],
                     message: `Player ${playerId} has no Pokémon left. Player ${opponentId} won!`
                 };
             }

@@ -134,9 +134,17 @@ export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
             const b = state.scores[1];
             const w = state.scores[-1];
             let msg = "Game Over: Draw!";
-            if (b > w) msg = "Game Over: Black Wins!";
-            if (w > b) msg = "Game Over: White Wins!";
-            return { isFinished: true, message: msg };
+            let winnerIds: string[] = [];
+            if (b > w) {
+                msg = "Game Over: Black Wins!";
+                const bId = state.players?.[1];
+                if (bId) winnerIds = [bId];
+            } else if (w > b) {
+                msg = "Game Over: White Wins!";
+                const wId = state.players?.[-1];
+                if (wId) winnerIds = [wId];
+            }
+            return { isFinished: true, winnerIds, message: msg };
         }
         return { isFinished: false, message: state.message };
     },

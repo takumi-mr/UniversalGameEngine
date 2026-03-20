@@ -211,9 +211,15 @@ export const GoRuleset: GameRuleset<GoState, GoAction> = {
 
   checkWinCondition: (state) => {
     if (state.passCount >= 2) {
+      const blackScore = calculateTrompTaylor(state.board, 1, state.size);
+      const whiteScore = calculateTrompTaylor(state.board, -1, state.size) + 6.5; // コミ 6.5
+      const winnerKey = blackScore > whiteScore ? 1 : -1;
+      const winnerId = state.players?.[winnerKey];
+
       return {
         isFinished: true,
-        message: "Both players passed"
+        winnerIds: winnerId ? [winnerId] : [],
+        message: `Both players passed. Black: ${blackScore}, White: ${whiteScore}.`
       };
     }
     return { isFinished: false };

@@ -170,6 +170,7 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
       if (state.hands[p].length === 0) {
         return {
           isFinished: true,
+          winnerIds: [p],
           message: `${p} wins`
         };
       }
