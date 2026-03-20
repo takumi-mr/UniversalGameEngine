@@ -13,6 +13,8 @@
   "dependencies": {
     "axios": "^1.13.6",
     "fast-json-patch": "^3.1.1",
+    "google-protobuf": "^4.0.2",
+    "grpc-web": "^2.0.2",
     "socket.io-client": "^4.8.3"
   }
 }

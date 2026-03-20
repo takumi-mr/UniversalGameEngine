@@ -8,6 +8,7 @@ import authRoutes from './routes/auth';
 import roomsRoutes from './routes/rooms';
 import gameRoutes from './routes/game';
 import { setupSocketIO } from './socket';
+import { startGrpcServer } from './grpc-server';
 
 process.on('uncaughtException', (err) => {
     console.error('[UNCAUGHT EXCEPTION]', err);
@@ -37,3 +38,6 @@ const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
     console.log(`🚀 Realtime Engine Platform running on port ${PORT}`);
 });
+
+const GRPC_PORT = process.env.GRPC_PORT || 50051;
+startGrpcServer(GRPC_PORT);

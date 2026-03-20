@@ -7,9 +7,11 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
     private state: TState;
     private rules: GameRuleset<TState, TAction>;
     public history: TAction[] = [];
+    public readonly options: any;
 
     constructor(rules: GameRuleset<TState, TAction>, options?: any) {
         this.rules = rules;
+        this.options = options || {};
         this.state = this.rules.getInitialState(options);
         if (this.state.version === undefined) {
             this.state.version = 0;

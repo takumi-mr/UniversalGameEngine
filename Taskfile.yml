@@ -22,14 +22,14 @@ tasks:
 
   dev:
     desc: Start infrastructure and run the application in dev mode
-    deps: [up]
+    deps: [up, proto]
     cmds:
       - |
         # Use concurrently or separate terminals if possible, but here we run them in parallel
         # Note: In a real terminal, you might want to use something like 'concurrently'
         # For this Taskfile, we'll use bun's ability to run multiple things or just simple shell backgrounding if supported.
         # However, for Taskfile, running them sequentially with & is common in simple setups.
-        bun --cwd apps/backend dev & bun --cwd apps/frontend dev
+        - bun run --cwd=apps/backend dev & bun run --cwd=apps/frontend dev
     env:
       REDIS_URL: "{{.REDIS_URL}}"
       MONGO_URL: "{{.MONGO_URL}}"
@@ -43,3 +43,9 @@ tasks:
     desc: Install dependencies
     cmds:
       - bun install
+
+  proto:
+    desc: Compile protobuf files to TypeScript
+    dir: packages/shared
+    cmds:
+      - bun run proto:gen

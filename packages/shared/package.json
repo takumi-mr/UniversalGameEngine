@@ -5,10 +5,16 @@
   "types": "index.ts",
   "dependencies": {
     "fast-json-patch": "^3.1.1",
-    "riichi": "^1.2.0"
+    "riichi": "^1.2.0",
+    "@grpc/grpc-js": "^1.12.6",
+    "@grpc/proto-loader": "^0.7.13"
+  },
+  "scripts": {
+    "proto:gen": "proto-loader-gen-types --longs=String --enums=String --defaults --oneofs --grpcLib=@grpc/grpc-js --outDir=network/generated network/game.proto"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@types/node": "^25.5.0"
+    "@types/node": "^25.5.0",
+    "@grpc/proto-loader": "^0.7.13"
   }
 }
