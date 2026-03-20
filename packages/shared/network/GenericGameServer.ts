@@ -1,5 +1,5 @@
 // packages/shared/network/GenericGameServer.ts
-import { BaseGameState, BaseGameAction } from '../GameRules';
+import type { BaseGameState, BaseGameAction } from '../GameRules';
 import { UniversalEngine } from '../UniversalEngine';
 
 /**

@@ -107,7 +107,7 @@ export const setupSocketIO = (io: Server) => {
                         updated = true;
                         console.log(`Assigned ${userId} to slot "${slotKey}" in game ${gameId}`);
                     }
-                    
+
                     // 2. ルールセットが JOIN アクションをサポートしている場合、それをディスパッチして playerData 等を初期化
                     const joinAction = { type: 'JOIN', playerId: userId } as any;
                     if (session.server.engine.dispatch(joinAction)) {
@@ -123,7 +123,7 @@ export const setupSocketIO = (io: Server) => {
                     const uniquePlayersCount = new Set(Object.values(state.players).filter(p => p !== null)).size;
                     const normalizedType = session.type.toLowerCase().replace(/-/g, '_');
                     const def = gameRegistry.getDefinition(normalizedType);
-                    
+
                     if (state.status === 'WAITING' && def && uniquePlayersCount >= def.minPlayers) {
                         state.status = 'PLAYING';
                         console.log(`Game ${gameId} transitioned to PLAYING status.`);
@@ -142,7 +142,7 @@ export const setupSocketIO = (io: Server) => {
 
             if (state.players && Object.values(state.players).some(p => p !== null)) {
                 session.server.broadcastState(); // 割り当てがあった場合、全員に通知 (マスク対応)
-                
+
                 // プレイヤーとして割り当てられているならプレイヤー専用ルームにも入る
                 if (Object.values(state.players).includes(userId)) {
                     socket.join(`${gameId}:players`);
@@ -262,7 +262,7 @@ export const setupSocketIO = (io: Server) => {
         socket.on('disconnecting', () => {
             // 切断直前に所属していた全ルームを取得
             const rooms = Array.from(socket.rooms);
-            
+
             socket.on('disconnect', () => {
                 // 完全に切断（ルームから退出）した後に、各ルームの人数を更新する
                 for (const room of rooms) {
@@ -277,7 +277,7 @@ export const setupSocketIO = (io: Server) => {
         });
 
         socket.on('disconnect', () => {
-            // console.log(`User disconnected: ${socket.id} (User ID: ${userId})`);
+            console.log(`User disconnected: ${socket.id} (User ID: ${userId})`);
         });
     });
 };
