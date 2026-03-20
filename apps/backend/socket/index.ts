@@ -5,6 +5,7 @@ import { sessions, repo, SocketGameServer } from '../store/sessionStore';
 import { gameRegistry } from '@engine/shared/GameRegistry';
 import { UniversalEngine } from '@engine/shared/UniversalEngine';
 import { setIoInstance, scheduleRoomCleanup, clearRoomCleanup, updatePresence } from './roomManager';
+import { streamManager } from '../network/StreamManager';
 
 export const setupSocketIO = (io: Server) => {
     setIoInstance(io);
@@ -223,6 +224,12 @@ export const setupSocketIO = (io: Server) => {
                 // 全体に送信
                 io.to(gameId).emit('chat-message', chatPayload);
             }
+
+            // 3. gRPCストリームへの通知
+            streamManager.broadcast(gameId, {
+                chatMessage: chatPayload
+            });
+
             console.log(`[Chat] ${userId} sent ${channel || 'public'} message to ${gameId} (recipient: ${recipientId || 'all'})`);
         });
 

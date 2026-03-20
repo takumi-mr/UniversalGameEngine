@@ -10,6 +10,7 @@ import { aiTensorRegistry } from '@engine/shared/ai/AITensorAdapterRegistry';
 import { UniversalEngine } from '@engine/shared/UniversalEngine';
 import type { GameServiceHandlers } from '@engine/shared/network/generated/universal_game_engine/GameService';
 import { getIoInstance, scheduleRoomCleanup } from './socket/roomManager';
+import { streamManager } from './network/StreamManager';
 
 const PROTO_PATH = path.resolve(__dirname, '../../packages/shared/network/game.proto');
 
@@ -23,18 +24,6 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 
 const protoDescriptor = grpc.loadPackageDefinition(packageDefinition);
 const universal_game_engine = (protoDescriptor as any).universal_game_engine;
-
-// gRPCストリームを保持するためのマップ
-const activeStreams = new Map<string, Set<grpc.ServerWritableStream<any, any>>>();
-
-export const notifyGrpcStreams = (gameId: string, event: any) => {
-    const streams = activeStreams.get(gameId);
-    if (streams) {
-        for (const stream of streams) {
-            stream.write(event);
-        }
-    }
-};
 
 const authenticate = (call: grpc.ServerUnaryCall<any, any> | grpc.ServerWritableStream<any, any>): string | null => {
     const metadata = call.metadata.get('authorization');
@@ -85,17 +74,6 @@ const gameServiceHandlers: GameServiceHandlers = {
             const payload = action?.payloadJson ? JSON.parse(action.payloadJson) : {};
             const success = session.server.handleAction(userId, { ...payload, type: action?.type });
             if (success) {
-                // Socket.IO側のブロードキャストは handleAction 内で行われるが、gRPCストリームへの通知も行う
-                const state = session.server.engine.getState();
-                notifyGrpcStreams(gameId, {
-                    stateUpdate: {
-                        stateJson: JSON.stringify(session.server.engine.getMaskedState(userId)),
-                        metadata: {
-                            playerCount: Object.keys(state.players || {}).length,
-                            activePlayers: Object.values(state.players || {}).filter(Boolean) as string[]
-                        }
-                    }
-                });
                 callback(null, { success: true, message: 'Action dispatched' });
             } else {
                 callback(null, { success: false, message: 'Invalid action or not your turn' });
@@ -110,16 +88,31 @@ const gameServiceHandlers: GameServiceHandlers = {
         if (!userId) return callback({ code: grpc.status.UNAUTHENTICATED, message: 'Invalid token' });
 
         const { gameId, message, channel, recipientId } = call.request;
-        // チャットロジックの簡略化実装
-        notifyGrpcStreams(gameId, {
-            chatMessage: {
-                userId: userId,
-                message: message,
-                channel: channel,
-                recipientId: recipientId,
-                timestamp: new Date().toISOString()
-            }
+        const chatPayload = {
+            userId: userId,
+            message: message,
+            channel: channel,
+            recipientId: recipientId,
+            timestamp: new Date().toISOString()
+        };
+
+        // 1. gRPCストリームへの通知
+        streamManager.broadcast(gameId, {
+            chatMessage: chatPayload
         });
+
+        // 2. Socket.IOへの通知
+        try {
+            const io = getIoInstance();
+            if (channel === 'private') {
+                io.to(`${gameId}:players`).emit('chat-message', chatPayload);
+            } else {
+                io.to(gameId).emit('chat-message', chatPayload);
+            }
+        } catch (err) {
+            console.error('[gRPC] Failed to notify Socket.io for chat:', err);
+        }
+
         callback(null, { success: true, message: 'Chat sent' });
     },
 
@@ -131,34 +124,32 @@ const gameServiceHandlers: GameServiceHandlers = {
         }
 
         const { gameId } = call.request;
-        if (!activeStreams.has(gameId)) {
-            activeStreams.set(gameId, new Set());
-        }
-        const streams = activeStreams.get(gameId)!;
-        streams.add(call);
+        streamManager.addStream(gameId, userId, call);
 
         // 初回の状態を送信
         const session = sessions.get(gameId);
         if (session) {
             const state = session.server.engine.getState();
+            const players = state.players ? (Object.values(state.players).filter(Boolean) as string[]) : [];
             call.write({
                 joined: {
-                    assignedPlayerId: userId, // 実際にはエンジン側での割り当てが必要
+                    assignedPlayerId: userId,
                     gameId: gameId
                 }
             });
             call.write({
                 stateUpdate: {
-                    stateJson: JSON.stringify(session.server.engine.getMaskedState(userId))
+                    stateJson: JSON.stringify(session.server.engine.getMaskedState(userId)),
+                    metadata: {
+                        playerCount: players.length,
+                        activePlayers: players
+                    }
                 }
             });
         }
 
         call.on('cancelled', () => {
-            streams.delete(call);
-            if (streams.size === 0) {
-                activeStreams.delete(gameId);
-            }
+            streamManager.removeStream(gameId, call);
         });
     },
 

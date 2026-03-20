@@ -4,6 +4,7 @@ import { GenericGameServer } from '@engine/shared/network/GenericGameServer';
 import { Server } from 'socket.io';
 import { generate, compare } from 'fast-json-patch';
 import { calculateStateHash } from '@engine/shared';
+import { streamManager } from '../network/StreamManager';
 
 export class SocketGameServer extends GenericGameServer<any, any> {
     private io: Server;
@@ -67,6 +68,24 @@ export class SocketGameServer extends GenericGameServer<any, any> {
                 this.lastSentState.set(socketId, JSON.parse(JSON.stringify(maskedState)));
             }
         }).catch(err => console.error("Broadcast error:", err));
+
+        // gRPC ストリームへの通知
+        streamManager.notify(this.roomId, (userId) => {
+            const targetId = players.includes(userId) ? userId : 'SPECTATOR';
+            const maskedState = this.engine.getMaskedState(targetId);
+            maskedState.version = state.version;
+            maskedState.hash = calculateStateHash(maskedState);
+
+            return {
+                stateUpdate: {
+                    stateJson: JSON.stringify(maskedState),
+                    metadata: {
+                        playerCount: players.length,
+                        activePlayers: players
+                    }
+                }
+            };
+        });
     }
 
     public handleDisconnect(socketId: string): void {

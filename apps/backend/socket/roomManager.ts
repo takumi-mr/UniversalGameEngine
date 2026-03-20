@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import { sessions, cleanupTimers, repo, EMPTY_ROOM_TIMEOUT } from '../store/sessionStore';
+import { streamManager } from '../network/StreamManager';
 
 let ioInstance: Server | null = null;
 
@@ -46,6 +47,16 @@ export const updatePresence = (gameId: string) => {
         playerCount: Math.min(count, 2), // 例えば2人までをプレイヤーとする
         spectatorCount: Math.max(0, count - 2),
         activePlayers: Array.from(room || [])
+    });
+
+    // gRPCストリームへの通知
+    streamManager.broadcast(gameId, {
+        stateUpdate: {
+            metadata: {
+                playerCount: Math.min(count, 2),
+                activePlayers: Array.from(room || [])
+            }
+        }
     });
 
     if (count === 0) {
