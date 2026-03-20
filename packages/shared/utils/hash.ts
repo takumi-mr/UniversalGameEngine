@@ -6,8 +6,22 @@
  * キーの順序が異なるとハッシュが変わるため、JSON.stringify + シンプルなハッシュ関数を使用する。
  */
 export function calculateStateHash(state: any): string {
-    // 循環参照や関数などは基本的には state に含まれない前提 (BaseGameState)
-    const str = JSON.stringify(state, (key, value) => {
+    // オブジェクトのキーを再帰的にソートして順序を一定にする
+    const sortKeys = (obj: any): any => {
+        if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) {
+            if (Array.isArray(obj)) {
+                return obj.map(sortKeys);
+            }
+            return obj;
+        }
+        return Object.keys(obj).sort().reduce((acc: any, key: string) => {
+            acc[key] = sortKeys(obj[key]);
+            return acc;
+        }, {});
+    };
+
+    const sortedState = sortKeys(state);
+    const str = JSON.stringify(sortedState, (key, value) => {
         // hash フィールド自体は計算から除外する
         if (key === 'hash') return undefined;
         return value;

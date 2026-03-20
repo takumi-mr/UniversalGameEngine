@@ -33,9 +33,8 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
 
             const currentState = this.localState as any;
             if (currentState.version !== payload.baseVersion) {
-                console.error(`[SocketIoClient] Version mismatch! local:${currentState.version}, base:${payload.baseVersion}. Need full sync.`);
-                // 完全に不整合な場合は、サーバーにリクエストするか、次のフル更新を待つ
-                // ここではシンプルにログを出力し、(本来なら)再同期リクエストを送る
+                console.error(`[SocketIoClient] Version mismatch! local:${currentState.version}, base:${payload.baseVersion}. Requesting full sync.`);
+                this.socket.emit('request-full-state', { gameId: this.gameId });
                 return;
             }
 
@@ -43,22 +42,25 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
             try {
                 // localState を直接書き換える (fast-json-patch はインプレース更新も可能)
                 const result = applyPatch(this.localState, payload.patch, false, false);
-                this.localState = result.newDocument;
+                const nextState = result.newDocument as any;
                 
-                if (this.localState) {
-                    (this.localState as any).version = payload.targetVersion;
+                if (nextState) {
+                    nextState.version = payload.targetVersion;
                     
                     // ハッシュチェック
-                    const currentHash = calculateStateHash(this.localState);
+                    const currentHash = calculateStateHash(nextState);
                     if (currentHash !== payload.hash) {
-                        console.error(`[SocketIoClient] Hash mismatch after patch! target:${payload.hash}, local:${currentHash}. Desync detected.`);
-                        // 不整合時のリカバリが必要
+                        console.error(`[SocketIoClient] Hash mismatch after patch! target:${payload.hash}, local:${currentHash}. Requesting full sync.`);
+                        this.socket.emit('request-full-state', { gameId: this.gameId });
+                        return;
                     }
 
+                    this.localState = nextState;
                     this.onStateUpdate(this.localState);
                 }
             } catch (err) {
-                console.error("[SocketIoClient] Failed to apply patch:", err);
+                console.error("[SocketIoClient] Failed to apply patch. Requesting full sync:", err);
+                this.socket.emit('request-full-state', { gameId: this.gameId });
             }
         });
 

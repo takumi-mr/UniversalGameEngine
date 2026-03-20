@@ -250,6 +250,15 @@ export const setupSocketIO = (io: Server) => {
             }
         });
 
+        // フルデータの再同期リクエスト
+        socket.on('request-full-state', ({ gameId }) => {
+            const session = sessions.get(gameId);
+            if (session) {
+                console.log(`[Socket] User ${userId} requested full state for game ${gameId}`);
+                session.server.broadcastState(socket.id);
+            }
+        });
+
         socket.on('disconnecting', () => {
             // 切断直前に所属していた全ルームを取得
             const rooms = Array.from(socket.rooms);

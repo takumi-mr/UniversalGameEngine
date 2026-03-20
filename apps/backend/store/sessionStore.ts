@@ -15,12 +15,16 @@ export class SocketGameServer extends GenericGameServer<any, any> {
         this.io = io;
     }
 
-    public override broadcastState(): void {
+    public override broadcastState(targetSocketId?: string): void {
         const state = this.engine.getState();
         const players = state.players ? (Object.values(state.players).filter(Boolean) as string[]) : [];
+        const isForceFull = !!targetSocketId;
 
         this.io.in(this.roomId).fetchSockets().then(sockets => {
             for (const socket of sockets) {
+                // targetSocketId が指定されている場合はそのソケットのみ処理、そうでなければ全員
+                if (targetSocketId && socket.id !== targetSocketId) continue;
+
                 const userId = socket.data.userId;
                 const targetId = players.includes(userId) ? userId : 'SPECTATOR';
                 const maskedState = this.engine.getMaskedState(targetId);
@@ -32,7 +36,8 @@ export class SocketGameServer extends GenericGameServer<any, any> {
                 const socketId = socket.id;
                 const previousState = this.lastSentState.get(socketId);
 
-                if (previousState && 
+                // 強制フル更新でない場合、かつ以前の状態がある場合は差分を試みる
+                if (!isForceFull && previousState && 
                     previousState.version !== undefined && 
                     previousState.version < maskedState.version) 
                 {
@@ -57,7 +62,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
                     }
                 }
 
-                // 初回送信、またはパッチの方が大きい場合はフルデータを送信
+                // 初回送信、パッチの方が大きい場合、または強制フル更新の場合はフルデータを送信
                 socket.emit('state-update', maskedState);
                 this.lastSentState.set(socketId, JSON.parse(JSON.stringify(maskedState)));
             }
