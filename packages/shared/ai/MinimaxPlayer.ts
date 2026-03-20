@@ -44,7 +44,7 @@ export class MinimaxPlayer<TState extends BaseGameState, TAction extends BaseGam
         this.evaluationFunction = options.evaluationFunction ?? ((state, pId) => {
             const result = this.ruleset.checkWinCondition(state);
             if (result.isFinished) {
-                if (result.message?.includes("Draw")) return 0;
+                if (!result.winnerIds || result.winnerIds.length === 0) return 0;
                 // messageに勝者が含まれていると仮定するか、
                 // activePlayersが空で誰が勝ったか判断する仕組みが必要だが、
                 // 一般的なルールセットでは message に勝者が書かれることが多い。
@@ -108,7 +108,7 @@ export class MinimaxPlayer<TState extends BaseGameState, TAction extends BaseGam
         if (isMyTurn) {
             let maxEval = -Infinity;
             const actions = this.ruleset.getLegalActions(state, this.playerId);
-            
+
             // 手が打てない場合は相手のターンとしてパス（深さを減らして探索継続）
             if (actions.length === 0) return this.minimax(state, depth - 1, alpha, beta);
 
@@ -125,7 +125,7 @@ export class MinimaxPlayer<TState extends BaseGameState, TAction extends BaseGam
             // 相手（自分以外の誰か）の視点での探索
             const opponentId = activePlayers.find(id => id !== this.playerId) || "opponent";
             const actions = this.ruleset.getLegalActions(state, opponentId);
-            
+
             if (actions.length === 0) return this.minimax(state, depth - 1, alpha, beta);
 
             for (const action of actions) {

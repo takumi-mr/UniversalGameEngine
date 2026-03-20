@@ -81,19 +81,17 @@ export const TicTacToeRuleset: GameRuleset<TicTacToeState, TicTacToeAction> = {
     },
 
     checkWinCondition: (state) => {
-
         for (const [a, b, c] of WIN_LINES) {
-
             const v = state.board[a];
-
             if (
                 v !== 0 &&
                 v === state.board[b] &&
                 v === state.board[c]
             ) {
-
+                const winnerId = state.players?.[v] ?? String(v);
                 return {
                     isFinished: true,
+                    winnerIds: [winnerId],
                     message: v === 1 ? "O Wins" : "X Wins"
                 };
             }
@@ -102,6 +100,7 @@ export const TicTacToeRuleset: GameRuleset<TicTacToeState, TicTacToeAction> = {
         if (!state.board.includes(0)) {
             return {
                 isFinished: true,
+                winnerIds: [],
                 message: "Draw"
             };
         }
@@ -117,7 +116,6 @@ export const TicTacToeRuleset: GameRuleset<TicTacToeState, TicTacToeAction> = {
     }),
 
     getLegalActions: (state, playerId) => {
-
         if (state.status !== 'PLAYING') return [];
 
         // 手番チェック
