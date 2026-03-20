@@ -168,7 +168,9 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
         if (state.status === 'FINISHED') {
             const { 1: b, [-1]: w } = state.scores;
             const msg = b > w ? "黒の勝ち！" : w > b ? "白の勝ち！" : "引き分け！";
-            return { isFinished: true, message: msg };
+            const winnerKey = b > w ? 1 : w > b ? -1 : null;
+            const winnerIds = winnerKey !== null ? (state.players?.[winnerKey] ? [state.players[winnerKey]!] : []) : [];
+            return { isFinished: true, winnerIds, message: msg };
         }
         return { isFinished: false, message: state.message };
     },

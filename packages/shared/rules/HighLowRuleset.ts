@@ -113,14 +113,16 @@ export const HighLowRuleset: GameRuleset<HighLowState, DrawAction> = {
     checkWinCondition: (state) => {
         // どちらかが3ポイント先取したらゲーム終了
         if (state.scores[1] >= 3) {
-            return { isFinished: true, message: 'Game Over: Player 1 Wins the Match!' };
+            const winnerId = state.players?.[1];
+            return { isFinished: true, winnerIds: winnerId ? [winnerId] : [], message: 'Game Over: Player 1 Wins the Match!' };
         }
         if (state.scores[2] >= 3) {
-            return { isFinished: true, message: 'Game Over: Player 2 Wins the Match!' };
+            const winnerId = state.players?.[2];
+            return { isFinished: true, winnerIds: winnerId ? [winnerId] : [], message: 'Game Over: Player 2 Wins the Match!' };
         }
         // 山札が尽きたら引き分け
         if (state.deck.length < 2) {
-            return { isFinished: true, message: 'Game Over: Deck Out, Draw Game!' };
+            return { isFinished: true, winnerIds: [], message: 'Game Over: Deck Out, Draw Game!' };
         }
 
         return { isFinished: false };

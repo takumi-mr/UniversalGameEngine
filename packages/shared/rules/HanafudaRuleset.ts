@@ -266,7 +266,14 @@ export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
 
     checkWinCondition: (state) => {
         if (state.status === 'FINISHED') {
-            return { isFinished: true, message: state.message };
+            const winnerIds: string[] = [];
+            // メッセージから勝者を特定（できれば状態から取るべきだが、Hanafudaの状態には勝者が明示されていない）
+            // reduceでSTOPした時にmessageがセットされる。
+            const match = state.message?.match(/プレイヤー (.+) の勝ち/);
+            if (match) {
+                winnerIds.push(match[1]);
+            }
+            return { isFinished: true, winnerIds, message: state.message };
         }
         return { isFinished: false };
     },

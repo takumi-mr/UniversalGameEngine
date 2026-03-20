@@ -174,7 +174,12 @@ export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction> = {
         });
 
         if (isSolved && state.moveCount > 0) {
-            return { isFinished: true, message: `Cube Solved in ${state.moveCount} moves!` };
+            const winnerId = state.players?.['1'] || Object.values(state.players || {})[0];
+            return {
+                isFinished: true,
+                winnerIds: winnerId ? [winnerId] : [],
+                message: `Cube Solved in ${state.moveCount} moves!`
+            };
         }
         return { isFinished: false };
     },

@@ -101,8 +101,10 @@ export const WordleRuleset: GameRuleset<WordleState, WordleAction> = {
 
         const lastGuess = state.guesses[state.guesses.length - 1];
         if (lastGuess === state.secretWord) {
+            const winnerId = state.players?.[1] || Object.values(state.players || {})[0];
             return {
                 isFinished: true,
+                winnerIds: winnerId ? [winnerId] : [],
                 message: "Correct! The word was " + state.secretWord
             };
         }
@@ -110,6 +112,7 @@ export const WordleRuleset: GameRuleset<WordleState, WordleAction> = {
         if (state.currentRow >= state.maxGuesses) {
             return {
                 isFinished: true,
+                winnerIds: [],
                 message: "Game Over. The word was " + state.secretWord
             };
         }

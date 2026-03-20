@@ -77,7 +77,7 @@ export class SudokuRuleset implements GameRuleset<SudokuState, SudokuAction> {
     }
 
     // ゲーム終了（クリア）判定
-    checkWinCondition(state: SudokuState): { isFinished: boolean; message?: string } {
+    checkWinCondition(state: SudokuState): { isFinished: boolean; winnerIds?: string[]; message?: string } {
         // 全てのマスが埋まっているか確認
         // (isValidActionで重複を防いでいるため、全て埋まっていれば自動的に正解となる)
         for (let row = 0; row < 9; row++) {
@@ -88,7 +88,8 @@ export class SudokuRuleset implements GameRuleset<SudokuState, SudokuAction> {
             }
         }
 
-        return { isFinished: true, message: 'Sudoku Cleared!' };
+        const winnerId = state.players?.[1] || Object.values(state.players || {})[0];
+        return { isFinished: true, winnerIds: winnerId ? [winnerId] : [], message: 'Sudoku Cleared!' };
     }
 
     // AIやヒント機能のための合法手一覧取得

@@ -136,9 +136,17 @@ export const MancalaRuleset: GameRuleset<MancalaState, MancalaAction> = {
             const p1Score = state.board[6];
             const p2Score = state.board[13];
             let msg = "Draw!";
-            if (p1Score > p2Score) msg = "Player 1 Wins!";
-            if (p2Score > p1Score) msg = "Player 2 Wins!";
-            return { isFinished: true, message: `Game Over. ${msg}` };
+            let winnerIds: string[] = [];
+            if (p1Score > p2Score) {
+                msg = "Player 1 Wins!";
+                const p1Id = state.players?.[1];
+                if (p1Id) winnerIds = [p1Id];
+            } else if (p2Score > p1Score) {
+                msg = "Player 2 Wins!";
+                const p2Id = state.players?.[-1];
+                if (p2Id) winnerIds = [p2Id];
+            }
+            return { isFinished: true, winnerIds, message: `Game Over. ${msg}` };
         }
         return { isFinished: false };
     },
