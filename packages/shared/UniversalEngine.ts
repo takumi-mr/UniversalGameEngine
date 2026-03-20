@@ -10,6 +10,9 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
     constructor(rules: GameRuleset<TState, TAction>, options?: any) {
         this.rules = rules;
         this.state = this.rules.getInitialState(options);
+        if (this.state.version === undefined) {
+            this.state.version = 0;
+        }
     }
 
     /**
@@ -65,6 +68,9 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
             }
             console.log("Game Finished!", this.state.message);
         }
+
+        // 3.5 状態のバージョンをインクリメント
+        this.state.version++;
 
         return true;
     }

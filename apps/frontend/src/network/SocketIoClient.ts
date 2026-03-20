@@ -1,10 +1,12 @@
-// src/network/SocketIoClient.ts
 import { io, Socket } from 'socket.io-client';
 import type { INetworkClient, GameMetadata } from '@engine/shared/network/INetworkClient';
+import { applyPatch } from 'fast-json-patch';
+import { calculateStateHash } from '@engine/shared';
 
 export class SocketIoClient<TState, TAction> implements INetworkClient<TState, TAction> {
     private socket: Socket;
     public gameId: string | null = null;
+    private localState: TState | null = null;
 
     public onStateUpdate: (state: TState) => void = () => { };
     public onError: (message: string) => void = () => { };
@@ -19,7 +21,45 @@ export class SocketIoClient<TState, TAction> implements INetworkClient<TState, T
 
         // サーバーからのプッシュ通知イベント
         this.socket.on('state-update', (state: TState) => {
+            this.localState = state;
             this.onStateUpdate(state);
+        });
+
+        this.socket.on('state-patch', (payload: { patch: any[], baseVersion: number, targetVersion: number, hash: string }) => {
+            if (!this.localState) {
+                console.warn("[SocketIoClient] Received patch but no local state exists. Ignoring.");
+                return;
+            }
+
+            const currentState = this.localState as any;
+            if (currentState.version !== payload.baseVersion) {
+                console.error(`[SocketIoClient] Version mismatch! local:${currentState.version}, base:${payload.baseVersion}. Need full sync.`);
+                // 完全に不整合な場合は、サーバーにリクエストするか、次のフル更新を待つ
+                // ここではシンプルにログを出力し、(本来なら)再同期リクエストを送る
+                return;
+            }
+
+            // パッチを適用
+            try {
+                // localState を直接書き換える (fast-json-patch はインプレース更新も可能)
+                const result = applyPatch(this.localState, payload.patch, false, false);
+                this.localState = result.newDocument;
+                
+                if (this.localState) {
+                    (this.localState as any).version = payload.targetVersion;
+                    
+                    // ハッシュチェック
+                    const currentHash = calculateStateHash(this.localState);
+                    if (currentHash !== payload.hash) {
+                        console.error(`[SocketIoClient] Hash mismatch after patch! target:${payload.hash}, local:${currentHash}. Desync detected.`);
+                        // 不整合時のリカバリが必要
+                    }
+
+                    this.onStateUpdate(this.localState);
+                }
+            } catch (err) {
+                console.error("[SocketIoClient] Failed to apply patch:", err);
+            }
         });
 
         this.socket.on('error-message', (msg: string) => {
