@@ -74,7 +74,7 @@ function createDeck(rng?: IGameRNG): Card[] {
             deck.push(`${r}${s}`);
         }
     }
-    
+    // Fisher-Yates shuffle
     for (let i = deck.length - 1; i > 0; i--) {
         const j = rng ? rng.nextInt(0, i) : Math.floor(Math.random() * (i + 1));
         [deck[i], deck[j]] = [deck[j], deck[i]];

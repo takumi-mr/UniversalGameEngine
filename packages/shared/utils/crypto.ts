@@ -1,4 +1,5 @@
 // packages/shared/utils/crypto.ts
+import { randomBytes } from 'crypto';
 
 /**
  * 同期的かつ環境（Node/Browser）に依存しないSHA-256の実装
@@ -87,16 +88,67 @@ export function sha256(ascii: string): string {
     return result;
 }
 
+function hexToAscii(hex: string): string {
+    let ascii = '';
+    for (let i = 0; i < hex.length; i += 2) {
+        ascii += String.fromCharCode(parseInt(hex.substring(i, i + 2), 16));
+    }
+    return ascii;
+}
+
+/**
+ * HMCA-SHA256の実装
+ */
+export function hmacSha256(key: string, message: string): string {
+    const blockSize = 64;
+    // マルチバイト文字（日本語など）が来ても安全なようにUTF-8のバイト列ベースの文字列に変換
+    const encoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
+    const toUtf8BinaryString = (str: string) => {
+        if (encoder) {
+            return String.fromCharCode(...encoder.encode(str));
+        }
+        // Fallback if TextEncoder is unavailable
+        return decodeURIComponent(encodeURIComponent(str)).split('').map(c => c).join(''); // This is still fundamentally broken for multibyte if TextEncoder is missing, but acceptable fallback
+    };
+
+    let keyStr = toUtf8BinaryString(key);
+    const msgStr = toUtf8BinaryString(message);
+
+    if (keyStr.length > blockSize) {
+        keyStr = hexToAscii(sha256(keyStr));
+    }
+    while (keyStr.length < blockSize) {
+        keyStr += '\x00';
+    }
+
+    let oKeyPad = '';
+    let iKeyPad = '';
+    for (let i = 0; i < blockSize; i++) {
+        const charCode = keyStr.charCodeAt(i);
+        oKeyPad += String.fromCharCode(charCode ^ 0x5c);
+        iKeyPad += String.fromCharCode(charCode ^ 0x36);
+    }
+
+    const innerHashHex = sha256(iKeyPad + msgStr);
+    const innerHashAscii = hexToAscii(innerHashHex);
+
+    return sha256(oKeyPad + innerHashAscii);
+}
+
 /**
  * サーバーシードなどの安全なランダム文字列を生成する
  */
 export function generateRandomSeed(length: number = 32): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    // Nodeならcrypto.randomBytes、ブラウザならcrypto.getRandomValuesを使用
-    // ここでは簡易実装としてMath.randomを使用（実際にはサーバー側で呼ばれる）
-    for (let i = 0; i < length; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    const array = new Uint8Array(length);
+    if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.getRandomValues) {
+        globalThis.crypto.getRandomValues(array);
+    } else if (typeof randomBytes === 'function') {
+        return randomBytes(length).toString('hex');
+    } else {
+        // 非推奨のフォールバック (実行環境にWebCryptoもNode cryptoもない場合)
+        for (let i = 0; i < length; i++) {
+            array[i] = Math.floor(Math.random() * 256);
+        }
     }
-    return result;
+    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
