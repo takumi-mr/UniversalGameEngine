@@ -145,10 +145,11 @@ import type { SudokuState, SudokuAction } from '@engine/shared/rules/SudokuRules
 import type { MahjongState, MahjongAction } from '@engine/shared/rules/mahjong/MahjongRuleset';
 import type { WordleState, WordleAction } from '@engine/shared/rules/WordleRuleset';
 import type { SpeedState, SpeedAction } from '@engine/shared/rules/SpeedRuleset';
+import type { MinesweeperState, MinesweeperAction } from '@engine/shared/rules/MinesweeperRuleset';
 
 // 共用体型の定義
-type GameState = TicTacToeState | OthelloState | Othello3DState | RubiksState | ChessState | EquilibriumState | ShogiState | BaseGameState | HighLowState | MancalaState | SudokuState | MahjongState | WordleState | SpeedState;
-type GameAction = TicTacToeAction | OthelloAction | Othello3DAction | RubiksAction | ChessAction | EquilibriumAction | ShogiAction | BaseGameAction | DrawAction | MancalaAction | SudokuAction | MahjongAction | WordleAction | SpeedAction;
+type GameState = TicTacToeState | OthelloState | Othello3DState | RubiksState | ChessState | EquilibriumState | ShogiState | BaseGameState | HighLowState | MancalaState | SudokuState | MahjongState | WordleState | SpeedState | MinesweeperState;
+type GameAction = TicTacToeAction | OthelloAction | Othello3DAction | RubiksAction | ChessAction | EquilibriumAction | ShogiAction | BaseGameAction | DrawAction | MancalaAction | SudokuAction | MahjongAction | WordleAction | SpeedAction | MinesweeperAction;
 
 const props = defineProps<{
   gameType: string;
@@ -194,6 +195,7 @@ const components: Record<string, any> = {
   'shogi_3d': defineAsyncComponent(() => import('./game/Shogi3D.vue')),
   'wordle': defineAsyncComponent(() => import('./game/Wordle.vue')),
   'speed': defineAsyncComponent(() => import('./game/Speed.vue')),
+  'minesweeper': defineAsyncComponent(() => import('./game/Minesweeper.vue')),
 };
 
 const gameComponent = computed(() => components[props.gameType] || null);

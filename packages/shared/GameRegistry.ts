@@ -17,6 +17,7 @@ import { SudokuRuleset } from './rules/SudokuRuleset';
 import { MancalaRuleset } from './rules/MancalaRuleset';
 import { WordleRuleset } from './rules/WordleRuleset';
 import { SpeedRuleset } from './rules/SpeedRuleset';
+import { MinesweeperRuleset } from './rules/MinesweeperRuleset';
 
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
     type: string;
@@ -33,6 +34,16 @@ class GameRegistry {
     private games = new Map<string, GameDefinition<any, any>>();
 
     constructor() {
+        this.register({
+            type: 'minesweeper',
+            name: 'Minesweeper',
+            ruleset: MinesweeperRuleset,
+            minPlayers: 1,
+            maxPlayers: 1,
+            description: '古典的なマインスイーパー。地雷を避けて全ての安全なマスを開けよう。',
+            emoji: '💣',
+            rules: '数字をヒントに地雷がないマスを開けていくパズルゲームです。全ての安全なマスを開けるとクリア、地雷を開けるとゲームオーバーです。',
+        });
         this.register({
             type: 'othello_3d',
             name: '3D Othello',
