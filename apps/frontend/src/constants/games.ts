@@ -189,4 +189,14 @@ export const availableGames = [
     category: 'Card Games',
     rules: '台札と数字が1つ違い（A-2-3...K-A）のカードを、手札から場に出します。手札は山札から自動で5枚まで補充されます。先に全て出し切った方の勝ちです。詰まったら「めくる」ボタンで脇の札を台札に移動します。'
   },
+  {
+    type: 'minesweeper',
+    name: 'Minesweeper',
+    description: '数字をヒントに地雷を避ける名作パズル。',
+    emoji: '💣',
+    minPlayers: 1,
+    maxPlayers: 1,
+    category: 'Puzzles',
+    rules: 'マスの数字は周囲8マスの地雷の数を示します。これをヒントに地雷がないマスをすべて開ければ勝ちです。'
+  }
 ];

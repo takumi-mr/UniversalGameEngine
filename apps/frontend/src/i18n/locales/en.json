@@ -438,6 +438,28 @@
           "content": "If neither player has a valid move, both should click the 'Stuck' button to flip new cards from the side piles to the center."
         }
       }
+    },
+    "minesweeper": {
+      "name": "Minesweeper",
+      "description": "Classic logic puzzle game.",
+      "rules": "The numbers on the board indicate the number of mines in the adjacent 8 squares. Use them to uncover all safe squares to win.",
+      "tabs": {
+        "summary": {
+          "label": "How to Play",
+          "title": "Clear the minefield!",
+          "content": "Minesweeper is a puzzle game where you have to clear a rectangular board containing hidden 'mines' without detonating any of them."
+        },
+        "rules": {
+          "label": "Rules",
+          "title": "Watch the numbers!",
+          "content": "1. Left-click to reveal a square.\n2. Right-click to flag a square you think is a mine.\n3. The number on a revealed square shows how many mines are touching it."
+        },
+        "win": {
+          "label": "Winning",
+          "title": "Uncover all safe squares!",
+          "content": "You win the game when you have successfully revealed all squares that do not contain a mine. If you reveal a mine, you lose!"
+        }
+      }
     }
   },
   "help": {
