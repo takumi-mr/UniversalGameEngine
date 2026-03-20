@@ -1,6 +1,9 @@
 // packages/shared/UniversalEngine.ts
 import { isSecret } from "./GameRules";
 import type { BaseGameState, BaseGameAction, GameRuleset } from "./GameRules";
+import { ProvablyFairRNG } from "./utils/ProvablyFairRNG";
+import { sha256, generateRandomSeed } from "./utils/crypto";
+import type { IGameRNG } from "./utils/IGameRNG";
 
 // --- 2. 汎用エンジン本体 ---
 export class UniversalEngine<TState extends BaseGameState, TAction extends BaseGameAction> {
@@ -12,9 +15,57 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
     constructor(rules: GameRuleset<TState, TAction>, options?: any) {
         this.rules = rules;
         this.options = options || {};
-        this.state = this.rules.getInitialState(options);
+        
+        // RNGの初期化（オプションにシードがあれば使用）
+        let rng: IGameRNG | undefined;
+        if (this.options.clientSeed) {
+            this.setupPRNG(this.options.clientSeed);
+            rng = this.createRNGInstance();
+        }
+
+        this.state = this.rules.getInitialState(options, rng);
+        
+        if (rng instanceof ProvablyFairRNG) {
+            this.updateStateNonce(rng);
+        }
+
         if (this.state.version === undefined) {
             this.state.version = 0;
+        }
+    }
+
+    /**
+     * Provably Fair PRNGをセットアップする（サーバー側で初期化時に呼ぶ）
+     */
+    public setupPRNG(clientSeed: string): void {
+        const serverSeed = generateRandomSeed();
+        const serverSeedHash = sha256(serverSeed);
+        
+        this.state.prngConfig = {
+            serverSeedHash,
+            clientSeed,
+            nonce: 0
+        };
+
+        // サーバーシードは Secret として保存（通常は誰も見れない、または終了時に公開）
+        (this.state as any).prngSecret = serverSeed; 
+    }
+
+    private createRNGInstance(): IGameRNG | undefined {
+        const secret = (this.state as any).prngSecret;
+        if (this.state.prngConfig && secret) {
+            return new ProvablyFairRNG(
+                secret,
+                this.state.prngConfig.clientSeed,
+                this.state.prngConfig.nonce
+            );
+        }
+        return undefined;
+    }
+
+    private updateStateNonce(rng: IGameRNG): void {
+        if (this.state.prngConfig && rng instanceof ProvablyFairRNG) {
+            this.state.prngConfig.nonce = rng.getNonce();
         }
     }
 
@@ -88,8 +139,17 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
             return false;
         }
 
+        // RNGインスタンスの作成
+        const rng = this.createRNGInstance();
+
         // 2. 状態の更新 (Reducerパターン: 副作用を持たせず新しい状態を生成)
-        this.state = this.rules.reduce(this.state, action);
+        this.state = this.rules.reduce(this.state, action, rng);
+        
+        // nonceを同期
+        if (rng) {
+            this.updateStateNonce(rng);
+        }
+
         this.history.push(action);
 
         // 3. 勝敗判定

@@ -1,4 +1,5 @@
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
+import type { IGameRNG } from '../utils/IGameRNG';
 
 // --- 1. 型定義 ---
 
@@ -23,7 +24,7 @@ export interface SudokuAction extends BaseGameAction {
 export class SudokuRuleset implements GameRuleset<SudokuState, SudokuAction> {
 
     // ゲームの初期状態を生成
-    getInitialState(options?: { initialBoard?: number[][] }): SudokuState {
+    getInitialState(options?: { initialBoard?: number[][] }, rng?: IGameRNG): SudokuState {
         // デフォルトは空の盤面。実運用時は options から問題データを渡す
         const defaultBoard = Array(9).fill(0).map(() => Array(9).fill(0));
         const initData = options?.initialBoard || defaultBoard;
@@ -63,7 +64,7 @@ export class SudokuRuleset implements GameRuleset<SudokuState, SudokuAction> {
     }
 
     // 新しい状態を生成 (Reducer)
-    reduce(state: SudokuState, action: SudokuAction): SudokuState {
+    reduce(state: SudokuState, action: SudokuAction, rng?: IGameRNG): SudokuState {
         // 状態をイミュータブルに保つため、盤面をディープコピー
         const newBoard = state.board.map(row => row.map(cell => ({ ...cell })));
 

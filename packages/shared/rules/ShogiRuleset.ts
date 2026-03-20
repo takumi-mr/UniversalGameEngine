@@ -1,4 +1,5 @@
 import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
+import type { IGameRNG } from "../utils/IGameRNG";
 
 // --- 定数定義 ---
 const PIECES = {
@@ -128,7 +129,7 @@ function generateMoves(state: ShogiState, fromIndex: number): number[] {
 }
 
 export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
-  getInitialState: (): ShogiState => ({
+  getInitialState: (options?: any, rng?: IGameRNG): ShogiState => ({
     status: "WAITING",
     turn: 1,
     board: [...initialBoard],
@@ -201,7 +202,7 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
     return false;
   },
 
-  reduce: (state, action) => {
+  reduce: (state, action, rng?: IGameRNG) => {
     const newState: ShogiState = {
       ...state,
       board: [...state.board],

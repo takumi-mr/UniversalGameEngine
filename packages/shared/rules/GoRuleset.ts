@@ -1,4 +1,5 @@
 import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
+import type { IGameRNG } from "../utils/IGameRNG";
 
 export interface GoState extends BaseGameState {
   board: number[];
@@ -107,7 +108,7 @@ function getCaptures(board: number[], index: number, color: number, size: number
 
 export const GoRuleset: GameRuleset<GoState, GoAction> = {
 
-  getInitialState: (options?: any): GoState => {
+  getInitialState: (options?: any, rng?: IGameRNG): GoState => {
     const size = options?.size ?? 9;
     return {
       status: "WAITING",
@@ -164,7 +165,7 @@ export const GoRuleset: GameRuleset<GoState, GoAction> = {
     return false;
   },
 
-  reduce: (state, action) => {
+  reduce: (state, action, rng?: IGameRNG) => {
     const newState = structuredClone(state);
     const board = newState.board;
 

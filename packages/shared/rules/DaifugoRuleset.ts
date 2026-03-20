@@ -1,5 +1,6 @@
 // packages/shared/rules/DaifugoRuleset.ts
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
+import type { IGameRNG } from '../utils/IGameRNG';
 
 export type Card = string;
 
@@ -64,7 +65,7 @@ function evaluatePlay(cards: Card[]): { size: number, strength: number } | null 
 }
 
 // 54枚のデッキを作成してシャッフル
-function createDeck(): Card[] {
+function createDeck(rng?: IGameRNG): Card[] {
     const suits = ['S', 'H', 'D', 'C'];
     const ranks = ['3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A', '2'];
     const deck: Card[] = ['JR', 'JR']; // ジョーカー2枚
@@ -73,16 +74,21 @@ function createDeck(): Card[] {
             deck.push(`${r}${s}`);
         }
     }
-    return deck.sort(() => Math.random() - 0.5);
+    
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = rng ? rng.nextInt(0, i) : Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
 }
 
 // --- ルールセット本体 ---
 
 export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
-    getInitialState: (options: any): DaifugoState => {
+    getInitialState: (options: any, rng?: IGameRNG): DaifugoState => {
         const opts = options || {};
         const playerIds = (opts.playerIds || []).filter((id: any) => !!id);
-        const deck = createDeck();
+        const deck = createDeck(rng);
         const hands: Record<string, Card[]> = {};
 
         // 手札を均等に配る
@@ -155,7 +161,7 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
         return false;
     },
 
-    reduce: (state, action) => {
+    reduce: (state, action, rng?: IGameRNG) => {
         const newState = structuredClone(state); // イミュータブルな更新
         const pId = action.playerId!;
 

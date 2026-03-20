@@ -1,4 +1,5 @@
 import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
+import type { IGameRNG } from "../utils/IGameRNG";
 
 export interface UnoState extends BaseGameState {
   hands: Record<string, number[]>; // playerId -> cards
@@ -28,11 +29,11 @@ export interface UnoAction extends BaseGameAction {
 
 export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
 
-  getInitialState: (options?: any): UnoState => {
+  getInitialState: (options?: any, rng?: IGameRNG): UnoState => {
     const players: string[] = options?.players ?? [];
 
     const deck = createDeck();
-    shuffle(deck);
+    shuffle(deck, rng);
 
     const hands: Record<string, number[]> = {};
 
@@ -94,7 +95,7 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
 
   },
 
-  reduce: (state, action) => {
+  reduce: (state, action, rng?: IGameRNG) => {
     const newState = structuredClone(state);
     const player = newState.playerOrder[newState.turnIndex];
 
@@ -248,9 +249,9 @@ function createDeck(): number[] {
   return deck;
 }
 
-function shuffle(array: any[]) {
+function shuffle(array: any[], rng?: IGameRNG) {
   for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = rng ? rng.nextInt(0, i) : Math.floor(Math.random() * (i + 1));
     [array[i], array[j]] = [array[j], array[i]];
   }
 }

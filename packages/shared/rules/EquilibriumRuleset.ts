@@ -14,6 +14,7 @@
  */
 
 import type { BaseGameState, GameRuleset } from '../GameRules';
+import type { IGameRNG } from '../utils/IGameRNG';
 
 // ==========================================
 // 1. 型定義 (Types & Interfaces)
@@ -68,30 +69,34 @@ export type EquilibriumAction =
 // 2. 内部ヘルパー (Internal Helpers)
 // ==========================================
 
-function generateId(): string {
+function generateId(rng?: IGameRNG): string {
+    if (rng) {
+        return Math.floor(rng.nextFloat() * 100000000).toString(36);
+    }
     return Math.random().toString(36).substring(2, 9);
 }
 
-function drawInitialCards(): Card[] {
+function drawInitialCards(rng?: IGameRNG): Card[] {
     return [
-        { id: generateId(), type: 'ATTACK', name: 'Strike', value: 2, cost: 1 },
-        { id: generateId(), type: 'DEFENSE', name: 'Guard', value: 2, cost: 1 },
-        { id: generateId(), type: 'TRICK', name: 'Peep', value: 0, cost: 2 },
+        { id: generateId(rng), type: 'ATTACK', name: 'Strike', value: 2, cost: 1 },
+        { id: generateId(rng), type: 'DEFENSE', name: 'Guard', value: 2, cost: 1 },
+        { id: generateId(rng), type: 'TRICK', name: 'Peep', value: 0, cost: 2 },
     ];
 }
 
-function drawRandomGoal(): Card {
+function drawRandomGoal(rng?: IGameRNG): Card {
     const goals: Omit<Card, 'id'>[] = [
         { type: 'GOAL', name: 'Annihilator', value: 0, cost: 0 },
         { type: 'GOAL', name: 'Collector', value: 8, cost: 0 },
         { type: 'GOAL', name: 'Pacifist', value: 15, cost: 0 },
         { type: 'GOAL', name: 'Soul_Hoarder', value: 25, cost: 0 }
     ];
-    const selected = goals[Math.floor(Math.random() * goals.length)];
-    return { ...selected, id: generateId() } as Card;
+    const idx = rng ? rng.nextInt(0, goals.length - 1) : Math.floor(Math.random() * goals.length);
+    const selected = goals[idx];
+    return { ...selected, id: generateId(rng) } as Card;
 }
 
-function generateRandomCard(): Card {
+function generateRandomCard(rng?: IGameRNG): Card {
     const pool: Omit<Card, 'id'>[] = [
         { type: 'ATTACK', name: 'Hellfire', value: 8, cost: 3 },
         { type: 'DEFENSE', name: 'Aegis_Shield', value: 7, cost: 2 },
@@ -101,13 +106,15 @@ function generateRandomCard(): Card {
         { type: 'TRICK', name: 'Corruption', value: 0, cost: 4 },   // Opponent discards half hand (round down)
         { type: 'GOAL', name: 'Sudden_Death', value: 0, cost: 0 }
     ];
-    const selected = pool[Math.floor(Math.random() * pool.length)];
-    return { ...selected, id: generateId() } as Card;
+    const idx = rng ? rng.nextInt(0, pool.length - 1) : Math.floor(Math.random() * pool.length);
+    const selected = pool[idx];
+    return { ...selected, id: generateId(rng) } as Card;
 }
 
-function drawRandomBasicCard(): Card {
-    const pool = drawInitialCards();
-    return pool[Math.floor(Math.random() * pool.length)];
+function drawRandomBasicCard(rng?: IGameRNG): Card {
+    const pool = drawInitialCards(rng);
+    const idx = rng ? rng.nextInt(0, pool.length - 1) : Math.floor(Math.random() * pool.length);
+    return pool[idx];
 }
 
 function getNextPlayer(state: EquilibriumState, currentPlayerId: string): string {
@@ -123,7 +130,7 @@ function getNextPlayer(state: EquilibriumState, currentPlayerId: string): string
     return currentPlayerId;
 }
 
-function resolveAuction(state: EquilibriumState): void {
+function resolveAuction(state: EquilibriumState, rng?: IGameRNG): void {
     let maxBid = -1;
     let winnerId = '';
     let isTie = false;
@@ -163,7 +170,7 @@ function resolveAuction(state: EquilibriumState): void {
     state.phase = 'MAIN';
 }
 
-function executeCardEffect(state: EquilibriumState, player: PlayerState, card: Card, action: EquilibriumAction): void {
+function executeCardEffect(state: EquilibriumState, player: PlayerState, card: Card, action: EquilibriumAction, rng?: IGameRNG): void {
     if (card.type === 'ATTACK' && (action as any).targetId) {
         const targetId = (action as any).targetId;
         const targetRecord = state.playerData[targetId];
@@ -191,7 +198,8 @@ function executeCardEffect(state: EquilibriumState, player: PlayerState, card: C
             const target = state.playerData[targetId];
             const discardCount = Math.floor(target.hand.length / 2);
             for (let i = 0; i < discardCount; i++) {
-                target.hand.splice(Math.floor(Math.random() * target.hand.length), 1);
+                const idx = rng ? rng.nextInt(0, target.hand.length - 1) : Math.floor(Math.random() * target.hand.length);
+                target.hand.splice(idx, 1);
             }
         }
     }
@@ -203,7 +211,7 @@ function executeCardEffect(state: EquilibriumState, player: PlayerState, card: C
 
 export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction> = {
 
-    getInitialState(options: { playerIds?: string[] } = {}): EquilibriumState {
+    getInitialState(options: { playerIds?: string[] } = {}, rng?: IGameRNG): EquilibriumState {
         const playerIds = options.playerIds || [];
         const initialPlayerData: Record<string, PlayerState> = {};
 
@@ -212,9 +220,9 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                 id,
                 hp: 20,
                 soulPoints: 10,
-                hand: drawInitialCards(),
+                hand: drawInitialCards(rng),
                 board: [],
-                hiddenGoal: drawRandomGoal(),
+                hiddenGoal: drawRandomGoal(rng),
             };
         });
 
@@ -268,7 +276,7 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
         }
     },
 
-    reduce(state: EquilibriumState, action: EquilibriumAction): EquilibriumState {
+    reduce(state: EquilibriumState, action: EquilibriumAction, rng?: IGameRNG): EquilibriumState {
         const nextState: EquilibriumState = {
             ...state,
             playerData: { ...state.playerData },
@@ -285,9 +293,9 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                     id: action.playerId,
                     hp: 20,
                     soulPoints: 10,
-                    hand: drawInitialCards(),
+                    hand: drawInitialCards(rng),
                     board: [],
-                    hiddenGoal: drawRandomGoal(),
+                    hiddenGoal: drawRandomGoal(rng),
                 };
 
                 // 人数が揃った時点での初期化処理
@@ -298,7 +306,7 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                     nextState.activePlayers = [...joinedIds];
                     if (nextState.auctionPool.length === 0) {
                         const poolSize = Math.floor(joinedIds.length / 2) + 1;
-                        nextState.auctionPool = Array.from({ length: poolSize }, () => generateRandomCard());
+                        nextState.auctionPool = Array.from({ length: poolSize }, () => generateRandomCard(rng));
                     }
                 } else {
                     nextState.activePlayers = [];
@@ -323,7 +331,7 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                     const allPlayerIds = Object.keys(nextState.playerData);
                     const actedPlayers = [...Object.keys(nextState.currentBids), ...nextState.passedPlayers];
                     if (allPlayerIds.every(id => actedPlayers.includes(id))) {
-                        resolveAuction(nextState);
+                        resolveAuction(nextState, rng);
                     }
                 }
                 break;
@@ -338,7 +346,7 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                     const allPlayerIds = Object.keys(nextState.playerData);
                     const actedPlayers = [...Object.keys(nextState.currentBids), ...nextState.passedPlayers];
                     if (allPlayerIds.every(id => actedPlayers.includes(id))) {
-                        resolveAuction(nextState);
+                        resolveAuction(nextState, rng);
                     }
                 }
                 break;
@@ -358,10 +366,10 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
 
                         if (card.name === 'Echo_Whisper') {
                             if (nextState.lastPlayedCard) {
-                                executeCardEffect(nextState, player, nextState.lastPlayedCard, action);
+                                executeCardEffect(nextState, player, nextState.lastPlayedCard, action, rng);
                             }
                         } else {
-                            executeCardEffect(nextState, player, card, action);
+                            executeCardEffect(nextState, player, card, action, rng);
                             nextState.lastPlayedCard = card; // Update last non-Echo card
                         }
 
@@ -406,13 +414,13 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                     nextState.passedPlayers = [];
                     nextState.currentBids = {};
                     const poolSize = Math.floor(allIds.length / 2) + 1;
-                    nextState.auctionPool = Array.from({ length: poolSize }, () => generateRandomCard());
+                    nextState.auctionPool = Array.from({ length: poolSize }, () => generateRandomCard(rng));
                     nextState.activePlayers = [...allIds];
                     for (const pId of allIds) {
                         const pRecord = nextState.playerData[pId];
                         nextState.playerData[pId] = { ...pRecord, hand: [...pRecord.hand] };
                         nextState.playerData[pId].soulPoints += 1; // Reduced recovery
-                        nextState.playerData[pId].hand.push(drawRandomBasicCard());
+                        nextState.playerData[pId].hand.push(drawRandomBasicCard(rng));
                     }
                 } else {
                     nextState.activePlayers = [getNextPlayer(nextState, action.playerId)];

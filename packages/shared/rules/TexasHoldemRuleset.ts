@@ -1,5 +1,6 @@
 // packages/shared/rules/TexasHoldemRules.ts
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
+import type { IGameRNG } from '../utils/IGameRNG';
 
 // ポーカー特有の状態定義
 export interface TexasHoldemState extends BaseGameState {
@@ -23,7 +24,7 @@ export interface TexasHoldemAction extends BaseGameAction {
 }
 
 // 簡易的なデッキ生成関数（実際にはスートとランクを持つオブジェクト配列が望ましい）
-function createDeck(): string[] {
+function createDeck(rng?: IGameRNG): string[] {
     const suits = ['H', 'D', 'C', 'S']; // Hearts, Diamonds, Clubs, Spades
     const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
     const deck: string[] = [];
@@ -32,15 +33,20 @@ function createDeck(): string[] {
             deck.push(`${rank}${suit}`);
         }
     }
-    return deck.sort(() => Math.random() - 0.5); // 簡易的なシャッフル
+    // Fisher-Yates shuffle
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = rng ? rng.nextInt(0, i) : Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
 }
 
 export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction> = {
-    getInitialState: (options: any) => {
+    getInitialState: (options: any, rng?: IGameRNG) => {
         const opts = options || {};
         const playerIds = (opts.playerIds || []).filter((id: any) => !!id);
         const initialChips = opts.initialChips || 1000;
-        const deck = createDeck();
+        const deck = createDeck(rng);
         const hands: Record<string, string[]> = {};
         const playerChips: Record<string, number> = {};
         const playerBets: Record<string, number> = {};
@@ -109,7 +115,7 @@ export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction
         }
     },
 
-    reduce: (state: TexasHoldemState, action: TexasHoldemAction) => {
+    reduce: (state: TexasHoldemState, action: TexasHoldemAction, rng?: IGameRNG): TexasHoldemState => {
         const newState = { ...state };
         const pId = action.playerId!;
         const playerChips = newState.playerChips[pId];

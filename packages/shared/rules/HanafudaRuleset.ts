@@ -1,5 +1,6 @@
 // packages/shared/rules/HanafudaRuleset.ts
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
+import type { IGameRNG } from '../utils/IGameRNG';
 
 // --- 1. 型定義 ---
 
@@ -39,7 +40,7 @@ export interface HanafudaAction extends BaseGameAction {
 
 const getMonth = (card: Card): number => parseInt(card.replace(/[a-d]/g, ''), 10);
 
-const createDeck = (): Card[] => {
+const createDeck = (rng?: IGameRNG): Card[] => {
     const deck: Card[] = [];
     const distributions: Record<number, string[]> = {
         1: ['a', 'c', 'd', 'd'], 2: ['b', 'c', 'd', 'd'], 3: ['a', 'c', 'd', 'd'],
@@ -57,7 +58,12 @@ const createDeck = (): Card[] => {
             }
         });
     }
-    return deck.sort(() => Math.random() - 0.5);
+
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = rng ? rng.nextInt(0, i) : Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
 };
 
 // 【外部委譲用】役判定モック
@@ -105,10 +111,10 @@ const proceedToNextTurnOrYakuCheck = (state: HanafudaState, playerId: string): H
 // --- 3. ルールセット本体 ---
 
 export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
-    getInitialState: (options: { playerIds: string[] }): HanafudaState => {
+    getInitialState: (options: { playerIds: string[] }, rng?: IGameRNG): HanafudaState => {
         // [TODO] 実運用時はoptions.playerIdsが存在するかチェックする
         const playerIds = options?.playerIds || ['player1', 'player2'];
-        const deck = createDeck();
+        const deck = createDeck(rng);
         const hands: Record<string, Card[]> = { [playerIds[0]]: [], [playerIds[1]]: [] };
         const captured: Record<string, Card[]> = { [playerIds[0]]: [], [playerIds[1]]: [] };
         const field: Card[] = [];
@@ -182,7 +188,7 @@ export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
         return actions;
     },
 
-    reduce: (state, action) => {
+    reduce: (state, action, rng?: IGameRNG) => {
         const newState = structuredClone(state);
         const pId = action.playerId!;
 

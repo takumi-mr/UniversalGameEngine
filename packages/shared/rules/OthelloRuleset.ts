@@ -1,5 +1,6 @@
 // packages/shared/rules/OthelloRuleset.ts
 import type { GameRuleset, BaseGameState, BaseGameAction } from '../GameRules';
+import type { IGameRNG } from '../utils/IGameRNG';
 
 export type PlayerColor = 1 | -1; // 1: 黒, -1: 白
 
@@ -50,7 +51,7 @@ function generateLegalMoves(board: number[][], color: PlayerColor, size: number)
 }
 
 export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
-    getInitialState: (options = { size: 8 }): OthelloState => {
+    getInitialState: (options = { size: 8 }, rng?: IGameRNG): OthelloState => {
         const { size } = options;
         const board = Array.from({ length: size }, () => Array(size).fill(0));
         const m = Math.floor(size / 2);
@@ -100,7 +101,7 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
         });
     },
 
-    reduce: (state, action) => {
+    reduce: (state, action, rng?: IGameRNG) => {
         // 2D配列のディープコピー
         const nextBoard = state.board.map(row => [...row]);
         const color = action.color;
