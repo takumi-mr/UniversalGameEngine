@@ -53,17 +53,17 @@
           </v-btn>
         </template>
         <v-list>
-          <v-list-item @click="$i18n.locale = 'en'">
+          <v-list-item @click="setLocale('en')">
             <v-list-item-title>English</v-list-item-title>
           </v-list-item>
-          <v-list-item @click="$i18n.locale = 'ja'">
+          <v-list-item @click="setLocale('ja')">
             <v-list-item-title>日本語</v-list-item-title>
           </v-list-item>
         </v-list>
       </v-menu>
 
       <div class="px-4 text-body-2 text-medium-emphasis">
-        {{ $t('common.logged_in_as', { username: username }) }}
+        {{ $t('common.logged_in_as', { username: authStore.username }) }}
       </div>
     </v-app-bar>
 
@@ -164,8 +164,13 @@ import { useRouter } from 'vue-router';
 import { availableGames } from '../constants/games';
 import ThemeSwitcher from '../components/ThemeSwitcher.vue';
 
+import { useAuthStore } from '../store/auth';
+import { useUIStore } from '../store/ui';
+
 const router = useRouter();
-const username = ref(localStorage.getItem('game_username') || 'Unknown');
+const authStore = useAuthStore();
+const uiStore = useUIStore();
+
 const drawer = ref(true);
 const selectedCategory = ref('All');
 const joinedRooms = ref<any[]>([]);
@@ -185,7 +190,7 @@ const filteredGames = computed(() => {
 
 const fetchJoinedRooms = async () => {
   try {
-    const token = localStorage.getItem('game_token');
+    const token = authStore.token;
     const res = await fetch(`${API_BASE}/rooms/my`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -215,7 +220,7 @@ const leaveRoom = async (roomId: string) => {
   if (leavingId.value) return;
   leavingId.value = roomId;
   try {
-    const token = localStorage.getItem('game_token');
+    const token = authStore.token;
     const res = await fetch(`${API_BASE}/game/${roomId}/leave`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
@@ -231,9 +236,16 @@ const leaveRoom = async (roomId: string) => {
 };
 
 const logout = () => {
-  localStorage.removeItem('game_token');
-  localStorage.removeItem('game_username');
+  authStore.logout();
   router.push('/login');
+};
+
+import { useI18n } from 'vue-i18n';
+const { locale } = useI18n();
+
+const setLocale = (lang: string) => {
+  uiStore.setLocale(lang);
+  locale.value = lang;
 };
 </script>
 

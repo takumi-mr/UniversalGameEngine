@@ -4,5 +4,11 @@ import App from './App.vue';
 import router from './router';
 import i18n from './i18n';
 import vuetify from './plugins/vuetify';
+import pinia from './store';
 
-createApp(App).use(router).use(i18n).use(vuetify).mount('#app');
+createApp(App)
+  .use(pinia)
+  .use(router)
+  .use(i18n)
+  .use(vuetify)
+  .mount('#app');

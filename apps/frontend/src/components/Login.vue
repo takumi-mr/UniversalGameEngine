@@ -79,13 +79,15 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '../store/auth';
 
 const router = useRouter();
+const authStore = useAuthStore();
 const username = ref('');
 const loading = ref(false);
 const error = ref('');
 
-const API_BASE_URL = "http://127.0.0.1:3000";
+// API logic moved to authStore
 
 const handleLogin = async () => {
   if (!username.value.trim()) return;
@@ -94,19 +96,7 @@ const handleLogin = async () => {
   error.value = '';
 
   try {
-    const res = await fetch(`${API_BASE_URL}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: username.value })
-    });
-
-    const data = await res.json();
-    
-    if (!res.ok) throw new Error(data.error || 'Login failed');
-
-    localStorage.setItem('game_token', data.token);
-    localStorage.setItem('game_username', data.userId);
-    
+    await authStore.login(username.value);
     router.push('/selection');
   } catch (err: any) {
     error.value = err.message;
