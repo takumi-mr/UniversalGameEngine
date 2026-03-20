@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from './config';
 import { sessions, repo, SocketGameServer } from './store/sessionStore';
 import { gameRegistry } from '@engine/shared/GameRegistry';
+import { aiTensorRegistry } from '@engine/shared/ai/AITensorAdapterRegistry';
 import { UniversalEngine } from '@engine/shared/UniversalEngine';
 import type { GameServiceHandlers } from '@engine/shared/network/generated/universal_game_engine/GameService';
 import { getIoInstance, scheduleRoomCleanup } from './socket/roomManager';
@@ -168,7 +169,9 @@ const gameServiceHandlers: GameServiceHandlers = {
 
         try {
             const def = gameRegistry.getDefinition(session.type);
+            const adapter = aiTensorRegistry.getAdapter(session.type);
             if (!def) return callback({ code: grpc.status.INTERNAL, message: 'Ruleset not found' });
+            if (!adapter) return callback({ code: grpc.status.UNIMPLEMENTED, message: 'AI Tensor Adapter not found for this game type' });
 
             // 1. エンジンの状態をリセットする
             if (typeof (session.server.engine as any).reset === 'function') {
@@ -182,15 +185,12 @@ const gameServiceHandlers: GameServiceHandlers = {
             const activePlayers = state.activePlayers || [];
 
             // 2. 状態をAI用テンソル（数値配列）に変換
-            const stateTensor = (def.ruleset as any).encodeState
-                ? (def.ruleset as any).encodeState(state)
-                : [];
+            const perspectivePlayerId = activePlayers.length > 0 ? activePlayers[0] : "";
 
-            // 3. 現在手番のプレイヤーの合法手インデックスリストを取得
-            let legalActionIds: number[] = [];
-            if (activePlayers.length > 0 && (def.ruleset as any).encodeLegalActions) {
-                legalActionIds = (def.ruleset as any).encodeLegalActions(state, activePlayers[0]);
-            }
+            const stateTensor = adapter.encodeState(state, perspectivePlayerId);
+            const legalActionIds = activePlayers.length > 0
+                ? adapter.encodeLegalActions(state, perspectivePlayerId)
+                : [];
 
             callback(null, {
                 initialStateTensor: stateTensor,
@@ -209,13 +209,14 @@ const gameServiceHandlers: GameServiceHandlers = {
 
         try {
             const def = gameRegistry.getDefinition(session.type);
+            const adapter = aiTensorRegistry.getAdapter(session.type);
+            if (!def) return callback({ code: grpc.status.INTERNAL, message: 'Ruleset not found' });
+            if (!adapter) return callback({ code: grpc.status.UNIMPLEMENTED, message: 'AI Tensor Adapter not found for this game type' });
+
             const state = session.server.engine.getState();
 
             // 1. 行動インデックス(actionId)を実際のGameActionオブジェクトに復元する
-            if (!def || !(def.ruleset as any).decodeAction) {
-                return callback({ code: grpc.status.UNIMPLEMENTED, message: 'decodeAction not implemented in ruleset' });
-            }
-            const action = (def.ruleset as any).decodeAction(state, actionId, playerId);
+            const action = adapter.decodeAction(state, actionId, playerId);
 
             // 2. アクションの適用
             const success = session.server.handleAction(playerId, action);
@@ -240,15 +241,13 @@ const gameServiceHandlers: GameServiceHandlers = {
                 }
             }
 
-            // 5. 次の状態のテンソルと合法手リストを取得
-            const stateTensor = (def.ruleset as any).encodeState ? (def.ruleset as any).encodeState(nextState) : [];
             const activePlayers = nextState.activePlayers || [];
 
-            let legalActionIds: number[] = [];
-            // 次のターンが自分自身（AI）のターンの場合のみ、合法手を計算して返す
-            if (activePlayers.includes(playerId) && (def.ruleset as any).encodeLegalActions) {
-                legalActionIds = (def.ruleset as any).encodeLegalActions(nextState, playerId);
-            }
+            // 5. 次の状態のテンソルと合法手リストを取得
+            const stateTensor = adapter.encodeState(nextState, playerId);
+            const legalActionIds = activePlayers.includes(playerId)
+                ? adapter.encodeLegalActions(nextState, playerId)
+                : [];
 
             callback(null, {
                 nextStateTensor: stateTensor,
