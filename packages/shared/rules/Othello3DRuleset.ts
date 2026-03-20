@@ -1,5 +1,6 @@
 // packages/shared/rules/Othello3DRuleset.ts
 import type { GameRuleset, BaseGameState, BaseGameAction } from '../GameRules';
+import type { IGameRNG } from '../utils/IGameRNG';
 
 export type PlayerColor = 1 | -1; // 1: 黒, -1: 白
 
@@ -27,7 +28,7 @@ export interface MoveAction extends BaseGameAction, Position {
 export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
 
     // 初期状態の生成
-    getInitialState: (options = { size: 4 }) => {
+    getInitialState: (options = { size: 4 }, rng?: IGameRNG) => {
         const size = options.size;
         const board = Array.from({ length: size }, () =>
             Array.from({ length: size }, () => Array(size).fill(0))
@@ -75,7 +76,7 @@ export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
     },
 
     // 状態の更新 (Reducer)
-    reduce: (state, action) => {
+    reduce: (state, action, rng?: IGameRNG) => {
         const size = state.board.length;
         const nextBoard = JSON.parse(JSON.stringify(state.board));
         const color = action.color;

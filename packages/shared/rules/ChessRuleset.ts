@@ -1,5 +1,6 @@
 // packages/shared/rules/ChessRuleset.ts
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
+import type { IGameRNG } from '../utils/IGameRNG';
 
 // --- 定数定義 ---
 // 1: Pawn, 2: Knight, 3: Bishop, 4: Rook, 5: Queen, 6: King
@@ -180,7 +181,7 @@ function generatePseudoMoves(state: ChessState, from: number): number[] {
 
 // 王手(チェック)を回避している「真の合法手」かを検証
 function isStrictlyLegal(state: ChessState, from: number, to: number): boolean {
-    const tempState = ChessRuleset.reduce!(state, { type: 'MOVE', from, to });
+    const tempState = ChessRuleset.reduce!(state, { type: 'MOVE', from, to } as ChessAction);
     const kingIndex = tempState.board.indexOf(PIECES.K * state.turn);
     // 自分が動いたあとの盤面で、自分のキングが相手から攻撃されていなければ合法
     return !isAttacked(tempState.board, kingIndex, state.turn * -1);
@@ -189,7 +190,7 @@ function isStrictlyLegal(state: ChessState, from: number, to: number): boolean {
 // --- ルールセット本体 ---
 
 export const ChessRuleset: GameRuleset<ChessState, ChessAction> = {
-    getInitialState: (): ChessState => ({
+    getInitialState: (options?: any, rng?: IGameRNG): ChessState => ({
         status: 'WAITING',
         board: [...INITIAL_BOARD],
         turn: 1,
@@ -228,7 +229,7 @@ export const ChessRuleset: GameRuleset<ChessState, ChessAction> = {
         return true;
     },
 
-    reduce: (state, action) => {
+    reduce: (state, action, rng?: IGameRNG) => {
         const newState = JSON.parse(JSON.stringify(state));
         const piece = newState.board[action.from];
         const target = newState.board[action.to];

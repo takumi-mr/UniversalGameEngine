@@ -1,5 +1,6 @@
 // packages/shared/rules/RubiksRuleset.ts
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
+import type { IGameRNG } from '../utils/IGameRNG';
 
 export type FaceName = 'U' | 'D' | 'F' | 'B' | 'L' | 'R'; // Up, Down, Front, Back, Left, Right
 export type Color = 'W' | 'Y' | 'G' | 'B' | 'O' | 'R'; // White, Yellow, Green, Blue, Orange, Red
@@ -114,7 +115,7 @@ function setEdge(state: RubiksState, def: EdgeDef, colors: Color[]) {
 }
 
 export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction> = {
-    getInitialState: (): RubiksState => ({
+    getInitialState: (options?: any, rng?: IGameRNG): RubiksState => ({
         status: 'PLAYING',
         faces: createSolvedFaces(),
         moveCount: 0,
@@ -131,7 +132,7 @@ export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction> = {
         return true;
     },
 
-    reduce: (state, action) => {
+    reduce: (state, action, rng?: IGameRNG) => {
         if (action.type === 'RESET') {
             return {
                 ...RubiksRuleset.getInitialState(),

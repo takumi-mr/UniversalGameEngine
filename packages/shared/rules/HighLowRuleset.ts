@@ -1,5 +1,6 @@
 // packages/shared/rules/HighLowRuleset.ts
 import type { GameRuleset, BaseGameState, BaseGameAction } from '../GameRules';
+import type { IGameRNG } from '../utils/IGameRNG';
 
 // --- 1. ドメイン（トランプ特有）の型定義 ---
 export type Suit = '♠' | '♥' | '♦' | '♣';
@@ -25,7 +26,7 @@ export interface DrawAction extends BaseGameAction {
 }
 
 // --- 3. ヘルパー関数: シャッフルされた山札を作る ---
-function createDeck(): Card[] {
+function createDeck(rng?: IGameRNG): Card[] {
     const suits: Suit[] = ['♠', '♥', '♦', '♣'];
     const deck: Card[] = [];
     for (const suit of suits) {
@@ -35,7 +36,7 @@ function createDeck(): Card[] {
     }
     // フィッシャー–イェーツのシャッフル
     for (let i = deck.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = rng ? rng.nextInt(0, i) : Math.floor(Math.random() * (i + 1));
         [deck[i], deck[j]] = [deck[j], deck[i]];
     }
     return deck;
@@ -43,11 +44,11 @@ function createDeck(): Card[] {
 
 // --- 4. ルールセット本体 ---
 export const HighLowRuleset: GameRuleset<HighLowState, DrawAction> = {
-    getInitialState: () => {
+    getInitialState: (options?: any, rng?: IGameRNG) => {
         return {
             status: 'WAITING',
             message: 'Game Start! Player 1, draw a card.',
-            deck: createDeck(),
+            deck: createDeck(rng),
             currentTurn: 1,
             field: { 1: null, 2: null },
             scores: { 1: 0, 2: 0 },
@@ -64,7 +65,7 @@ export const HighLowRuleset: GameRuleset<HighLowState, DrawAction> = {
         return true;
     },
 
-    reduce: (state, action) => {
+    reduce: (state, action, rng?: IGameRNG) => {
         // イミュータブルな更新（浅いコピーと深いコピーを組み合わせる）
         const newState: HighLowState = {
             ...state,

@@ -1,4 +1,5 @@
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
+import type { IGameRNG } from '../utils/IGameRNG';
 
 export type Card = string; // e.g., 'AS', '2H', 'TD', 'KC'
 
@@ -35,7 +36,7 @@ function isSequential(val1: number, val2: number): boolean {
     return diff === 1 || diff === 12;
 }
 
-function createDeck(): Card[] {
+function createDeck(rng?: IGameRNG): Card[] {
     const suits = ['S', 'H', 'D', 'C'];
     const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K'];
     const deck: Card[] = [];
@@ -44,11 +45,16 @@ function createDeck(): Card[] {
             deck.push(`${r}${s}`);
         }
     }
-    return deck.sort(() => Math.random() - 0.5);
+    // Fisher-Yates shuffle
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = rng ? rng.nextInt(0, i) : Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
 }
 
 export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
-    getInitialState: (options?: any): SpeedState => {
+    getInitialState: (options?: any, rng?: IGameRNG): SpeedState => {
         const playerIds = options?.playerIds || [];
         return {
             status: 'WAITING',
@@ -92,14 +98,14 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
         return false;
     },
 
-    reduce: (state, action) => {
+    reduce: (state, action, rng?: IGameRNG) => {
         const newState = structuredClone(state);
         const pId = action.playerId!;
 
         if (action.type === 'START') {
             const players = Object.values(newState.players || {}).filter(Boolean) as string[];
             newState.playerIds = players;
-            const deck = createDeck();
+            const deck = createDeck(rng);
 
             // Setup Speed
             // Each player: 5 in hand, 15 in personal deck

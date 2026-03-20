@@ -1,4 +1,5 @@
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
+import type { IGameRNG } from '../utils/IGameRNG';
 
 // --- 型定義 ---
 export interface WordleState extends BaseGameState {
@@ -32,8 +33,8 @@ const WORDS = [
 
 export const WordleRuleset: GameRuleset<WordleState, WordleAction> = {
 
-    getInitialState: (options?: any): WordleState => {
-        const secretWord = WORDS[Math.floor(Math.random() * WORDS.length)];
+    getInitialState: (options?: any, rng?: IGameRNG): WordleState => {
+        const secretWord = WORDS[rng ? rng.nextInt(0, WORDS.length - 1) : Math.floor(Math.random() * WORDS.length)];
         return {
             status: 'WAITING',
             secretWord: secretWord,
@@ -68,7 +69,7 @@ export const WordleRuleset: GameRuleset<WordleState, WordleAction> = {
         return true;
     },
 
-    reduce: (state, action) => {
+    reduce: (state, action, rng?: IGameRNG) => {
         if (action.type === 'START') {
             const newState = WordleRuleset.getInitialState();
             newState.status = 'PLAYING';

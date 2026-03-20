@@ -13,6 +13,12 @@ export interface BaseGameState {
     version?: number;
     // 状態のハッシュ値（デスキンス検知用）
     hash?: string;
+    // 乱数生成器の設定（Provably Fair用）
+    prngConfig?: {
+        serverSeedHash: string;
+        clientSeed: string;
+        nonce: number;
+    };
 }
 
 // エンジンがアクションを識別するための最低限の約束
@@ -55,15 +61,17 @@ export function isSecret(obj: any): obj is Secret<any> {
     return !!(obj && typeof obj === 'object' && (obj as any).__isSecret === true);
 }
 
+import type { IGameRNG } from "./utils/IGameRNG";
+
 export interface GameRuleset<TState extends BaseGameState, TAction extends BaseGameAction> {
     // ゲームの初期状態を生成する関数
-    getInitialState: (options?: any) => TState;
+    getInitialState: (options?: any, rng?: IGameRNG) => TState;
 
     // そのアクションが現在の状態で「合法手」かどうかを判定する関数
     isValidAction: (state: TState, action: TAction) => boolean;
 
     // アクションを受け取り、新しい状態を返す関数（Reducer）
-    reduce: (state: TState, action: TAction) => TState;
+    reduce: (state: TState, action: TAction, rng?: IGameRNG) => TState;
 
     // ゲームが終了したかどうか、誰が勝ったかを判定する関数
     checkWinCondition: (state: TState) => GameResult;

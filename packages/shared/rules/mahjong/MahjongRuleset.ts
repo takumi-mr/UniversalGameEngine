@@ -1,5 +1,6 @@
 // packages/shared/rules/MahjongRules.ts
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../../GameRules';
+import type { IGameRNG } from '../../utils/IGameRNG';
 import { MahjongHandEvaluator } from './MahjongHandEvaluator';
 
 // 麻雀の牌表現 (例: 萬子=m, 筒子=p, 索子=s, 字牌=z) 
@@ -39,7 +40,7 @@ export interface MahjongAction extends BaseGameAction {
 }
 
 // 簡易的な山牌生成関数
-function createWall(): Tile[] {
+function createWall(rng?: IGameRNG): Tile[] {
     const wall: Tile[] = [];
     const suits = ['m', 'p', 's'];
     const numbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
@@ -55,16 +56,16 @@ function createWall(): Tile[] {
             wall.push(`${h}z`);
         }
     }
-    // 簡易シャッフル
+    // Fisher-Yates shuffle
     for (let i = wall.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = rng ? rng.nextInt(0, i) : Math.floor(Math.random() * (i + 1));
         [wall[i], wall[j]] = [wall[j], wall[i]];
     }
     return wall;
 }
 
 export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
-    getInitialState: (options: any): MahjongState => {
+    getInitialState: (options: any, rng?: IGameRNG): MahjongState => {
         const opts = options || {};
         const playerIds = (opts.playerIds || []).filter((id: any) => !!id);
 
@@ -136,10 +137,10 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
         }
     },
 
-    reduce: (state: MahjongState, action: MahjongAction): MahjongState => {
+    reduce: (state: MahjongState, action: MahjongAction, rng?: IGameRNG): MahjongState => {
         if (action.type === 'START') {
             const playerIds = Object.values(state.players || {}).filter(p => p !== null) as string[];
-            const wall = createWall();
+            const wall = createWall(rng);
             const deadWall: Tile[] = [];
             const doraIndicators: Tile[] = [];
             const hands: Record<string, Tile[]> = {};

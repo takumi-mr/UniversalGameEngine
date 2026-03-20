@@ -1,4 +1,5 @@
 import { BaseGameState, BaseGameAction, GameRuleset } from '../../GameRules';
+import type { IGameRNG } from '../../utils/IGameRNG';
 import { CardCategory, EnergyType, CardDefinition, PokemonTCGRegistry } from './PokemonTCGRegistry';
 // ==========================================
 // 1. データ定義 (The Card Registry)
@@ -58,7 +59,7 @@ export type PokemonTCGAction =
 export class PokemonTCGRuleset implements GameRuleset<PokemonTCGState, PokemonTCGAction> {
 
     // (初期化処理は簡略化: お互いにバトル場にポケモンが1体いて、サイドが3枚ある状態からスタートとします)
-    public getInitialState(options: { playerIds: string[] }): PokemonTCGState {
+    public getInitialState(options: { playerIds: string[] }, rng?: IGameRNG): PokemonTCGState {
         const playerData: Record<string, PTCGPlayer> = {};
         options.playerIds.forEach((id, idx) => {
             const isP1 = idx === 0;
@@ -128,7 +129,7 @@ export class PokemonTCGRuleset implements GameRuleset<PokemonTCGState, PokemonTC
         return true;
     }
 
-    public reduce(state: PokemonTCGState, action: PokemonTCGAction): PokemonTCGState {
+    public reduce(state: PokemonTCGState, action: PokemonTCGAction, rng?: IGameRNG): PokemonTCGState {
         const nextState = JSON.parse(JSON.stringify(state)) as PokemonTCGState;
         const player = nextState.playerData[action.playerId];
 
@@ -139,7 +140,7 @@ export class PokemonTCGRuleset implements GameRuleset<PokemonTCGState, PokemonTC
                 const def = PokemonTCGRegistry[action.cardDefId];
 
                 const newPokemon: PokemonInstance = {
-                    instanceId: Math.random().toString(),
+                    instanceId: rng ? Math.floor(rng.nextFloat() * 1000000).toString() : Math.random().toString(),
                     evolutionStack: [action.cardDefId],
                     damageTaken: 0,
                     attachedEnergy: []

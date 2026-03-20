@@ -1,5 +1,6 @@
 // packages/shared/rules/MancalaRuleset.ts
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
+import type { IGameRNG } from '../utils/IGameRNG';
 
 export interface MancalaState extends BaseGameState {
     board: number[]; // 長さ14の配列（0~5: P1陣地, 6: P1ストア, 7~12: P2陣地, 13: P2ストア）
@@ -13,7 +14,7 @@ export interface MancalaAction extends BaseGameAction {
 }
 
 export const MancalaRuleset: GameRuleset<MancalaState, MancalaAction> = {
-    getInitialState: (options?: any): MancalaState => {
+    getInitialState: (options?: any, rng?: IGameRNG): MancalaState => {
         // 各ポケットに石を4個ずつ。ストア(6, 13)は0個。
         const board = [
             4, 4, 4, 4, 4, 4, 0,
@@ -52,7 +53,7 @@ export const MancalaRuleset: GameRuleset<MancalaState, MancalaAction> = {
         return true;
     },
 
-    reduce: (state, action) => {
+    reduce: (state, action, rng?: IGameRNG) => {
         const newState = structuredClone(state);
         let { pitIndex } = action;
         const isP1 = newState.turn === 1;

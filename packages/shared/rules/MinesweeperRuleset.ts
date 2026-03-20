@@ -1,5 +1,6 @@
 import type { BaseGameState, BaseGameAction, GameRuleset, GameResult, Secret } from '../GameRules';
 import { createSecret } from '../GameRules';
+import type { IGameRNG } from '../utils/IGameRNG';
 
 // --- Types ---
 
@@ -32,7 +33,7 @@ export interface MinesweeperAction extends BaseGameAction {
 
 export const MinesweeperRuleset: GameRuleset<MinesweeperState, MinesweeperAction> = {
 
-    getInitialState: (options?: { rows?: number, cols?: number, mineCount?: number }): MinesweeperState => {
+    getInitialState: (options?: { rows?: number, cols?: number, mineCount?: number }, rng?: IGameRNG): MinesweeperState => {
         const rows = options?.rows ?? 10;
         const cols = options?.cols ?? 10;
         const mineCount = options?.mineCount ?? 10;
@@ -76,7 +77,7 @@ export const MinesweeperRuleset: GameRuleset<MinesweeperState, MinesweeperAction
         return false;
     },
 
-    reduce: (state, action) => {
+    reduce: (state, action, rng) => {
         // Use a simple clone for state
         const newState: MinesweeperState = JSON.parse(JSON.stringify(state));
 
@@ -88,7 +89,7 @@ export const MinesweeperRuleset: GameRuleset<MinesweeperState, MinesweeperAction
 
         if (action.type === 'REVEAL') {
             if (!newState.isInitialized) {
-                initializeBoard(newState, action.row, action.col);
+                initializeBoard(newState, action.row, action.col, rng);
                 newState.isInitialized = true;
             }
             revealCells(newState, action.row, action.col);
@@ -167,12 +168,12 @@ export const MinesweeperRuleset: GameRuleset<MinesweeperState, MinesweeperAction
     }
 };
 
-function initializeBoard(state: MinesweeperState, startRow: number, startCol: number) {
+function initializeBoard(state: MinesweeperState, startRow: number, startCol: number, rng?: IGameRNG) {
     const { rows, cols, mineCount } = state;
     let placedMines = 0;
     while (placedMines < mineCount) {
-        const r = Math.floor(Math.random() * rows);
-        const c = Math.floor(Math.random() * cols);
+        const r = rng ? rng.nextInt(0, rows - 1) : Math.floor(Math.random() * rows);
+        const c = rng ? rng.nextInt(0, cols - 1) : Math.floor(Math.random() * cols);
         if (r === startRow && c === startCol) continue;
         if (state.board[r][c].secret.value.isMine) continue;
         state.board[r][c].secret.value.isMine = true;

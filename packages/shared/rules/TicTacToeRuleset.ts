@@ -1,4 +1,5 @@
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
+import type { IGameRNG } from '../utils/IGameRNG';
 
 // --- 型定義 ---
 export interface TicTacToeState extends BaseGameState {
@@ -21,7 +22,7 @@ const WIN_LINES = [
 
 export const TicTacToeRuleset: GameRuleset<TicTacToeState, TicTacToeAction> = {
 
-    getInitialState: (options?: any): TicTacToeState => ({
+    getInitialState: (options?: any, rng?: IGameRNG): TicTacToeState => ({
         status: 'WAITING',
         board: Array(9).fill(0),
         turn: 1,
@@ -54,7 +55,7 @@ export const TicTacToeRuleset: GameRuleset<TicTacToeState, TicTacToeAction> = {
         return true;
     },
 
-    reduce: (state, action) => {
+    reduce: (state, action, rng?: IGameRNG) => {
 
         const newState = structuredClone(state);
 
