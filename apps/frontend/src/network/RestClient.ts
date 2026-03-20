@@ -1,7 +1,7 @@
-// apps/frontend/src/network/ApiClient.ts
-import type { INetworkClient } from '@engine/shared/network/INetworkClient';
+import type { INetworkClient, GameCreateOptions } from '@engine/shared/network/INetworkClient';
+import type { BaseGameState } from '@engine/shared';
 
-export class RestPollingClient<TState, TAction> implements INetworkClient<TState, TAction> {
+export class RestPollingClient<TState extends BaseGameState, TAction> implements INetworkClient<TState, TAction> {
     private baseUrl: string;
     public gameId: string | null = null;
     private pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -13,8 +13,9 @@ export class RestPollingClient<TState, TAction> implements INetworkClient<TState
         this.baseUrl = baseUrl;
     }
 
-    public async createGame(size: number): Promise<string> {
+    public async createGame(options?: GameCreateOptions): Promise<string> {
         try {
+            const size = options?.size ?? 8;
             const response = await fetch(this.baseUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -30,7 +31,7 @@ export class RestPollingClient<TState, TAction> implements INetworkClient<TState
         }
     }
 
-    public async connect(gameId: string): Promise<void> {
+    public async connect(gameId: string, _options?: { asSpectator?: boolean }): Promise<void> {
         this.gameId = gameId;
         this.stopPolling();
         await this.fetchState();

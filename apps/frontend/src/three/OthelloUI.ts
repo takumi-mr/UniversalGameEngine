@@ -129,8 +129,9 @@ export class OthelloUI {
         }
     }
 
-    public renderState(state: OthelloState) {
+    public renderState(state: OthelloState, legalActions: OthelloAction[] = []) {
         this.currentState = state;
+        const validMoves = legalActions.map(a => ({ x: a.x, y: a.y }));
 
         for (let y = 0; y < 8; y++) {
             for (let x = 0; x < 8; x++) {
@@ -168,7 +169,7 @@ export class OthelloUI {
 
                 // --- 3. 合法手のハイライト表示 ---
                 const hitBox = this.hitBoxes[y][x];
-                const isValid = state.validMoves.some(m => m.x === x && m.y === y);
+                const isValid = validMoves.some(m => m.x === x && m.y === y);
                 hitBox.material = isValid ? this.matHighlight : this.matInvisible;
             }
         }
@@ -189,16 +190,16 @@ export class OthelloUI {
 
         if (intersects.length > 0) {
             const hit = intersects[0].object.userData;
-            const isValid = this.currentState.validMoves.some(m => m.x === hit.x && m.y === hit.y);
-
-            if (isValid) {
-                this.onAction({
-                    type: 'PLACE_PIECE',
-                    x: hit.x,
-                    y: hit.y,
-                    color: this.currentState.currentTurn
-                });
-            }
+            // UI側での再チェックは行わず、上位層にアクションを投げる
+            // または、renderStateで受け取ったvalidMovesをメンバ変数に保持してチェックする
+            // ここではシンプルに、クリック座標をそのまま投げてサーバー側のバリデーションに任せるか、
+            // メンバ変数として保持しておく。
+            this.onAction({
+                type: 'PLACE_PIECE',
+                x: hit.x,
+                y: hit.y,
+                color: this.currentState.currentTurn
+            });
         }
     }
 

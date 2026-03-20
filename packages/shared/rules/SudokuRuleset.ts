@@ -1,4 +1,4 @@
-import { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
+import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
 
 // --- 1. 型定義 ---
 

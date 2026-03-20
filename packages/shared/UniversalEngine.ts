@@ -1,5 +1,6 @@
 // packages/shared/UniversalEngine.ts
-import { BaseGameState, BaseGameAction, GameRuleset, isSecret } from "./GameRules";
+import { isSecret } from "./GameRules";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "./GameRules";
 
 // --- 2. 汎用エンジン本体 ---
 export class UniversalEngine<TState extends BaseGameState, TAction extends BaseGameAction> {
@@ -107,7 +108,7 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
         }
 
         // 3.5 状態のバージョンをインクリメント
-        this.state.version++;
+        this.state.version = (this.state.version ?? 0) + 1;
 
         return true;
     }

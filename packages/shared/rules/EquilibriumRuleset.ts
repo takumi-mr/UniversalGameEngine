@@ -13,7 +13,7 @@
  * The World's Most Interesting Game, According to AI
  */
 
-import { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
+import type { BaseGameState, GameRuleset } from '../GameRules';
 
 // ==========================================
 // 1. 型定義 (Types & Interfaces)
