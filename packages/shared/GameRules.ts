@@ -22,6 +22,27 @@ export interface BaseGameAction {
     timestamp?: number; // アクションが発生した時刻
 }
 
+/**
+ * 閲覧制限のある情報を包むラッパー型
+ * エンジンはこの型を見つけると、対象プレイヤー以外に対して自動的にマスク処理を行う。
+ */
+export interface Secret<T> {
+    __isSecret: true;
+    value: T;
+    // 閲覧可能なプレイヤーIDのリスト。 "*" は全員。
+    visibleTo: string[];
+    // マスク時の代替値。未指定の場合はデフォルト（"?" など）が使用される
+    maskedValue?: any;
+}
+
+export function createSecret<T>(value: T, visibleTo: string[], maskedValue?: any): Secret<T> {
+    return { __isSecret: true, value, visibleTo, maskedValue };
+}
+
+export function isSecret(obj: any): obj is Secret<any> {
+    return !!(obj && typeof obj === 'object' && (obj as any).__isSecret === true);
+}
+
 export interface GameRuleset<TState extends BaseGameState, TAction extends BaseGameAction> {
     // ゲームの初期状態を生成する関数
     getInitialState: (options?: any) => TState;
