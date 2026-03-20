@@ -22,6 +22,18 @@ export interface BaseGameAction {
     timestamp?: number; // アクションが発生した時刻
 }
 
+// 勝敗結果を表す専用の型
+export interface GameResult {
+    isFinished: boolean;
+    // 勝利したプレイヤーのIDリスト。
+    // undefined: 勝敗未決 (isFinished: false時)
+    // []: 引き分け (isFinished: true時)
+    // ["playerId"]: 単独勝利
+    // ["playerId1", "playerId2"]: 同時勝利（ゲームによる）
+    winnerIds?: string[];
+    message?: string;
+}
+
 /**
  * 閲覧制限のある情報を包むラッパー型
  * エンジンはこの型を見つけると、対象プレイヤー以外に対して自動的にマスク処理を行う。
@@ -54,10 +66,10 @@ export interface GameRuleset<TState extends BaseGameState, TAction extends BaseG
     reduce: (state: TState, action: TAction) => TState;
 
     // ゲームが終了したかどうか、誰が勝ったかを判定する関数
-    checkWinCondition: (state: TState) => { isFinished: boolean; message?: string };
+    checkWinCondition: (state: TState) => GameResult;
 
     // ゲームが終了したかどうか、誰が勝ったかを判定する関数
-    applyWinResult?: (state: TState, result: { isFinished: boolean, message?: string }) => TState;
+    applyWinResult?: (state: TState, result: GameResult) => TState;
 
     // 隠匿情報（相手の手牌など）をマスク（伏せた）状態を作成する関数 (オプショナル)
     maskState?: (state: TState, playerId: string) => TState;
