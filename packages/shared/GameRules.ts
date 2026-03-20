@@ -9,7 +9,10 @@ export interface BaseGameState {
     activePlayers?: string[];
     // ターンの制限時間（タイムスタンプ）。麻雀などの割り込みアクション（ポン・チー）待機時間に有用
     turnDeadline?: number;
-    // 必要に応じて updatedAt などもここに入れる
+    // 状態のバージョン（差分更新の一貫性チェック用）
+    version: number;
+    // 状態のハッシュ値（デスキンス検知用）
+    hash?: string;
 }
 
 // エンジンがアクションを識別するための最低限の約束

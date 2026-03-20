@@ -257,7 +257,9 @@ export const setupSocketIO = (io: Server) => {
             socket.on('disconnect', () => {
                 // 完全に切断（ルームから退出）した後に、各ルームの人数を更新する
                 for (const room of rooms) {
-                    if (sessions.has(room)) {
+                    const session = sessions.get(room);
+                    if (session) {
+                        session.server.handleDisconnect(socket.id);
                         updatePresence(room);
                     }
                 }
