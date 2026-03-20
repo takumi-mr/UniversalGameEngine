@@ -126,7 +126,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
 import { useRouter } from 'vue-router';
-import { SocketIoClient } from '../network/SocketIoClient';
+import { SocketIoClient } from '../../network/SocketIoClient';
 import ChatPanel from './game/ChatPanel.vue';
 import { availableGames } from '../constants/games';
 import type { BaseGameState, BaseGameAction } from '@engine/shared/GameRules';

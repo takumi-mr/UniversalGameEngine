@@ -1,6 +1,6 @@
 // packages/shared/rules/mahjong/MahjongHandEvaluator.ts
 import type { MahjongState, Tile } from './MahjongRuleset';
-const Riichi = require('riichi');
+import Riichi from 'riichi';
 
 export interface EvaluatedHand {
     isAgari: boolean;

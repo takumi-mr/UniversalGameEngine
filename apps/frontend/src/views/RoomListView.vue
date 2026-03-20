@@ -197,7 +197,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { availableGames } from '../constants/games';
-import { SocketIoClient } from '../network/SocketIoClient';
+import { SocketIoClient } from '../../network/SocketIoClient';
 import GameHelpDialog from '../components/game/GameHelpDialog.vue';
 import ThemeSwitcher from '../components/ThemeSwitcher.vue';
 import { generatePuzzle } from '../utils/sudokuGenerator';

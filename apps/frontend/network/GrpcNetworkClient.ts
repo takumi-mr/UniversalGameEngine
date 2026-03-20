@@ -5,8 +5,14 @@ import path from 'path';
 import type { INetworkClient, GameMetadata as SharedGameMetadata } from '@engine/shared/network/INetworkClient';
 import type { BaseGameAction, BaseGameState } from '@engine/shared';
 
+// ESM環境で __dirname を使えるようにする
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 // ※ Electron実行時のパス解決に注意してください（__dirnameの扱いやasar化の影響など）
-const PROTO_PATH = path.resolve(__dirname, '../../packages/shared/network/game.proto');
+const PROTO_PATH = path.resolve(__dirname, '../../../packages/shared/network/game.proto');
 
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
     keepCase: true,
@@ -137,6 +143,29 @@ export class GrpcNetworkClient<TState extends BaseGameState, TAction extends Bas
         };
 
         this.client.DispatchAction(req, this.buildGrpcMetadata(), (err: grpc.ServiceError | null, response: any) => {
+            if (err) {
+                this.onError(err.details || err.message);
+                return;
+            }
+            if (!response.success) {
+                this.onError(response.message);
+            }
+        });
+    }
+
+    public sendChat(message: string, channel: 'public' | 'private', recipientId?: string): void {
+        if (!this.gameId) return;
+
+        const req = {
+            userId: this.playerId || 'anonymous',
+            message: message,
+            channel: channel,
+            recipientId: recipientId || '',
+            timestamp: new Date().toISOString(),
+            gameId: this.gameId
+        };
+
+        this.client.SendChat(req, this.buildGrpcMetadata(), (err: grpc.ServiceError | null, response: any) => {
             if (err) {
                 this.onError(err.details || err.message);
                 return;
