@@ -23,10 +23,10 @@
           </v-btn>
         </template>
         <v-list>
-          <v-list-item @click="$i18n.locale = 'en'">
+          <v-list-item @click="setLocale('en')">
             <v-list-item-title>English</v-list-item-title>
           </v-list-item>
-          <v-list-item @click="$i18n.locale = 'ja'">
+          <v-list-item @click="setLocale('ja')">
             <v-list-item-title>日本語</v-list-item-title>
           </v-list-item>
         </v-list>
@@ -40,7 +40,7 @@
       ></v-btn>
 
       <div class="px-4 text-body-2 text-medium-emphasis">
-        {{ $t('common.logged_in_as', { username: username }) }}
+        {{ $t('common.logged_in_as', { username: authStore.username }) }}
       </div>
     </v-app-bar>
 
@@ -201,6 +201,9 @@ import { SocketIoClient } from '../../network/SocketIoClient';
 import GameHelpDialog from '../components/game/GameHelpDialog.vue';
 import ThemeSwitcher from '../components/ThemeSwitcher.vue';
 import { generatePuzzle } from '../utils/sudokuGenerator';
+import { useAuthStore } from '../store/auth';
+import { useRoomStore } from '../store/room';
+import { useUIStore } from '../store/ui';
 
 // ゲーム起動前に呼ばれる汎用フック
 // 各ゲームの初期化処理を追加できる。戻り値は createGame の gameOptions に渡される
@@ -215,11 +218,14 @@ const gameHooks: Record<string, GameHookFn> = {
 
 const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
+const roomStore = useRoomStore();
+const uiStore = useUIStore();
+
 const gameType = ref(route.params.gameType as string);
 
-const username = ref(localStorage.getItem('game_username') || 'Unknown');
-const rooms = ref<any[]>([]);
-const loading = ref(true);
+const rooms = computed(() => roomStore.rooms);
+const loading = computed(() => roomStore.loading);
 const creating = ref(false);
 const showHelp = ref(false);
 const showJoinDialog = ref(false);
@@ -234,20 +240,7 @@ const translatedGameName = computed(() => t(`games.${gameType.value}.name`));
 const translatedGameDescription = computed(() => t(`games.${gameType.value}.description`));
 const translatedGameRules = computed(() => t(`games.${gameType.value}.rules`));
 
-const API_BASE = 'http://127.0.0.1:3000';
-
-const fetchRooms = async () => {
-  loading.value = true;
-  try {
-    const res = await fetch(`${API_BASE}/rooms/${gameType.value}`);
-    const data = await res.json();
-    rooms.value = data.rooms;
-  } catch (err) {
-    console.error('Failed to fetch rooms:', err);
-  } finally {
-    loading.value = false;
-  }
-};
+const fetchRooms = () => roomStore.fetchRooms(gameType.value);
 
 onMounted(fetchRooms);
 
@@ -258,12 +251,13 @@ const createNewRoom = async () => {
     const hookFn = gameHooks[gameType.value];
     const gameOptions = hookFn ? await hookFn() : undefined;
 
-    const token = localStorage.getItem('game_token') || '';
-      const client = new SocketIoClient(API_BASE, token);
-      const id = await client.createGame({
-        type: gameType.value.toUpperCase().replace(/-/g, '_'),
-        gameOptions,
-      });
+    const token = authStore.token || '';
+    const API_BASE = 'http://127.0.0.1:3000';
+    const client = new SocketIoClient(API_BASE, token);
+    const id = await client.createGame({
+      type: gameType.value.toUpperCase().replace(/-/g, '_'),
+      gameOptions,
+    });
       client.disconnect(); // 別のビューへ遷移するため、一時的な接続は解除する
       router.push(`/game/${gameType.value}/${id}`);
   } catch (err) {
@@ -289,6 +283,12 @@ const confirmJoin = (asSpectator: boolean) => {
 
 const back = () => {
   router.push('/selection');
+};
+
+const { locale } = useI18n();
+const setLocale = (lang: string) => {
+  uiStore.setLocale(lang);
+  locale.value = lang;
 };
 </script>
 

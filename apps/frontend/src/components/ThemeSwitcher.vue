@@ -20,10 +20,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, watch } from 'vue';
 import { useTheme } from 'vuetify';
+import { useUIStore } from '../store/ui';
 
 const theme = useTheme();
+const uiStore = useUIStore();
 
 const themes = [
   { id: 'light', name: 'Light', icon: 'mdi-white-balance-sunny' },
@@ -32,7 +34,7 @@ const themes = [
   { id: 'forest', name: 'Forest', icon: 'mdi-tree' },
 ];
 
-const currentTheme = computed(() => theme.global.name.value);
+const currentTheme = computed(() => uiStore.theme);
 
 const currentThemeIcon = computed(() => {
   return themes.find((t) => t.id === currentTheme.value)?.icon || 'mdi-palette';
@@ -45,14 +47,12 @@ const currentThemeColor = computed(() => {
 });
 
 const setTheme = (themeId: string) => {
+  uiStore.setTheme(themeId);
   theme.global.name.value = themeId;
-  localStorage.setItem('user-theme', themeId);
 };
 
-onMounted(() => {
-  const savedTheme = localStorage.getItem('user-theme');
-  if (savedTheme && themes.find((t) => t.id === savedTheme)) {
-    theme.global.name.value = savedTheme;
-  }
-});
+// Sync store theme with Vuetify theme
+watch(() => uiStore.theme, (newTheme) => {
+  theme.global.name.value = newTheme;
+}, { immediate: true });
 </script>

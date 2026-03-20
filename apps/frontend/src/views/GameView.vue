@@ -11,6 +11,26 @@
       <!-- Theme Switcher -->
       <ThemeSwitcher class="mr-2" />
       
+      <v-menu>
+        <template v-slot:activator="{ props }">
+          <v-btn
+            v-bind="props"
+            variant="text"
+            prepend-icon="mdi-translate"
+          >
+            {{ $i18n.locale === 'ja' ? '日本語' : 'English' }}
+          </v-btn>
+        </template>
+        <v-list>
+          <v-list-item @click="setLocale('en')">
+            <v-list-item-title>English</v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="setLocale('ja')">
+            <v-list-item-title>日本語</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+
       <v-btn
         icon="mdi-help-circle-outline"
         variant="text"
@@ -62,27 +82,47 @@ import GameHelpTabs from '../components/game/GameHelpTabs.vue';
 import ThemeSwitcher from '../components/ThemeSwitcher.vue';
 import { availableGames } from '../constants/games';
 
+import { useAuthStore } from '../store/auth';
+import { useGameStore } from '../store/game';
+import { useUIStore } from '../store/ui';
+import { useI18n } from 'vue-i18n';
+
 const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
+const gameStore = useGameStore();
+const uiStore = useUIStore();
 
 const gameType = ref(route.params.gameType as string);
 const roomId = ref(route.params.roomId as string);
 const spectate = ref(route.query.spectate === 'true');
-const authToken = ref(localStorage.getItem('game_token') || '');
-const username = ref(localStorage.getItem('game_username') || '');
+const authToken = computed(() => authStore.token || '');
+const username = computed(() => authStore.username || 'Unknown');
 
 const showHelp = ref(false);
 
 const gameInfo = computed(() => availableGames.find(g => g.type === gameType.value));
 
+import { onMounted } from 'vue';
+onMounted(() => {
+  gameStore.setGame(gameType.value, roomId.value);
+});
+
 const back = () => {
-  router.push(`/rooms/${gameType.value}`);
+  gameStore.clearGame();
+  router.push('/selection');
 };
 
 const logout = () => {
-  localStorage.removeItem('game_token');
-  localStorage.removeItem('game_username');
+  authStore.logout();
+  gameStore.clearGame();
   router.push('/login');
+};
+
+const { locale } = useI18n();
+const setLocale = (lang: string) => {
+  uiStore.setLocale(lang);
+  locale.value = lang;
 };
 </script>
 
