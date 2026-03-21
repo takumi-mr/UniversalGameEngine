@@ -1,18 +1,9 @@
 <template>
-  <v-dialog
-    v-model="internalModel"
-    max-width="600px"
-    transition="dialog-bottom-transition"
-  >
+  <v-dialog v-model="internalModel" max-width="600px" transition="dialog-bottom-transition">
     <v-card class="help-card pt-4 pb-2 px-2">
       <v-card-title class="d-flex align-center justify-space-between pb-4">
         <div class="d-flex align-center">
-          <v-avatar
-            color="primary"
-            variant="tonal"
-            size="48"
-            class="mr-4"
-          >
+          <v-avatar color="primary" variant="tonal" size="48" class="mr-4">
             <span class="text-h5">{{ gameEmoji }}</span>
           </v-avatar>
           <div>
@@ -20,15 +11,11 @@
               {{ gameName }}
             </div>
             <div class="text-caption text-medium-emphasis">
-              {{ $t('help.title') }}
+              {{ $t("help.title") }}
             </div>
           </div>
         </div>
-        <v-btn
-          icon="mdi-close"
-          variant="text"
-          @click="internalModel = false"
-        />
+        <v-btn icon="mdi-close" variant="text" @click="internalModel = false" />
       </v-card-title>
 
       <v-divider />
@@ -37,31 +24,22 @@
         <slot name="custom">
           <div class="rules-section">
             <div class="d-flex align-center mb-3">
-              <v-icon
-                color="primary"
-                class="mr-2"
-              >
-                mdi-book-open-variant
-              </v-icon>
-              <span class="text-subtitle-1 font-weight-bold text-primary">{{ $t('help.how_to_play') }}</span>
+              <v-icon color="primary" class="mr-2"> mdi-book-open-variant </v-icon>
+              <span class="text-subtitle-1 font-weight-bold text-primary">{{
+                $t("help.how_to_play")
+              }}</span>
             </div>
             <p class="text-body-1 mb-0 line-height-relaxed whitespace-pre-wrap">
-              {{ gameRules || $t('help.no_rules') }}
+              {{ gameRules || $t("help.no_rules") }}
             </p>
           </div>
 
-          <div
-            v-if="gameDescription"
-            class="rules-section mt-6"
-          >
+          <div v-if="gameDescription" class="rules-section mt-6">
             <div class="d-flex align-center mb-3">
-              <v-icon
-                color="secondary"
-                class="mr-2"
-              >
-                mdi-information-outline
-              </v-icon>
-              <span class="text-subtitle-1 font-weight-bold text-secondary">{{ $t('help.summary') }}</span>
+              <v-icon color="secondary" class="mr-2"> mdi-information-outline </v-icon>
+              <span class="text-subtitle-1 font-weight-bold text-secondary">{{
+                $t("help.summary")
+              }}</span>
             </div>
             <p class="text-body-2 text-medium-emphasis mb-0">
               {{ gameDescription }}
@@ -73,14 +51,8 @@
       <v-divider />
 
       <v-card-actions class="pa-4 flex-column align-stretch">
-        <v-btn
-          block
-          color="primary"
-          variant="flat"
-          size="large"
-          @click="internalModel = false"
-        >
-          {{ $t('help.ok') }}
+        <v-btn block color="primary" variant="flat" size="large" @click="internalModel = false">
+          {{ $t("help.ok") }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -88,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed } from "vue";
 
 const props = defineProps<{
   modelValue: boolean;
@@ -99,12 +71,12 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void;
+  (e: "update:modelValue", value: boolean): void;
 }>();
 
 const internalModel = computed({
   get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value),
+  set: (value) => emit("update:modelValue", value),
 });
 </script>
 

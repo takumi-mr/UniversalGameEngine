@@ -8,9 +8,23 @@
 
 <style>
 /* Global */
-*, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
-#app { width: 100%; height: 100%; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+#app {
+  width: 100%;
+  height: 100%;
+}
 </style>
 
 <style scoped>
@@ -38,13 +52,15 @@ html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
   backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   padding: 7px 20px;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 0.82rem;
   color: rgb(var(--v-theme-on-surface));
   position: relative;
   z-index: 1000;
 }
-.user-bar strong { color: rgb(var(--v-theme-primary)); }
+.user-bar strong {
+  color: rgb(var(--v-theme-primary));
+}
 
 .back-btn {
   background: rgba(var(--v-theme-on-surface), 0.07);
@@ -56,7 +72,9 @@ html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
   cursor: pointer;
   transition: all 0.15s ease;
 }
-.back-btn:hover { background: rgba(var(--v-theme-on-surface), 0.14); }
+.back-btn:hover {
+  background: rgba(var(--v-theme-on-surface), 0.14);
+}
 
 .logout-btn {
   background: rgba(var(--v-theme-error), 0.15);
@@ -68,5 +86,7 @@ html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
   cursor: pointer;
   transition: all 0.15s ease;
 }
-.logout-btn:hover { background: rgba(var(--v-theme-error), 0.3); }
+.logout-btn:hover {
+  background: rgba(var(--v-theme-error), 0.3);
+}
 </style>

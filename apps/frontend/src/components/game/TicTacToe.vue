@@ -5,59 +5,45 @@
         <div
           v-if="state.status === 'PLAYING'"
           class="turn-box"
-          :class="{ 'active': state.turn === 1 }"
+          :class="{ active: state.turn === 1 }"
         >
           <span class="symbol">O</span>
           <span class="label">Player 1</span>
         </div>
-        <div class="vs">
-          VS
-        </div>
+        <div class="vs">VS</div>
         <div
           v-if="state.status === 'PLAYING'"
           class="turn-box"
-          :class="{ 'active': state.turn === -1 }"
+          :class="{ active: state.turn === -1 }"
         >
           <span class="symbol">X</span>
           <span class="label">Player 2</span>
         </div>
       </div>
 
-      <div
-        v-if="state.message"
-        class="game-message"
-      >
+      <div v-if="state.message" class="game-message">
         {{ state.message }}
       </div>
 
       <div class="tictactoe-board">
-        <div 
-          v-for="(cell, index) in state.board" 
-          :key="`cell-${index}`" 
+        <div
+          v-for="(cell, index) in state.board"
+          :key="`cell-${index}`"
           class="cell"
-          :class="{ 
+          :class="{
             'is-clickable': isClickable(index),
-            'winning-cell': isWinningCell(index)
+            'winning-cell': isWinningCell(index),
           }"
           @click="placePiece(index)"
         >
           <Transition name="pop">
-            <span
-              v-if="cell === 1"
-              class="piece piece-o"
-            >O</span>
-            <span
-              v-else-if="cell === -1"
-              class="piece piece-x"
-            >X</span>
+            <span v-if="cell === 1" class="piece piece-o">O</span>
+            <span v-else-if="cell === -1" class="piece piece-x">X</span>
           </Transition>
         </div>
       </div>
 
-      <div
-        v-if="state.status === 'FINISHED'"
-        class="result-overlay"
-      >
+      <div v-if="state.status === 'FINISHED'" class="result-overlay">
         <div class="result-content">
           <div class="winner-text">
             {{ state.message }}
@@ -71,11 +57,11 @@
 <script setup lang="ts">
 import type { TicTacToeState, TicTacToeAction } from "@engine/shared/rules/TicTacToeRuleset";
 
-const props = defineProps<{ 
-  state: TicTacToeState,
-  myPlayerId?: string 
+const props = defineProps<{
+  state: TicTacToeState;
+  myPlayerId?: string;
 }>();
-const emit = defineEmits<{ (e: 'action', action: TicTacToeAction): void }>();
+const emit = defineEmits<{ (e: "action", action: TicTacToeAction): void }>();
 
 // 勝利マスのハイライト（シンプルに盤面がいっぱいかチェックするロジックなどはバックエンドにあるため、
 // 本来的にはバックエンドから勝利ラインが送られてくるのが理想。今回は暫定的に表示のみ。）
@@ -84,22 +70,23 @@ const isWinningCell = (_index: number) => {
 };
 
 const isClickable = (index: number): boolean => {
-  if (props.state.status !== 'PLAYING') return false;
+  if (props.state.status !== "PLAYING") return false;
   // 自分がプレイヤーリストに含まれているかチェック
-  const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
+  const isPlayer =
+    props.state.players && Object.values(props.state.players).includes(props.myPlayerId || "");
   if (!isPlayer) return false;
-  
+
   return props.state.board[index] === 0;
 };
 
 const placePiece = (index: number) => {
   if (!isClickable(index)) return;
-  emit('action', { type: 'PLACE', index });
+  emit("action", { type: "PLACE", index });
 };
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap");
 
 .tictactoe-container {
   width: 100%;
@@ -107,7 +94,7 @@ const placePiece = (index: number) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Outfit', sans-serif;
+  font-family: "Outfit", sans-serif;
   perspective: 1000px;
 }
 
@@ -149,8 +136,14 @@ const placePiece = (index: number) => {
   text-transform: uppercase;
   letter-spacing: 1px;
 }
-.active.turn-box:nth-child(1) .symbol { color: rgb(var(--v-theme-primary)); text-shadow: 0 0 15px rgba(var(--v-theme-primary), 0.6); }
-.active.turn-box:nth-child(3) .symbol { color: rgb(var(--v-theme-secondary)); text-shadow: 0 0 15px rgba(var(--v-theme-secondary), 0.6); }
+.active.turn-box:nth-child(1) .symbol {
+  color: rgb(var(--v-theme-primary));
+  text-shadow: 0 0 15px rgba(var(--v-theme-primary), 0.6);
+}
+.active.turn-box:nth-child(3) .symbol {
+  color: rgb(var(--v-theme-secondary));
+  text-shadow: 0 0 15px rgba(var(--v-theme-secondary), 0.6);
+}
 
 .vs {
   font-weight: 800;
@@ -180,7 +173,7 @@ const placePiece = (index: number) => {
   backdrop-filter: blur(8px);
   border-radius: 24px;
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
 }
 
 .cell {
@@ -214,7 +207,11 @@ const placePiece = (index: number) => {
 }
 .piece-o {
   color: rgb(var(--v-theme-primary));
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgb(var(--v-theme-secondary)) 100%);
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-secondary)) 100%
+  );
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -222,7 +219,11 @@ const placePiece = (index: number) => {
 }
 .piece-x {
   color: rgb(var(--v-theme-secondary));
-  background: linear-gradient(135deg, rgb(var(--v-theme-secondary)) 0%, rgb(var(--v-theme-primary)) 100%);
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-secondary)) 0%,
+    rgb(var(--v-theme-primary)) 100%
+  );
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -234,14 +235,25 @@ const placePiece = (index: number) => {
   animation: pop-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 @keyframes pop-in {
-  0% { transform: scale(0.2); opacity: 0; filter: blur(10px); }
-  100% { transform: scale(1); opacity: 1; filter: blur(0); }
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+    filter: blur(10px);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
 }
 
 /* === Result Overlay === */
 .result-overlay {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -256,7 +268,7 @@ const placePiece = (index: number) => {
   padding: 24px 40px;
   border-radius: 20px;
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   animation: slide-up 0.5s ease-out;
 }
 .winner-text {
@@ -266,7 +278,13 @@ const placePiece = (index: number) => {
 }
 
 @keyframes slide-up {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 </style>

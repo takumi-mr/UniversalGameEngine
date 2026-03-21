@@ -3,43 +3,27 @@
     <!-- Main Game Area -->
     <div class="panel">
       <div class="panel-header">
-        <div class="game-title">
-          {{ gameEmoji }} {{ $t(`games.${gameType}.name`) }}
-        </div>
+        <div class="game-title">{{ gameEmoji }} {{ $t(`games.${gameType}.name`) }}</div>
         <div class="room-id">
           🔑 Room: <span>{{ roomId }}</span>
         </div>
-        <div
-          class="status-pill"
-          :class="statusClass"
-        >
+        <div class="status-pill" :class="statusClass">
           {{ connectionStatus }}
         </div>
       </div>
 
-      <div
-        v-if="errorMsg"
-        class="error-banner"
-      >
-        ⚠️ {{ errorMsg }}
-      </div>
+      <div v-if="errorMsg" class="error-banner">⚠️ {{ errorMsg }}</div>
 
       <!-- Specialized Game Component -->
-      <div
-        v-if="gameState"
-        class="game-container"
-      >
+      <div v-if="gameState" class="game-container">
         <!-- Waiting Overlay -->
-        <div
-          v-if="gameState.status === 'WAITING'"
-          class="waiting-overlay"
-        >
+        <div v-if="gameState.status === 'WAITING'" class="waiting-overlay">
           <div class="waiting-content">
             <div class="loader-ring" />
-            <h3>{{ $t('common.waiting_for_players') }}</h3>
+            <h3>{{ $t("common.waiting_for_players") }}</h3>
             <p v-if="gameMinPlayers">
-              {{ $t('common.min_players_required', { min: gameMinPlayers }) }}
-              <br>
+              {{ $t("common.min_players_required", { min: gameMinPlayers }) }}
+              <br />
               <span class="player-count">{{ currentPlayerCount }} / {{ gameMinPlayers }}</span>
             </p>
             <div class="waiting-subtext">
@@ -56,29 +40,17 @@
           :my-player-id="myPlayerId"
           @action="onGameAction"
         />
-        
+
         <!-- Fallback if no specialized component -->
-        <div
-          v-else-if="!gameComponent && gameState.status !== 'WAITING'"
-          class="state-block"
-        >
+        <div v-else-if="!gameComponent && gameState.status !== 'WAITING'" class="state-block">
           <div class="state-header">
             <span class="tag">Raw Game State</span>
-            <span
-              class="status-badge"
-              :class="gameState.status"
-            >{{ gameState.status }}</span>
+            <span class="status-badge" :class="gameState.status">{{ gameState.status }}</span>
           </div>
-          <div
-            v-if="gameState.activePlayers"
-            class="current-player"
-          >
-            🎯 Active: {{ gameState.activePlayers.join(', ') || '—' }}
+          <div v-if="gameState.activePlayers" class="current-player">
+            🎯 Active: {{ gameState.activePlayers.join(", ") || "—" }}
           </div>
-          <div
-            v-if="gameState.message"
-            class="game-message"
-          >
+          <div v-if="gameState.message" class="game-message">
             {{ gameState.message }}
           </div>
           <pre class="json-view">{{ prettyState }}</pre>
@@ -86,25 +58,16 @@
 
         <!-- Your Turn Notification -->
         <Transition name="slide-fade">
-          <div
-            v-if="isMyTurn && gameState.status === 'PLAYING'"
-            class="turn-notification"
-          >
+          <div v-if="isMyTurn && gameState.status === 'PLAYING'" class="turn-notification">
             <div class="turn-content">
-              <v-icon
-                icon="mdi-star"
-                class="turn-icon"
-              />
-              <span>{{ $t('common.your_turn') }}</span>
+              <v-icon icon="mdi-star" class="turn-icon" />
+              <span>{{ $t("common.your_turn") }}</span>
             </div>
           </div>
         </Transition>
       </div>
 
-      <div
-        v-else
-        class="connecting"
-      >
+      <div v-else class="connecting">
         <div class="spinner" />
         <div>Connecting to game...</div>
       </div>
@@ -113,46 +76,23 @@
     <!-- Sidebar -->
     <div class="sidebar">
       <div class="sidebar-panel">
-        <div class="sidebar-title">
-          Controls
-        </div>
-        <button
-          class="back-btn"
-          @click="goBack"
-        >
-          ← {{ $t('common.back') }}
-        </button>
-        <button
-          class="new-game-btn"
-          @click="createNewGame"
-        >
-          🆕 New Game
-        </button>
+        <div class="sidebar-title">Controls</div>
+        <button class="back-btn" @click="goBack">← {{ $t("common.back") }}</button>
+        <button class="new-game-btn" @click="createNewGame">🆕 New Game</button>
       </div>
 
       <!-- プレイヤーリスト -->
-      <div
-        v-if="gameState?.players"
-        class="sidebar-panel"
-      >
-        <div class="sidebar-title">
-          Players
-        </div>
-        <div
-          v-for="[role, id] in playerEntries"
-          :key="role"
-          class="player-row"
-        >
+      <div v-if="gameState?.players" class="sidebar-panel">
+        <div class="sidebar-title">Players</div>
+        <div v-for="[role, id] in playerEntries" :key="role" class="player-row">
           <span class="player-role">{{ role }}</span>
-          <span class="player-id">{{ id ?? 'waiting...' }}</span>
+          <span class="player-id">{{ id ?? "waiting..." }}</span>
         </div>
       </div>
 
       <!-- デバッグ情報 -->
       <div class="sidebar-panel debug-panel">
-        <div class="sidebar-title">
-          Debug
-        </div>
+        <div class="sidebar-title">Debug</div>
         <details class="json-details">
           <summary>📋 Raw State</summary>
           <pre class="json-view-mini">{{ prettyState }}</pre>
@@ -172,52 +112,75 @@
     </div>
 
     <!-- Notification Snackbar -->
-    <v-snackbar
-      v-model="showSnackbar"
-      :color="snackbarColor"
-      location="top"
-      class="rounded-lg"
-    >
+    <v-snackbar v-model="showSnackbar" :color="snackbarColor" location="top" class="rounded-lg">
       {{ snackbarMsg }}
       <template #actions>
-        <v-btn
-          variant="text"
-          @click="showSnackbar = false"
-        >
-          Close
-        </v-btn>
+        <v-btn variant="text" @click="showSnackbar = false"> Close </v-btn>
       </template>
     </v-snackbar>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, defineAsyncComponent, type Component } from 'vue';
-import { useRouter } from 'vue-router';
-import { SocketIoClient } from '../../network/SocketIoClient';
-import ChatPanel from './game/ChatPanel.vue';
-import { availableGames } from '../constants/games';
-import type { BaseGameState, BaseGameAction } from '@engine/shared/GameRules';
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent, type Component } from "vue";
+import { useRouter } from "vue-router";
+import { SocketIoClient } from "../../network/SocketIoClient";
+import ChatPanel from "./game/ChatPanel.vue";
+import { availableGames } from "../constants/games";
+import type { BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
 
 // 各ゲームの型をインポート
-import type { TicTacToeState, TicTacToeAction } from '@engine/shared/rules/TicTacToeRuleset';
-import type { OthelloState, OthelloAction } from '@engine/shared/rules/OthelloRuleset';
-import type { GameState as Othello3DState, MoveAction as Othello3DAction } from '@engine/shared/rules/Othello3DRuleset';
-import type { RubiksState, RubiksAction } from '@engine/shared/rules/RubicCubeRuleset';
-import type { ChessState, ChessAction } from '@engine/shared/rules/ChessRuleset';
-import type { EquilibriumState, EquilibriumAction } from '@engine/shared/rules/EquilibriumRuleset';
-import type { ShogiState, ShogiAction } from '@engine/shared/rules/ShogiRuleset';
-import type { HighLowState, HighLowAction } from '@engine/shared/rules/HighLowRuleset';
-import type { MancalaState, MancalaAction } from '@engine/shared/rules/MancalaRuleset';
-import type { SudokuState, SudokuAction } from '@engine/shared/rules/SudokuRuleset';
-import type { MahjongState, MahjongAction } from '@engine/shared/rules/mahjong/MahjongRuleset';
-import type { WordleState, WordleAction } from '@engine/shared/rules/WordleRuleset';
-import type { SpeedState, SpeedAction } from '@engine/shared/rules/SpeedRuleset';
-import type { MinesweeperState, MinesweeperAction } from '@engine/shared/rules/MinesweeperRuleset';
+import type { TicTacToeState, TicTacToeAction } from "@engine/shared/rules/TicTacToeRuleset";
+import type { OthelloState, OthelloAction } from "@engine/shared/rules/OthelloRuleset";
+import type {
+  GameState as Othello3DState,
+  MoveAction as Othello3DAction,
+} from "@engine/shared/rules/Othello3DRuleset";
+import type { RubiksState, RubiksAction } from "@engine/shared/rules/RubicCubeRuleset";
+import type { ChessState, ChessAction } from "@engine/shared/rules/ChessRuleset";
+import type { EquilibriumState, EquilibriumAction } from "@engine/shared/rules/EquilibriumRuleset";
+import type { ShogiState, ShogiAction } from "@engine/shared/rules/ShogiRuleset";
+import type { HighLowState, HighLowAction } from "@engine/shared/rules/HighLowRuleset";
+import type { MancalaState, MancalaAction } from "@engine/shared/rules/MancalaRuleset";
+import type { SudokuState, SudokuAction } from "@engine/shared/rules/SudokuRuleset";
+import type { MahjongState, MahjongAction } from "@engine/shared/rules/mahjong/MahjongRuleset";
+import type { WordleState, WordleAction } from "@engine/shared/rules/WordleRuleset";
+import type { SpeedState, SpeedAction } from "@engine/shared/rules/SpeedRuleset";
+import type { MinesweeperState, MinesweeperAction } from "@engine/shared/rules/MinesweeperRuleset";
 
 // 共用体型の定義
-type GameState = TicTacToeState | OthelloState | Othello3DState | RubiksState | ChessState | EquilibriumState | ShogiState | BaseGameState | HighLowState | MancalaState | SudokuState | MahjongState | WordleState | SpeedState | MinesweeperState;
-type GameAction = TicTacToeAction | OthelloAction | Othello3DAction | RubiksAction | ChessAction | EquilibriumAction | ShogiAction | BaseGameAction | HighLowAction | MancalaAction | SudokuAction | MahjongAction | WordleAction | SpeedAction | MinesweeperAction;
+type GameState =
+  | TicTacToeState
+  | OthelloState
+  | Othello3DState
+  | RubiksState
+  | ChessState
+  | EquilibriumState
+  | ShogiState
+  | BaseGameState
+  | HighLowState
+  | MancalaState
+  | SudokuState
+  | MahjongState
+  | WordleState
+  | SpeedState
+  | MinesweeperState;
+type GameAction =
+  | TicTacToeAction
+  | OthelloAction
+  | Othello3DAction
+  | RubiksAction
+  | ChessAction
+  | EquilibriumAction
+  | ShogiAction
+  | BaseGameAction
+  | HighLowAction
+  | MancalaAction
+  | SudokuAction
+  | MahjongAction
+  | WordleAction
+  | SpeedAction
+  | MinesweeperAction;
 
 const props = defineProps<{
   gameType: string;
@@ -228,42 +191,49 @@ const props = defineProps<{
   spectate?: boolean;
 }>();
 
-const emit = defineEmits<{ (e: 'back'): void }>();
+const emit = defineEmits<{ (e: "back"): void }>();
 
-const API_BASE = 'http://127.0.0.1:3000';
+const API_BASE = "http://127.0.0.1:3000";
 
-const roomId          = ref(props.roomId);
-const errorMsg        = ref('');
-const gameState       = ref<GameState | null>(null);
-const connectionStatus = ref('Connecting');
+const roomId = ref(props.roomId);
+const errorMsg = ref("");
+const gameState = ref<GameState | null>(null);
+const connectionStatus = ref("Connecting");
 const showSnackbar = ref(false);
-const snackbarMsg = ref('');
-const snackbarColor = ref('info');
+const snackbarMsg = ref("");
+const snackbarColor = ref("info");
 
-const chatMessages = ref<{ userId: string, message: string, channel: 'public' | 'private', timestamp: string }[]>([]);
+const chatMessages = ref<
+  {
+    userId: string;
+    message: string;
+    channel: "public" | "private";
+    timestamp: string;
+  }[]
+>([]);
 
 // 動的コンポーネントのマッピング
 const components: Record<string, Component> = {
-  'tictactoe': defineAsyncComponent(() => import('./game/TicTacToe.vue')),
-  'othello': defineAsyncComponent(() => import('./game/Othello.vue')),
-  'othello_3d': defineAsyncComponent(() => import('./game/Othello3D.vue')),
-  'shogi': defineAsyncComponent(() => import('./game/Shogi.vue')),
-  'rubiks_cube': defineAsyncComponent(() => import('./game/RubiksCube.vue')),
-  'chess': defineAsyncComponent(() => import('./game/Chess.vue')),
-  'chess_3d': defineAsyncComponent(() => import('./game/Chess3D.vue')),
-  'go': defineAsyncComponent(() => import('./game/Go.vue')),
-  'equilibrium': defineAsyncComponent(() => import('./game/Equilibrium.vue')),
-  'daifugo': defineAsyncComponent(() => import('./game/Daifugo/Daifugo.vue')),
-  'high_low': defineAsyncComponent(() => import('./game/HighLow.vue')),
-  'texas_holdem': defineAsyncComponent(() => import('./game/TexasHoldem.vue')),
-  'uno': defineAsyncComponent(() => import('./game/Uno.vue')),
-  'mancala': defineAsyncComponent(() => import('./game/Mancala.vue')),
-  'sudoku': defineAsyncComponent(() => import('./game/Sudoku.vue')),
-  'mahjong': defineAsyncComponent(() => import('./game/Mahjong.vue')),
-  'shogi_3d': defineAsyncComponent(() => import('./game/Shogi3D.vue')),
-  'wordle': defineAsyncComponent(() => import('./game/Wordle.vue')),
-  'speed': defineAsyncComponent(() => import('./game/Speed.vue')),
-  'minesweeper': defineAsyncComponent(() => import('./game/Minesweeper.vue')),
+  tictactoe: defineAsyncComponent(() => import("./game/TicTacToe.vue")),
+  othello: defineAsyncComponent(() => import("./game/Othello.vue")),
+  othello_3d: defineAsyncComponent(() => import("./game/Othello3D.vue")),
+  shogi: defineAsyncComponent(() => import("./game/Shogi.vue")),
+  rubiks_cube: defineAsyncComponent(() => import("./game/RubiksCube.vue")),
+  chess: defineAsyncComponent(() => import("./game/Chess.vue")),
+  chess_3d: defineAsyncComponent(() => import("./game/Chess3D.vue")),
+  go: defineAsyncComponent(() => import("./game/Go.vue")),
+  equilibrium: defineAsyncComponent(() => import("./game/Equilibrium.vue")),
+  daifugo: defineAsyncComponent(() => import("./game/Daifugo/Daifugo.vue")),
+  high_low: defineAsyncComponent(() => import("./game/HighLow.vue")),
+  texas_holdem: defineAsyncComponent(() => import("./game/TexasHoldem.vue")),
+  uno: defineAsyncComponent(() => import("./game/Uno.vue")),
+  mancala: defineAsyncComponent(() => import("./game/Mancala.vue")),
+  sudoku: defineAsyncComponent(() => import("./game/Sudoku.vue")),
+  mahjong: defineAsyncComponent(() => import("./game/Mahjong.vue")),
+  shogi_3d: defineAsyncComponent(() => import("./game/Shogi3D.vue")),
+  wordle: defineAsyncComponent(() => import("./game/Wordle.vue")),
+  speed: defineAsyncComponent(() => import("./game/Speed.vue")),
+  minesweeper: defineAsyncComponent(() => import("./game/Minesweeper.vue")),
 };
 
 const gameComponent = computed(() => components[props.gameType] || null);
@@ -271,8 +241,8 @@ const gameComponent = computed(() => components[props.gameType] || null);
 let client: SocketIoClient<GameState, GameAction>;
 
 const statusClass = computed(() => ({
-  connected: connectionStatus.value === 'Connected',
-  disconnected: connectionStatus.value !== 'Connected',
+  connected: connectionStatus.value === "Connected",
+  disconnected: connectionStatus.value !== "Connected",
 }));
 
 const prettyState = computed(() => JSON.stringify(gameState.value, null, 2));
@@ -283,21 +253,21 @@ const playerEntries = computed<[string, string | null][]>(() => {
 });
 
 const gameMinPlayers = computed(() => {
-  const game = availableGames.find(g => g.type === props.gameType);
+  const game = availableGames.find((g) => g.type === props.gameType);
   return game?.minPlayers ?? 0;
 });
 
 const currentPlayerCount = computed(() => {
   if (!gameState.value?.players) return 0;
-  return Object.values(gameState.value.players).filter(p => p !== null).length;
+  return Object.values(gameState.value.players).filter((p) => p !== null).length;
 });
 
 const myPlayerId = computed(() => {
-  return localStorage.getItem('game_username') || '';
+  return localStorage.getItem("game_username") || "";
 });
 
 const isMyTurn = computed(() => {
-  if (!gameState.value || gameState.value.status !== 'PLAYING' || !isPlayer.value) return false;
+  if (!gameState.value || gameState.value.status !== "PLAYING" || !isPlayer.value) return false;
   return gameState.value.activePlayers?.includes(myPlayerId.value);
 });
 
@@ -315,13 +285,13 @@ onMounted(() => {
   client = new SocketIoClient<GameState, GameAction>(API_BASE, props.authToken);
   client.onStateUpdate = (state) => {
     gameState.value = state;
-    connectionStatus.value = 'Connected';
-    errorMsg.value = '';
+    connectionStatus.value = "Connected";
+    errorMsg.value = "";
   };
   client.onError = (msg) => {
-    if (msg.includes('has left the game')) {
+    if (msg.includes("has left the game")) {
       snackbarMsg.value = msg;
-      snackbarColor.value = 'warning';
+      snackbarColor.value = "warning";
       showSnackbar.value = true;
     } else {
       errorMsg.value = msg;
@@ -345,12 +315,14 @@ const router = useRouter();
 
 async function createNewGame() {
   try {
-    connectionStatus.value = 'Creating...';
-    const id = await client.createGame({ type: props.gameType.toUpperCase().replace('-', '_') });
+    connectionStatus.value = "Creating...";
+    const id = await client.createGame({
+      type: props.gameType.toUpperCase().replace("-", "_"),
+    });
     router.push(`/game/${props.gameType}/${id}`);
   } catch {
-    errorMsg.value = 'Failed to create game';
-    connectionStatus.value = 'Error';
+    errorMsg.value = "Failed to create game";
+    connectionStatus.value = "Error";
   }
 }
 
@@ -358,27 +330,35 @@ function goBack() {
   if (client && props.roomId) {
     client.leaveGame(props.roomId);
   }
-  emit('back');
+  emit("back");
 }
 
 function onGameAction(action: GameAction) {
   client.sendAction(action);
 }
 
-function onSendChat({ message, channel, recipientId }: { message: string, channel: 'public' | 'private', recipientId?: string }) {
+function onSendChat({
+  message,
+  channel,
+  recipientId,
+}: {
+  message: string;
+  channel: "public" | "private";
+  recipientId?: string;
+}) {
   client.sendChat(message, channel, recipientId);
 }
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap");
 
 .generic-view {
   display: flex;
   width: 100%;
   height: 100%;
   background: rgb(var(--v-theme-background));
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   color: rgb(var(--v-theme-on-background));
   overflow: hidden;
 }
@@ -410,7 +390,7 @@ function onSendChat({ message, channel, recipientId }: { message: string, channe
   opacity: 0.7;
 }
 .room-id span {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   color: rgb(var(--v-theme-primary));
   background: rgba(var(--v-theme-on-surface), 0.05);
   padding: 2px 6px;
@@ -423,8 +403,14 @@ function onSendChat({ message, channel, recipientId }: { message: string, channe
   font-size: 0.7rem;
   font-weight: 600;
 }
-.status-pill.connected    { background: rgba(var(--v-theme-success), 0.15); color: rgb(var(--v-theme-success)); }
-.status-pill.disconnected { background: rgba(var(--v-theme-warning), 0.15); color: rgb(var(--v-theme-warning)); }
+.status-pill.connected {
+  background: rgba(var(--v-theme-success), 0.15);
+  color: rgb(var(--v-theme-success));
+}
+.status-pill.disconnected {
+  background: rgba(var(--v-theme-warning), 0.15);
+  color: rgb(var(--v-theme-warning));
+}
 
 .error-banner {
   background: rgba(var(--v-theme-error), 0.1);
@@ -468,8 +454,14 @@ function onSendChat({ message, channel, recipientId }: { message: string, channe
   font-size: 0.75rem;
   font-weight: 700;
 }
-.status-badge.PLAYING  { background: rgba(var(--v-theme-primary), 0.2); color: rgb(var(--v-theme-primary)); }
-.status-badge.FINISHED { background: rgba(var(--v-theme-warning), 0.2); color: rgb(var(--v-theme-warning)); }
+.status-badge.PLAYING {
+  background: rgba(var(--v-theme-primary), 0.2);
+  color: rgb(var(--v-theme-primary));
+}
+.status-badge.FINISHED {
+  background: rgba(var(--v-theme-warning), 0.2);
+  color: rgb(var(--v-theme-warning));
+}
 
 .current-player {
   font-size: 0.9rem;
@@ -484,7 +476,7 @@ function onSendChat({ message, channel, recipientId }: { message: string, channe
 }
 
 .json-view {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   font-size: 0.75rem;
   color: rgb(var(--v-theme-on-surface));
   opacity: 0.9;
@@ -513,7 +505,11 @@ function onSendChat({ message, channel, recipientId }: { message: string, channe
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 /* === Sidebar === */
 .sidebar {
@@ -544,7 +540,8 @@ function onSendChat({ message, channel, recipientId }: { message: string, channe
   font-weight: 700;
 }
 
-.back-btn, .new-game-btn {
+.back-btn,
+.new-game-btn {
   width: 100%;
   padding: 10px 12px;
   border-radius: 10px;
@@ -560,13 +557,20 @@ function onSendChat({ message, channel, recipientId }: { message: string, channe
   color: rgb(var(--v-theme-on-surface));
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
-.back-btn:hover    { background: rgba(var(--v-theme-on-surface), 0.1); transform: translateY(-1px); }
+.back-btn:hover {
+  background: rgba(var(--v-theme-on-surface), 0.1);
+  transform: translateY(-1px);
+}
 .new-game-btn {
   background: rgb(var(--v-theme-primary));
   color: rgb(var(--v-theme-on-primary));
   box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.3);
 }
-.new-game-btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(var(--v-theme-primary), 0.4); }
+.new-game-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(var(--v-theme-primary), 0.4);
+}
 
 .player-row {
   display: flex;
@@ -576,9 +580,20 @@ function onSendChat({ message, channel, recipientId }: { message: string, channe
   padding: 6px 0;
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
-.player-row:last-child { border-bottom: none; }
-.player-role { color: rgb(var(--v-theme-on-surface)); opacity: 0.8; font-weight: 600; }
-.player-id   { font-family: 'JetBrains Mono', monospace; color: rgb(var(--v-theme-on-surface)); opacity: 0.6; font-size: 0.7rem; }
+.player-row:last-child {
+  border-bottom: none;
+}
+.player-role {
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.8;
+  font-weight: 600;
+}
+.player-id {
+  font-family: "JetBrains Mono", monospace;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.6;
+  font-size: 0.7rem;
+}
 
 /* === Waiting Overlay === */
 .waiting-overlay {
@@ -615,7 +630,7 @@ function onSendChat({ message, channel, recipientId }: { message: string, channe
 }
 
 .player-count {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   color: rgb(var(--v-theme-primary));
   font-weight: 700;
   font-size: 1.2rem;
@@ -634,7 +649,9 @@ function onSendChat({ message, channel, recipientId }: { message: string, channe
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .json-details summary {
@@ -645,7 +662,7 @@ function onSendChat({ message, channel, recipientId }: { message: string, channe
   user-select: none;
 }
 .json-view-mini {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   font-size: 0.65rem;
   color: rgb(var(--v-theme-on-surface));
   opacity: 0.8;
@@ -693,9 +710,18 @@ function onSendChat({ message, channel, recipientId }: { message: string, channe
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.2); opacity: 0.8; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* Transitions */

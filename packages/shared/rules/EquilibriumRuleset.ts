@@ -1,220 +1,252 @@
 // EquilibriumRuleset.ts
 
 /**
- *      ______            _ _ _ _          _                     _______ _            _               _      _____             _ 
+ *      ______            _ _ _ _          _                     _______ _            _               _      _____             _
  *     |  ____|          (_) (_) |        (_)                _  |__   __| |          | |             | |    / ____|           | |
  *     | |__   __ _ _   _ _| |_| |__  _ __ _ _   _ _ __ ___ (_)    | |  | |__   ___  | |     __ _ ___| |_  | (___   ___  _   _| |
  *     |  __| / _` | | | | | | | '_ \| '__| | | | | '_ ` _ \       | |  | '_ \ / _ \ | |    / _` / __| __|  \___ \ / _ \| | | | |
  *     | |___| (_| | |_| | | | | |_) | |  | | |_| | | | | | |_     | |  | | | |  __/ | |___| (_| \__ \ |_   ____) | (_) | |_| | |
  *     |______\__, |\__,_|_|_|_|_.__/|_|  |_|\__,_|_| |_| |_(_)    |_|  |_| |_|\___| |______\__,_|___/\__| |_____/ \___/ \__,_|_|
- *               | |                                                                                                             
- *               |_|                                                                                                             
- * 
+ *               | |
+ *               |_|
+ *
  * The World's Most Interesting Game, According to AI
  */
 
-import { createSecret, type Secret } from '../GameRules';
-import type { BaseGameState, GameRuleset } from '../GameRules';
-import type { IGameRNG } from '../utils/IGameRNG';
+import { createSecret, type Secret } from "../GameRules";
+import type { BaseGameState, GameRuleset } from "../GameRules";
+import type { IGameRNG } from "../utils/IGameRNG";
 
 // ==========================================
 // 1. 型定義 (Types & Interfaces)
 // ==========================================
 
-export type CardType = 'ATTACK' | 'DEFENSE' | 'TRICK' | 'GOAL' | 'SYPHON';
+export type CardType = "ATTACK" | "DEFENSE" | "TRICK" | "GOAL" | "SYPHON";
 
 export interface Card {
-    id: string;
-    type: CardType;
-    name: string;
-    value: number; // 攻撃力や防御力、あるいは目標達成のためのポイント
-    cost: number;  // 使用または入札に必要なSoul Point
+  id: string;
+  type: CardType;
+  name: string;
+  value: number; // 攻撃力や防御力、あるいは目標達成のためのポイント
+  cost: number; // 使用または入札に必要なSoul Point
 }
 
 // ゲーム固有の状態
 export interface EquilibriumState extends BaseGameState {
-    turnCount: number;
-    phase: 'AUCTION' | 'MAIN';
-    auctionPool: Card[];
-    currentBids: Record<string, number>;
-    passedPlayers: string[];
+  turnCount: number;
+  phase: "AUCTION" | "MAIN";
+  auctionPool: Card[];
+  currentBids: Record<string, number>;
+  passedPlayers: string[];
 
-    playerData: Record<string, PlayerState>;
-    lastAction?: EquilibriumAction; // To support ECHO cards
-    lastPlayedCard?: Card;           // The last non-Echo card played
+  playerData: Record<string, PlayerState>;
+  lastAction?: EquilibriumAction; // To support ECHO cards
+  lastPlayedCard?: Card; // The last non-Echo card played
 }
 
 export interface PlayerState {
-    id: string;
-    hp: number;
-    soulPoints: number; // これが通貨であり、命を削るリソース
-    hand: Secret<Card[]>;
-    board: Card[];      // 場に出して永続効果を発揮しているカード
-    hiddenGoal: Secret<Card | null>;   // 現在の秘密の勝利条件
-    fakeReveal?: Card;  // 相手を騙すために意図的に見せている「嘘のカード」
+  id: string;
+  hp: number;
+  soulPoints: number; // これが通貨であり、命を削るリソース
+  hand: Secret<Card[]>;
+  board: Card[]; // 場に出して永続効果を発揮しているカード
+  hiddenGoal: Secret<Card | null>; // 現在の秘密の勝利条件
+  fakeReveal?: Card; // 相手を騙すために意図的に見せている「嘘のカード」
 }
 
 // ゲーム固有のアクション
 export type EquilibriumAction =
-    | { type: 'JOIN'; playerId: string; timestamp?: number }
-    | { type: 'BID'; playerId: string; amount: number; timestamp?: number }
-    | { type: 'PASS_AUCTION'; playerId: string; timestamp?: number }
-    | { type: 'PLAY_CARD'; playerId: string; cardId: string; targetId?: string; timestamp?: number }
-    | { type: 'ALTER_GOAL'; playerId: string; newGoalCardId: string; timestamp?: number }
-    | { type: 'BLUFF_REVEAL'; playerId: string; fakeCard: Card; timestamp?: number }
-    | { type: 'SACRIFICE'; playerId: string; timestamp?: number }
-    | { type: 'END_TURN'; playerId: string; timestamp?: number };
-
+  | { type: "JOIN"; playerId: string; timestamp?: number }
+  | { type: "BID"; playerId: string; amount: number; timestamp?: number }
+  | { type: "PASS_AUCTION"; playerId: string; timestamp?: number }
+  | {
+      type: "PLAY_CARD";
+      playerId: string;
+      cardId: string;
+      targetId?: string;
+      timestamp?: number;
+    }
+  | {
+      type: "ALTER_GOAL";
+      playerId: string;
+      newGoalCardId: string;
+      timestamp?: number;
+    }
+  | {
+      type: "BLUFF_REVEAL";
+      playerId: string;
+      fakeCard: Card;
+      timestamp?: number;
+    }
+  | { type: "SACRIFICE"; playerId: string; timestamp?: number }
+  | { type: "END_TURN"; playerId: string; timestamp?: number };
 
 // ==========================================
 // 2. 内部ヘルパー (Internal Helpers)
 // ==========================================
 
 function generateId(rng?: IGameRNG): string {
-    if (rng) {
-        return Math.floor(rng.nextFloat() * 100000000).toString(36);
-    }
-    return Math.random().toString(36).substring(2, 9);
+  if (rng) {
+    return Math.floor(rng.nextFloat() * 100000000).toString(36);
+  }
+  return Math.random().toString(36).substring(2, 9);
 }
 
 function updatePlayerHandSecret(player: PlayerState, newHand: Card[]): void {
-    const maskedHand = newHand.map(() => ({ id: 'hidden', type: 'TRICK', name: 'Unknown', value: 0, cost: 0 } as Card));
-    if (player.fakeReveal && maskedHand.length > 0) {
-        maskedHand[0] = player.fakeReveal;
-    }
-    player.hand = createSecret(newHand, [player.id], maskedHand);
+  const maskedHand = newHand.map(
+    () =>
+      ({
+        id: "hidden",
+        type: "TRICK",
+        name: "Unknown",
+        value: 0,
+        cost: 0,
+      }) as Card,
+  );
+  if (player.fakeReveal && maskedHand.length > 0) {
+    maskedHand[0] = player.fakeReveal;
+  }
+  player.hand = createSecret(newHand, [player.id], maskedHand);
 }
 
 function drawInitialCards(rng?: IGameRNG): Card[] {
-    return [
-        { id: generateId(rng), type: 'ATTACK', name: 'Strike', value: 2, cost: 1 },
-        { id: generateId(rng), type: 'DEFENSE', name: 'Guard', value: 2, cost: 1 },
-        { id: generateId(rng), type: 'TRICK', name: 'Peep', value: 0, cost: 2 },
-    ];
+  return [
+    { id: generateId(rng), type: "ATTACK", name: "Strike", value: 2, cost: 1 },
+    { id: generateId(rng), type: "DEFENSE", name: "Guard", value: 2, cost: 1 },
+    { id: generateId(rng), type: "TRICK", name: "Peep", value: 0, cost: 2 },
+  ];
 }
 
 function drawRandomGoal(rng?: IGameRNG): Card {
-    const goals: Omit<Card, 'id'>[] = [
-        { type: 'GOAL', name: 'Annihilator', value: 0, cost: 0 },
-        { type: 'GOAL', name: 'Collector', value: 8, cost: 0 },
-        { type: 'GOAL', name: 'Pacifist', value: 15, cost: 0 },
-        { type: 'GOAL', name: 'Soul_Hoarder', value: 25, cost: 0 }
-    ];
-    const idx = rng ? rng.nextInt(0, goals.length - 1) : Math.floor(Math.random() * goals.length);
-    const selected = goals[idx];
-    return { ...selected, id: generateId(rng) } as Card;
+  const goals: Omit<Card, "id">[] = [
+    { type: "GOAL", name: "Annihilator", value: 0, cost: 0 },
+    { type: "GOAL", name: "Collector", value: 8, cost: 0 },
+    { type: "GOAL", name: "Pacifist", value: 15, cost: 0 },
+    { type: "GOAL", name: "Soul_Hoarder", value: 25, cost: 0 },
+  ];
+  const idx = rng ? rng.nextInt(0, goals.length - 1) : Math.floor(Math.random() * goals.length);
+  const selected = goals[idx];
+  return { ...selected, id: generateId(rng) } as Card;
 }
 
 function generateRandomCard(rng?: IGameRNG): Card {
-    const pool: Omit<Card, 'id'>[] = [
-        { type: 'ATTACK', name: 'Hellfire', value: 8, cost: 3 },
-        { type: 'DEFENSE', name: 'Aegis_Shield', value: 7, cost: 2 },
-        { type: 'TRICK', name: 'Mind_Control', value: 0, cost: 4 },
-        { type: 'SYPHON', name: 'Soul_Drain', value: 3, cost: 2 },
-        { type: 'TRICK', name: 'Echo_Whisper', value: 0, cost: 3 }, // Copies last non-ECHO card
-        { type: 'TRICK', name: 'Corruption', value: 0, cost: 4 },   // Opponent discards half hand (round down)
-        { type: 'GOAL', name: 'Sudden_Death', value: 0, cost: 0 }
-    ];
-    const idx = rng ? rng.nextInt(0, pool.length - 1) : Math.floor(Math.random() * pool.length);
-    const selected = pool[idx];
-    return { ...selected, id: generateId(rng) } as Card;
+  const pool: Omit<Card, "id">[] = [
+    { type: "ATTACK", name: "Hellfire", value: 8, cost: 3 },
+    { type: "DEFENSE", name: "Aegis_Shield", value: 7, cost: 2 },
+    { type: "TRICK", name: "Mind_Control", value: 0, cost: 4 },
+    { type: "SYPHON", name: "Soul_Drain", value: 3, cost: 2 },
+    { type: "TRICK", name: "Echo_Whisper", value: 0, cost: 3 }, // Copies last non-ECHO card
+    { type: "TRICK", name: "Corruption", value: 0, cost: 4 }, // Opponent discards half hand (round down)
+    { type: "GOAL", name: "Sudden_Death", value: 0, cost: 0 },
+  ];
+  const idx = rng ? rng.nextInt(0, pool.length - 1) : Math.floor(Math.random() * pool.length);
+  const selected = pool[idx];
+  return { ...selected, id: generateId(rng) } as Card;
 }
 
 function drawRandomBasicCard(rng?: IGameRNG): Card {
-    const pool = drawInitialCards(rng);
-    const idx = rng ? rng.nextInt(0, pool.length - 1) : Math.floor(Math.random() * pool.length);
-    return pool[idx];
+  const pool = drawInitialCards(rng);
+  const idx = rng ? rng.nextInt(0, pool.length - 1) : Math.floor(Math.random() * pool.length);
+  return pool[idx];
 }
 
 function getNextPlayer(state: EquilibriumState, currentPlayerId: string): string {
-    const playerIds = Object.keys(state.playerData);
-    const currentIndex = playerIds.indexOf(currentPlayerId);
-    for (let i = 1; i < playerIds.length; i++) {
-        const nextIndex = (currentIndex + i) % playerIds.length;
-        const nextId = playerIds[nextIndex];
-        if (!state.passedPlayers.includes(nextId)) {
-            return nextId;
-        }
+  const playerIds = Object.keys(state.playerData);
+  const currentIndex = playerIds.indexOf(currentPlayerId);
+  for (let i = 1; i < playerIds.length; i++) {
+    const nextIndex = (currentIndex + i) % playerIds.length;
+    const nextId = playerIds[nextIndex];
+    if (!state.passedPlayers.includes(nextId)) {
+      return nextId;
     }
-    return currentPlayerId;
+  }
+  return currentPlayerId;
 }
 
 function resolveAuction(state: EquilibriumState, _rng?: IGameRNG): void {
-    let maxBid = -1;
-    let winnerId = '';
-    let isTie = false;
+  let maxBid = -1;
+  let winnerId = "";
+  let isTie = false;
 
-    for (const [pId, bid] of Object.entries(state.currentBids)) {
-        if (bid > maxBid) {
-            maxBid = bid;
-            winnerId = pId;
-            isTie = false;
-        } else if (bid === maxBid) {
-            isTie = true;
-        }
+  for (const [pId, bid] of Object.entries(state.currentBids)) {
+    if (bid > maxBid) {
+      maxBid = bid;
+      winnerId = pId;
+      isTie = false;
+    } else if (bid === maxBid) {
+      isTie = true;
     }
+  }
 
-    if (maxBid <= 0) {
-        // No one bid or everyone passed
-        Object.keys(state.playerData).forEach(pId => {
-            state.playerData[pId] = { ...state.playerData[pId] };
-            state.playerData[pId].hp -= 1; // Penalty for soul fragility
-        });
-        const allPlayers = Object.keys(state.playerData);
-        state.activePlayers = [allPlayers[0]];
-    } else if (!isTie && winnerId !== '') {
-        const winnerRecord = state.playerData[winnerId];
-        state.playerData[winnerId] = { ...winnerRecord };
-        const winner = state.playerData[winnerId];
-        winner.soulPoints -= maxBid;
-        const newHand = [...winner.hand.value, ...state.auctionPool];
-        updatePlayerHandSecret(winner, newHand);
-        state.activePlayers = [winnerId];
-    } else {
-        const allPlayers = Object.keys(state.playerData);
-        state.activePlayers = [allPlayers[0]];
-    }
+  if (maxBid <= 0) {
+    // No one bid or everyone passed
+    Object.keys(state.playerData).forEach((pId) => {
+      state.playerData[pId] = { ...state.playerData[pId] };
+      state.playerData[pId].hp -= 1; // Penalty for soul fragility
+    });
+    const allPlayers = Object.keys(state.playerData);
+    state.activePlayers = [allPlayers[0]];
+  } else if (!isTie && winnerId !== "") {
+    const winnerRecord = state.playerData[winnerId];
+    state.playerData[winnerId] = { ...winnerRecord };
+    const winner = state.playerData[winnerId];
+    winner.soulPoints -= maxBid;
+    const newHand = [...winner.hand.value, ...state.auctionPool];
+    updatePlayerHandSecret(winner, newHand);
+    state.activePlayers = [winnerId];
+  } else {
+    const allPlayers = Object.keys(state.playerData);
+    state.activePlayers = [allPlayers[0]];
+  }
 
-    state.auctionPool = [];
-    state.currentBids = {};
-    state.phase = 'MAIN';
+  state.auctionPool = [];
+  state.currentBids = {};
+  state.phase = "MAIN";
 }
 
-function executeCardEffect(state: EquilibriumState, player: PlayerState, card: Card, action: EquilibriumAction, rng?: IGameRNG): void {
-    if (card.type === 'ATTACK' && (action as any).targetId) {
-        const targetId = (action as any).targetId;
-        const targetRecord = state.playerData[targetId];
-        if (targetRecord) {
-            state.playerData[targetId] = { ...targetRecord };
-            state.playerData[targetId].hp -= card.value;
-        }
-    } else if (card.type === 'DEFENSE') {
-        player.hp += card.value;
-    } else if (card.type === 'SYPHON' && (action as any).targetId) {
-        const targetId = (action as any).targetId;
-        const targetRecord = state.playerData[targetId];
-        if (targetRecord) {
-            state.playerData[targetId] = { ...targetRecord };
-            const target = state.playerData[targetId];
-            const drainAmount = Math.min(target.soulPoints, card.value);
-            target.soulPoints -= drainAmount;
-            player.soulPoints += drainAmount;
-        }
-    } else if (card.name === 'Corruption' && (action as any).targetId) {
-        const targetId = (action as any).targetId;
-        const targetRecord = state.playerData[targetId];
-        if (targetRecord && targetRecord.hand.value.length > 0) {
-            state.playerData[targetId] = { ...targetRecord };
-            const target = state.playerData[targetId];
-            const newHand = [...target.hand.value];
-            const discardCount = Math.floor(newHand.length / 2);
-            for (let i = 0; i < discardCount; i++) {
-                const idx = rng ? rng.nextInt(0, newHand.length - 1) : Math.floor(Math.random() * newHand.length);
-                newHand.splice(idx, 1);
-            }
-            updatePlayerHandSecret(target, newHand);
-        }
+function executeCardEffect(
+  state: EquilibriumState,
+  player: PlayerState,
+  card: Card,
+  action: EquilibriumAction,
+  rng?: IGameRNG,
+): void {
+  if (card.type === "ATTACK" && (action as any).targetId) {
+    const targetId = (action as any).targetId;
+    const targetRecord = state.playerData[targetId];
+    if (targetRecord) {
+      state.playerData[targetId] = { ...targetRecord };
+      state.playerData[targetId].hp -= card.value;
     }
+  } else if (card.type === "DEFENSE") {
+    player.hp += card.value;
+  } else if (card.type === "SYPHON" && (action as any).targetId) {
+    const targetId = (action as any).targetId;
+    const targetRecord = state.playerData[targetId];
+    if (targetRecord) {
+      state.playerData[targetId] = { ...targetRecord };
+      const target = state.playerData[targetId];
+      const drainAmount = Math.min(target.soulPoints, card.value);
+      target.soulPoints -= drainAmount;
+      player.soulPoints += drainAmount;
+    }
+  } else if (card.name === "Corruption" && (action as any).targetId) {
+    const targetId = (action as any).targetId;
+    const targetRecord = state.playerData[targetId];
+    if (targetRecord && targetRecord.hand.value.length > 0) {
+      state.playerData[targetId] = { ...targetRecord };
+      const target = state.playerData[targetId];
+      const newHand = [...target.hand.value];
+      const discardCount = Math.floor(newHand.length / 2);
+      for (let i = 0; i < discardCount; i++) {
+        const idx = rng
+          ? rng.nextInt(0, newHand.length - 1)
+          : Math.floor(Math.random() * newHand.length);
+        newHand.splice(idx, 1);
+      }
+      updatePlayerHandSecret(target, newHand);
+    }
+  }
 }
 
 // ==========================================
@@ -222,310 +254,366 @@ function executeCardEffect(state: EquilibriumState, player: PlayerState, card: C
 // ==========================================
 
 export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction> = {
+  getInitialState(options: { playerIds?: string[] } = {}, rng?: IGameRNG): EquilibriumState {
+    const playerIds = options.playerIds || [];
+    const initialPlayerData: Record<string, PlayerState> = {};
 
-    getInitialState(options: { playerIds?: string[] } = {}, rng?: IGameRNG): EquilibriumState {
-        const playerIds = options.playerIds || [];
-        const initialPlayerData: Record<string, PlayerState> = {};
+    playerIds.forEach((id) => {
+      const initialHand = drawInitialCards(rng);
+      const initialGoal = drawRandomGoal(rng);
+      initialPlayerData[id] = {
+        id,
+        hp: 20,
+        soulPoints: 10,
+        hand: createSecret(
+          initialHand,
+          [id],
+          initialHand.map(
+            () =>
+              ({
+                id: "hidden",
+                type: "TRICK",
+                name: "Unknown",
+                value: 0,
+                cost: 0,
+              }) as Card,
+          ),
+        ),
+        board: [],
+        hiddenGoal: createSecret(initialGoal, [id], null),
+      };
+    });
 
-        playerIds.forEach(id => {
-            const initialHand = drawInitialCards(rng);
-            const initialGoal = drawRandomGoal(rng);
-            initialPlayerData[id] = {
-                id,
-                hp: 20,
-                soulPoints: 10,
-                hand: createSecret(initialHand, [id], initialHand.map(() => ({ id: 'hidden', type: 'TRICK', name: 'Unknown', value: 0, cost: 0 } as Card))),
-                board: [],
-                hiddenGoal: createSecret(initialGoal, [id], null),
-            };
-        });
+    return {
+      status: "WAITING",
+      players: {
+        "0": null,
+        "1": null,
+        "2": null,
+        "3": null,
+        "4": null,
+        "5": null,
+      },
+      activePlayers: [],
+      turnCount: 1,
+      phase: "AUCTION",
+      auctionPool: [], // Will be filled when game starts
+      currentBids: {},
+      passedPlayers: [],
+      playerData: initialPlayerData,
+    } as EquilibriumState;
+  },
 
-        return {
-            status: 'WAITING',
-            players: {
-                "0": null,
-                "1": null,
-                "2": null,
-                "3": null,
-                "4": null,
-                "5": null
-            },
-            activePlayers: [],
-            turnCount: 1,
-            phase: 'AUCTION',
-            auctionPool: [], // Will be filled when game starts
-            currentBids: {},
-            passedPlayers: [],
-            playerData: initialPlayerData,
-        } as EquilibriumState;
-    },
+  isValidAction(state: EquilibriumState, action: EquilibriumAction): boolean {
+    if (action.type === "JOIN") {
+      return !state.playerData[action.playerId] && Object.keys(state.playerData).length < 6;
+    }
 
-    isValidAction(state: EquilibriumState, action: EquilibriumAction): boolean {
-        if (action.type === 'JOIN') {
-            return !state.playerData[action.playerId] && Object.keys(state.playerData).length < 6;
-        }
+    const player = state.playerData[action.playerId];
+    if (!player) return false;
+    if (!state.activePlayers?.includes(action.playerId)) return false;
 
-        const player = state.playerData[action.playerId];
-        if (!player) return false;
-        if (!state.activePlayers?.includes(action.playerId)) return false;
+    switch (action.type) {
+      case "BID":
+        // フェーズがAUCTIONであり、自分のSoul Pointの範囲内か？
+        return state.phase === "AUCTION" && action.amount <= player.soulPoints;
+      case "PLAY_CARD": {
+        // フェーズがMAINであり、手札にそのカードがあり、コストが払えるか？
+        const card = player.hand.value.find((c) => c.id === action.cardId);
+        return state.phase === "MAIN" && card !== undefined && player.soulPoints >= card.cost;
+      }
+      case "ALTER_GOAL":
+        return (
+          state.phase === "MAIN" &&
+          player.hand.value.some((c) => c.id === action.newGoalCardId && c.type === "GOAL")
+        );
+      case "BLUFF_REVEAL":
+        // いつでも嘘の情報をセットできるがコストがかかる
+        return player.soulPoints >= 1;
+      case "SACRIFICE":
+        // HPを削ってSPを得る
+        return player.hp > 2;
+      default:
+        return true;
+    }
+  },
 
-        switch (action.type) {
-            case 'BID':
-                // フェーズがAUCTIONであり、自分のSoul Pointの範囲内か？
-                return state.phase === 'AUCTION' && action.amount <= player.soulPoints;
-            case 'PLAY_CARD': {
-                // フェーズがMAINであり、手札にそのカードがあり、コストが払えるか？
-                const card = player.hand.value.find(c => c.id === action.cardId);
-                return state.phase === 'MAIN' && card !== undefined && player.soulPoints >= card.cost;
-            }
-            case 'ALTER_GOAL':
-                return state.phase === 'MAIN' && player.hand.value.some(c => c.id === action.newGoalCardId && c.type === 'GOAL');
-            case 'BLUFF_REVEAL':
-                // いつでも嘘の情報をセットできるがコストがかかる
-                return player.soulPoints >= 1;
-            case 'SACRIFICE':
-                // HPを削ってSPを得る
-                return player.hp > 2;
-            default:
-                return true;
-        }
-    },
+  reduce(state: EquilibriumState, action: EquilibriumAction, rng?: IGameRNG): EquilibriumState {
+    const nextState: EquilibriumState = {
+      ...state,
+      playerData: { ...state.playerData },
+      auctionPool: [...state.auctionPool],
+      currentBids: { ...state.currentBids },
+      passedPlayers: [...state.passedPlayers],
+      activePlayers: state.activePlayers ? [...state.activePlayers] : [],
+    };
 
-    reduce(state: EquilibriumState, action: EquilibriumAction, rng?: IGameRNG): EquilibriumState {
-        const nextState: EquilibriumState = {
-            ...state,
-            playerData: { ...state.playerData },
-            auctionPool: [...state.auctionPool],
-            currentBids: { ...state.currentBids },
-            passedPlayers: [...state.passedPlayers],
-            activePlayers: state.activePlayers ? [...state.activePlayers] : []
+    if (action.type === "JOIN") {
+      if (!nextState.playerData[action.playerId]) {
+        const initialHand = drawInitialCards(rng);
+        const initialGoal = drawRandomGoal(rng);
+        // Ensure the player record itself is a new object if we modify it
+        nextState.playerData[action.playerId] = {
+          id: action.playerId,
+          hp: 20,
+          soulPoints: 10,
+          hand: createSecret(
+            initialHand,
+            [action.playerId],
+            initialHand.map(
+              () =>
+                ({
+                  id: "hidden",
+                  type: "TRICK",
+                  name: "Unknown",
+                  value: 0,
+                  cost: 0,
+                }) as Card,
+            ),
+          ),
+          board: [],
+          hiddenGoal: createSecret(initialGoal, [action.playerId], null),
         };
 
-        if (action.type === 'JOIN') {
-            if (!nextState.playerData[action.playerId]) {
-                const initialHand = drawInitialCards(rng);
-                const initialGoal = drawRandomGoal(rng);
-                // Ensure the player record itself is a new object if we modify it
-                nextState.playerData[action.playerId] = {
-                    id: action.playerId,
-                    hp: 20,
-                    soulPoints: 10,
-                    hand: createSecret(initialHand, [action.playerId], initialHand.map(() => ({ id: 'hidden', type: 'TRICK', name: 'Unknown', value: 0, cost: 0 } as Card))),
-                    board: [],
-                    hiddenGoal: createSecret(initialGoal, [action.playerId], null),
-                };
+        // 人数が揃った時点での初期化処理
+        const joinedIds = Object.values(nextState.playerData).map((p) => p.id);
+        const playersCount = joinedIds.length;
 
-                // 人数が揃った時点での初期化処理
-                const joinedIds = Object.values(nextState.playerData).map(p => p.id);
-                const playersCount = joinedIds.length;
-
-                if (playersCount >= 3) {
-                    nextState.activePlayers = [...joinedIds];
-                    if (nextState.auctionPool.length === 0) {
-                        const poolSize = Math.floor(joinedIds.length / 2) + 1;
-                        nextState.auctionPool = Array.from({ length: poolSize }, () => generateRandomCard(rng));
-                    }
-                } else {
-                    nextState.activePlayers = [];
-                }
-            }
-            return nextState;
+        if (playersCount >= 3) {
+          nextState.activePlayers = [...joinedIds];
+          if (nextState.auctionPool.length === 0) {
+            const poolSize = Math.floor(joinedIds.length / 2) + 1;
+            nextState.auctionPool = Array.from({ length: poolSize }, () => generateRandomCard(rng));
+          }
+        } else {
+          nextState.activePlayers = [];
         }
-
-        const playerRecord = nextState.playerData[action.playerId];
-        if (!playerRecord) return nextState;
-
-        // 特定のプレイヤーの状態を更新する前に浅いコピーを作成
-        nextState.playerData[action.playerId] = { ...playerRecord };
-        const player = nextState.playerData[action.playerId];
-
-        switch (action.type) {
-            case 'BID':
-                if (nextState.phase === 'AUCTION') {
-                    nextState.currentBids[action.playerId] = action.amount;
-                    nextState.activePlayers = nextState.activePlayers?.filter(id => id !== action.playerId);
-
-                    const allPlayerIds = Object.keys(nextState.playerData);
-                    const actedPlayers = [...Object.keys(nextState.currentBids), ...nextState.passedPlayers];
-                    if (allPlayerIds.every(id => actedPlayers.includes(id))) {
-                        resolveAuction(nextState, rng);
-                    }
-                }
-                break;
-
-            case 'PASS_AUCTION':
-                if (nextState.phase === 'AUCTION') {
-                    if (!nextState.passedPlayers.includes(action.playerId)) {
-                        nextState.passedPlayers.push(action.playerId);
-                    }
-                    nextState.activePlayers = nextState.activePlayers?.filter(id => id !== action.playerId);
-
-                    const allPlayerIds = Object.keys(nextState.playerData);
-                    const actedPlayers = [...Object.keys(nextState.currentBids), ...nextState.passedPlayers];
-                    if (allPlayerIds.every(id => actedPlayers.includes(id))) {
-                        resolveAuction(nextState, rng);
-                    }
-                }
-                break;
-
-            case 'PLAY_CARD':
-                if (nextState.phase === 'MAIN') {
-                    const cardIndex = player.hand.value.findIndex(c => c.id === action.cardId);
-                    if (cardIndex !== -1) {
-                        const card = player.hand.value[cardIndex];
-                        player.soulPoints -= card.cost;
-
-                        const newHand = [...player.hand.value];
-                        player.board = [...player.board];
-
-                        newHand.splice(cardIndex, 1);
-                        updatePlayerHandSecret(player, newHand);
-
-                        if (card.name === 'Echo_Whisper') {
-                            if (nextState.lastPlayedCard) {
-                                executeCardEffect(nextState, player, nextState.lastPlayedCard, action, rng);
-                            }
-                        } else {
-                            executeCardEffect(nextState, player, card, action, rng);
-                            nextState.lastPlayedCard = card; // Update last non-Echo card
-                        }
-
-                        if (card.type !== 'GOAL') {
-                            player.board.push(card);
-                        }
-                    }
-                }
-                break;
-
-            case 'ALTER_GOAL':
-                if ('newGoalCardId' in action) {
-                    const goalIndex = player.hand.value.findIndex(c => c.id === action.newGoalCardId && c.type === 'GOAL');
-                    if (goalIndex !== -1) {
-                        player.hiddenGoal = createSecret(player.hand.value[goalIndex], [player.id], null);
-                        const newHand = [...player.hand.value];
-                        newHand.splice(goalIndex, 1);
-                        updatePlayerHandSecret(player, newHand);
-                    }
-                }
-                break;
-
-            case 'BLUFF_REVEAL':
-                if ('fakeCard' in action) {
-                    player.soulPoints -= 1;
-                    player.fakeReveal = action.fakeCard;
-                    updatePlayerHandSecret(player, player.hand.value);
-                }
-                break;
-
-            case 'SACRIFICE':
-                player.hp -= 2;
-                player.soulPoints += 1;
-                break;
-
-            case 'END_TURN': {
-                if (!nextState.passedPlayers.includes(action.playerId)) {
-                    nextState.passedPlayers.push(action.playerId);
-                }
-                const allIds = Object.keys(nextState.playerData);
-                if (nextState.passedPlayers.length >= allIds.length) {
-                    nextState.turnCount += 1;
-                    nextState.phase = 'AUCTION';
-                    nextState.passedPlayers = [];
-                    nextState.currentBids = {};
-                    const poolSize = Math.floor(allIds.length / 2) + 1;
-                    nextState.auctionPool = Array.from({ length: poolSize }, () => generateRandomCard(rng));
-                    nextState.activePlayers = [...allIds];
-                    for (const pId of allIds) {
-                        const pRecord = nextState.playerData[pId];
-                        nextState.playerData[pId] = { ...pRecord };
-                        const p = nextState.playerData[pId];
-                        p.soulPoints += 1; // Reduced recovery
-                        const newHand = [...p.hand.value, drawRandomBasicCard(rng)];
-                        updatePlayerHandSecret(p, newHand);
-                    }
-                } else {
-                    nextState.activePlayers = [getNextPlayer(nextState, action.playerId)];
-                }
-                break;
-            }
-        }
-        return { ...nextState, lastAction: action };
-    },
-
-    checkWinCondition(state: EquilibriumState): { isFinished: boolean; winnerIds?: string[]; message?: string } {
-        // 待機中は勝敗判定を行わない（初期プレイヤーが1人の時に即終了するのを防ぐ）
-        if (state.status === 'WAITING') {
-            return { isFinished: false };
-        }
-
-        const playerIds = Object.keys(state.playerData);
-        const alivePlayers = playerIds.filter(id => state.playerData[id].hp > 0);
-        if (alivePlayers.length === 1) {
-            return { isFinished: true, winnerIds: [alivePlayers[0]], message: `Player ${alivePlayers[0]} won by Last Man Standing!` };
-        } else if (alivePlayers.length === 0) {
-            return { isFinished: true, winnerIds: [], message: `Draw! All players died.` };
-        }
-
-        // 各プレイヤーの秘密の勝利条件（hiddenGoal）を評価
-        for (const pId of playerIds) {
-            const player = state.playerData[pId];
-            const goal = player.hiddenGoal?.value;
-
-            if (!goal) continue; // ゴールカードを持っていない場合はスキップ
-            switch (goal.name) {
-                case 'Annihilator':
-                    // 相手のHPを0にする（上の共通ルールでほぼカバーされるが、明示的な目標として）
-                    if (alivePlayers.length === 1 && alivePlayers[0] === pId) {
-                        return { isFinished: true, winnerIds: [pId], message: `Player ${pId} achieved GOAL: Annihilator!` };
-                    }
-                    break;
-                case 'Collector':
-                    // 自分の場(Board)にカードを8枚以上並べれば即座に勝利
-                    if (player.board.length >= 8) {
-                        return { isFinished: true, winnerIds: [pId], message: `Player ${pId} achieved GOAL: Collector (8+ cards on board)!` };
-                    }
-                    break;
-                case 'Pacifist':
-                    // 誰も死なない平和な状態のまま、15ターン目に到達すれば勝利
-                    if (state.turnCount >= 15 && alivePlayers.length === playerIds.length) {
-                        return { isFinished: true, winnerIds: [pId], message: `Player ${pId} achieved GOAL: Pacifist (Survived 15 turns peacefully)!` };
-                    }
-                    break;
-                case 'Soul_Hoarder':
-                    // 競り（オークション）を我慢し、Soul Pointを25以上溜め込めば勝利
-                    if (player.soulPoints >= 25) {
-                        return { isFinished: true, winnerIds: [pId], message: `Player ${pId} achieved GOAL: Soul Hoarder (25+ Soul Points)!` };
-                    }
-                    break;
-            }
-        }
-
-        // 誰も条件を満たしていない場合はゲーム続行
-        return { isFinished: false };
-    },
-
-
-
-    getLegalActions(state: EquilibriumState, playerId: string): EquilibriumAction[] {
-        const actions: EquilibriumAction[] = [];
-        const player = state.playerData[playerId];
-        if (!player) return [];
-        if (state.phase === 'AUCTION') {
-            actions.push({ type: 'PASS_AUCTION', playerId });
-            for (let i = 1; i <= player.soulPoints; i++) {
-                actions.push({ type: 'BID', playerId, amount: i });
-            }
-        } else if (state.phase === 'MAIN') {
-            player.hand.value.forEach(card => {
-                if (player.soulPoints >= card.cost) {
-                    actions.push({ type: 'PLAY_CARD', playerId, cardId: card.id });
-                }
-            });
-            if (player.hp > 2) {
-                actions.push({ type: 'SACRIFICE', playerId });
-            }
-            actions.push({ type: 'END_TURN', playerId });
-        }
-        return actions;
+      }
+      return nextState;
     }
+
+    const playerRecord = nextState.playerData[action.playerId];
+    if (!playerRecord) return nextState;
+
+    // 特定のプレイヤーの状態を更新する前に浅いコピーを作成
+    nextState.playerData[action.playerId] = { ...playerRecord };
+    const player = nextState.playerData[action.playerId];
+
+    switch (action.type) {
+      case "BID":
+        if (nextState.phase === "AUCTION") {
+          nextState.currentBids[action.playerId] = action.amount;
+          nextState.activePlayers = nextState.activePlayers?.filter((id) => id !== action.playerId);
+
+          const allPlayerIds = Object.keys(nextState.playerData);
+          const actedPlayers = [...Object.keys(nextState.currentBids), ...nextState.passedPlayers];
+          if (allPlayerIds.every((id) => actedPlayers.includes(id))) {
+            resolveAuction(nextState, rng);
+          }
+        }
+        break;
+
+      case "PASS_AUCTION":
+        if (nextState.phase === "AUCTION") {
+          if (!nextState.passedPlayers.includes(action.playerId)) {
+            nextState.passedPlayers.push(action.playerId);
+          }
+          nextState.activePlayers = nextState.activePlayers?.filter((id) => id !== action.playerId);
+
+          const allPlayerIds = Object.keys(nextState.playerData);
+          const actedPlayers = [...Object.keys(nextState.currentBids), ...nextState.passedPlayers];
+          if (allPlayerIds.every((id) => actedPlayers.includes(id))) {
+            resolveAuction(nextState, rng);
+          }
+        }
+        break;
+
+      case "PLAY_CARD":
+        if (nextState.phase === "MAIN") {
+          const cardIndex = player.hand.value.findIndex((c) => c.id === action.cardId);
+          if (cardIndex !== -1) {
+            const card = player.hand.value[cardIndex];
+            player.soulPoints -= card.cost;
+
+            const newHand = [...player.hand.value];
+            player.board = [...player.board];
+
+            newHand.splice(cardIndex, 1);
+            updatePlayerHandSecret(player, newHand);
+
+            if (card.name === "Echo_Whisper") {
+              if (nextState.lastPlayedCard) {
+                executeCardEffect(nextState, player, nextState.lastPlayedCard, action, rng);
+              }
+            } else {
+              executeCardEffect(nextState, player, card, action, rng);
+              nextState.lastPlayedCard = card; // Update last non-Echo card
+            }
+
+            if (card.type !== "GOAL") {
+              player.board.push(card);
+            }
+          }
+        }
+        break;
+
+      case "ALTER_GOAL":
+        if ("newGoalCardId" in action) {
+          const goalIndex = player.hand.value.findIndex(
+            (c) => c.id === action.newGoalCardId && c.type === "GOAL",
+          );
+          if (goalIndex !== -1) {
+            player.hiddenGoal = createSecret(player.hand.value[goalIndex], [player.id], null);
+            const newHand = [...player.hand.value];
+            newHand.splice(goalIndex, 1);
+            updatePlayerHandSecret(player, newHand);
+          }
+        }
+        break;
+
+      case "BLUFF_REVEAL":
+        if ("fakeCard" in action) {
+          player.soulPoints -= 1;
+          player.fakeReveal = action.fakeCard;
+          updatePlayerHandSecret(player, player.hand.value);
+        }
+        break;
+
+      case "SACRIFICE":
+        player.hp -= 2;
+        player.soulPoints += 1;
+        break;
+
+      case "END_TURN": {
+        if (!nextState.passedPlayers.includes(action.playerId)) {
+          nextState.passedPlayers.push(action.playerId);
+        }
+        const allIds = Object.keys(nextState.playerData);
+        if (nextState.passedPlayers.length >= allIds.length) {
+          nextState.turnCount += 1;
+          nextState.phase = "AUCTION";
+          nextState.passedPlayers = [];
+          nextState.currentBids = {};
+          const poolSize = Math.floor(allIds.length / 2) + 1;
+          nextState.auctionPool = Array.from({ length: poolSize }, () => generateRandomCard(rng));
+          nextState.activePlayers = [...allIds];
+          for (const pId of allIds) {
+            const pRecord = nextState.playerData[pId];
+            nextState.playerData[pId] = { ...pRecord };
+            const p = nextState.playerData[pId];
+            p.soulPoints += 1; // Reduced recovery
+            const newHand = [...p.hand.value, drawRandomBasicCard(rng)];
+            updatePlayerHandSecret(p, newHand);
+          }
+        } else {
+          nextState.activePlayers = [getNextPlayer(nextState, action.playerId)];
+        }
+        break;
+      }
+    }
+    return { ...nextState, lastAction: action };
+  },
+
+  checkWinCondition(state: EquilibriumState): {
+    isFinished: boolean;
+    winnerIds?: string[];
+    message?: string;
+  } {
+    // 待機中は勝敗判定を行わない（初期プレイヤーが1人の時に即終了するのを防ぐ）
+    if (state.status === "WAITING") {
+      return { isFinished: false };
+    }
+
+    const playerIds = Object.keys(state.playerData);
+    const alivePlayers = playerIds.filter((id) => state.playerData[id].hp > 0);
+    if (alivePlayers.length === 1) {
+      return {
+        isFinished: true,
+        winnerIds: [alivePlayers[0]],
+        message: `Player ${alivePlayers[0]} won by Last Man Standing!`,
+      };
+    } else if (alivePlayers.length === 0) {
+      return {
+        isFinished: true,
+        winnerIds: [],
+        message: `Draw! All players died.`,
+      };
+    }
+
+    // 各プレイヤーの秘密の勝利条件（hiddenGoal）を評価
+    for (const pId of playerIds) {
+      const player = state.playerData[pId];
+      const goal = player.hiddenGoal?.value;
+
+      if (!goal) continue; // ゴールカードを持っていない場合はスキップ
+      switch (goal.name) {
+        case "Annihilator":
+          // 相手のHPを0にする（上の共通ルールでほぼカバーされるが、明示的な目標として）
+          if (alivePlayers.length === 1 && alivePlayers[0] === pId) {
+            return {
+              isFinished: true,
+              winnerIds: [pId],
+              message: `Player ${pId} achieved GOAL: Annihilator!`,
+            };
+          }
+          break;
+        case "Collector":
+          // 自分の場(Board)にカードを8枚以上並べれば即座に勝利
+          if (player.board.length >= 8) {
+            return {
+              isFinished: true,
+              winnerIds: [pId],
+              message: `Player ${pId} achieved GOAL: Collector (8+ cards on board)!`,
+            };
+          }
+          break;
+        case "Pacifist":
+          // 誰も死なない平和な状態のまま、15ターン目に到達すれば勝利
+          if (state.turnCount >= 15 && alivePlayers.length === playerIds.length) {
+            return {
+              isFinished: true,
+              winnerIds: [pId],
+              message: `Player ${pId} achieved GOAL: Pacifist (Survived 15 turns peacefully)!`,
+            };
+          }
+          break;
+        case "Soul_Hoarder":
+          // 競り（オークション）を我慢し、Soul Pointを25以上溜め込めば勝利
+          if (player.soulPoints >= 25) {
+            return {
+              isFinished: true,
+              winnerIds: [pId],
+              message: `Player ${pId} achieved GOAL: Soul Hoarder (25+ Soul Points)!`,
+            };
+          }
+          break;
+      }
+    }
+
+    // 誰も条件を満たしていない場合はゲーム続行
+    return { isFinished: false };
+  },
+
+  getLegalActions(state: EquilibriumState, playerId: string): EquilibriumAction[] {
+    const actions: EquilibriumAction[] = [];
+    const player = state.playerData[playerId];
+    if (!player) return [];
+    if (state.phase === "AUCTION") {
+      actions.push({ type: "PASS_AUCTION", playerId });
+      for (let i = 1; i <= player.soulPoints; i++) {
+        actions.push({ type: "BID", playerId, amount: i });
+      }
+    } else if (state.phase === "MAIN") {
+      player.hand.value.forEach((card) => {
+        if (player.soulPoints >= card.cost) {
+          actions.push({ type: "PLAY_CARD", playerId, cardId: card.id });
+        }
+      });
+      if (player.hp > 2) {
+        actions.push({ type: "SACRIFICE", playerId });
+      }
+      actions.push({ type: "END_TURN", playerId });
+    }
+    return actions;
+  },
 };

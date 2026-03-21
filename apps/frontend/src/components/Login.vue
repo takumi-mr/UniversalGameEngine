@@ -3,16 +3,8 @@
     <v-main class="bg-grey-darken-4 d-flex align-center justify-center">
       <v-container>
         <v-row justify="center">
-          <v-col
-            cols="12"
-            sm="8"
-            md="6"
-            lg="4"
-          >
-            <v-card
-              class="rounded-xl pa-8 elevation-24 bg-surface"
-              border="none"
-            >
+          <v-col cols="12" sm="8" md="6" lg="4">
+            <v-card class="rounded-xl pa-8 elevation-24 bg-surface" border="none">
               <div class="d-flex justify-end mb-4">
                 <v-menu>
                   <template #activator="{ props }">
@@ -22,7 +14,7 @@
                       density="compact"
                       prepend-icon="mdi-translate"
                     >
-                      {{ $i18n.locale === 'ja' ? '日本語' : 'English' }}
+                      {{ $i18n.locale === "ja" ? "日本語" : "English" }}
                     </v-btn>
                   </template>
                   <v-list>
@@ -37,14 +29,12 @@
               </div>
 
               <div class="text-center mb-8">
-                <div class="text-h2 mb-4">
-                  🎮
-                </div>
+                <div class="text-h2 mb-4">🎮</div>
                 <h1 class="text-h4 font-weight-bold mb-2">
-                  {{ $t('common.title') }}
+                  {{ $t("common.title") }}
                 </h1>
                 <p class="text-body-1 text-medium-emphasis">
-                  {{ $t('common.login_desc') }}
+                  {{ $t("common.login_desc") }}
                 </p>
               </div>
 
@@ -69,7 +59,7 @@
                   :loading="loading"
                   class="font-weight-bold rounded-lg"
                 >
-                  {{ $t('common.enter_arena') }}
+                  {{ $t("common.enter_arena") }}
                 </v-btn>
               </v-form>
 
@@ -91,27 +81,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '../store/auth';
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "../store/auth";
 
 const router = useRouter();
 const authStore = useAuthStore();
-const username = ref('');
+const username = ref("");
 const loading = ref(false);
-const error = ref('');
+const error = ref("");
 
 // API logic moved to authStore
 
 const handleLogin = async () => {
   if (!username.value.trim()) return;
-  
+
   loading.value = true;
-  error.value = '';
+  error.value = "";
 
   try {
     await authStore.login(username.value);
-    router.push('/selection');
+    router.push("/selection");
   } catch (err) {
     error.value = (err as Error).message;
   } finally {

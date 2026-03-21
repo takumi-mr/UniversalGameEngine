@@ -1,6 +1,6 @@
-import { defineStore } from 'pinia';
+import { defineStore } from "pinia";
 
-export const useRoomStore = defineStore('room', {
+export const useRoomStore = defineStore("room", {
   state: () => ({
     rooms: [] as any[],
     loading: false,
@@ -15,7 +15,7 @@ export const useRoomStore = defineStore('room', {
         this.rooms = data.rooms;
         this.lastFetchedType = gameType;
       } catch (err) {
-        console.error('Failed to fetch rooms:', err);
+        console.error("Failed to fetch rooms:", err);
       } finally {
         this.loading = false;
       }

@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "types": ["bun"],
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "paths": {
+      "@engine/shared/*": ["packages/shared/*"]
+    }
+  },
+  "include": ["apps/**/*.ts", "apps/**/*.vue", "packages/**/*.ts"]
+}

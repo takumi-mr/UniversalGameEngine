@@ -14,9 +14,7 @@ export interface GoState extends BaseGameState {
   };
 }
 
-export type GoActionType =
-  | "PLACE"
-  | "PASS";
+export type GoActionType = "PLACE" | "PASS";
 
 export interface GoAction extends BaseGameAction {
   type: GoActionType;
@@ -24,7 +22,10 @@ export interface GoAction extends BaseGameAction {
 }
 
 const directions = [
-  [1, 0], [-1, 0], [0, 1], [0, -1]
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
 ];
 
 /**
@@ -105,9 +106,7 @@ function getCaptures(board: number[], index: number, color: number, size: number
   return captured;
 }
 
-
 export const GoRuleset: GameRuleset<GoState, GoAction> = {
-
   getInitialState: (options?: any, _rng?: IGameRNG): GoState => {
     const size = options?.size ?? 9;
     return {
@@ -117,12 +116,16 @@ export const GoRuleset: GameRuleset<GoState, GoAction> = {
       turn: 1,
       passCount: 0,
       ko: null,
-      history: [Array(size * size).fill(0).join(",")],
+      history: [
+        Array(size * size)
+          .fill(0)
+          .join(","),
+      ],
       players: {
         "1": null,
-        "-1": null
+        "-1": null,
       },
-      activePlayers: []
+      activePlayers: [],
     };
   },
 
@@ -130,7 +133,11 @@ export const GoRuleset: GameRuleset<GoState, GoAction> = {
     if (state.status !== "PLAYING") return false;
 
     // 手番チェック (エンジンがチェックするはずだが一応)
-    if (state.players && state.players[state.turn] !== null && action.playerId !== state.players[state.turn]) {
+    if (
+      state.players &&
+      state.players[state.turn] !== null &&
+      action.playerId !== state.players[state.turn]
+    ) {
       return false;
     }
 
@@ -208,7 +215,9 @@ export const GoRuleset: GameRuleset<GoState, GoAction> = {
       newState.history.push(board.join(","));
     }
 
-    newState.activePlayers = newState.players?.[newState.turn] ? [newState.players[newState.turn]!] : [];
+    newState.activePlayers = newState.players?.[newState.turn]
+      ? [newState.players[newState.turn]!]
+      : [];
     return newState;
   },
 
@@ -222,7 +231,7 @@ export const GoRuleset: GameRuleset<GoState, GoAction> = {
       return {
         isFinished: true,
         winnerIds: winnerId ? [winnerId] : [],
-        message: `Both players passed. Black: ${blackScore}, White: ${whiteScore}.`
+        message: `Both players passed. Black: ${blackScore}, White: ${whiteScore}.`,
       };
     }
     return { isFinished: false };
@@ -246,8 +255,8 @@ export const GoRuleset: GameRuleset<GoState, GoAction> = {
       message,
       scores: {
         black: blackScore,
-        white: whiteScore
-      }
+        white: whiteScore,
+      },
     };
   },
 
@@ -255,7 +264,11 @@ export const GoRuleset: GameRuleset<GoState, GoAction> = {
     if (state.status !== "PLAYING") return [];
 
     // 手番チェック
-    if (state.players && state.players[state.turn] !== null && playerId !== state.players[state.turn]) {
+    if (
+      state.players &&
+      state.players[state.turn] !== null &&
+      playerId !== state.players[state.turn]
+    ) {
       return [];
     }
 
@@ -269,7 +282,7 @@ export const GoRuleset: GameRuleset<GoState, GoAction> = {
 
     actions.push({ type: "PASS", playerId });
     return actions;
-  }
+  },
 };
 
 /**

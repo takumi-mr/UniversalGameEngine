@@ -1,20 +1,16 @@
 <template>
-  <div 
-    class="mahjong-tile" 
-    :class="{ 
-      'is-hidden': hidden, 
+  <div
+    class="mahjong-tile"
+    :class="{
+      'is-hidden': hidden,
       'is-horizontal': horizontal,
-      'is-clickable': clickable
+      'is-clickable': clickable,
     }"
     :title="tile"
   >
     <div class="tile-inner">
       <div class="tile-face front">
-        <span
-          v-if="!hidden"
-          class="tile-char"
-          :class="colorClass"
-        >
+        <span v-if="!hidden" class="tile-char" :class="colorClass">
           {{ tileChar }}
         </span>
       </div>
@@ -24,43 +20,71 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed } from "vue";
 
 const props = defineProps<{
-  tile: string;       // e.g., '1m', '9s', '1z', '?'
+  tile: string; // e.g., '1m', '9s', '1z', '?'
   hidden?: boolean;
   horizontal?: boolean;
   clickable?: boolean;
-  size?: 'normal' | 'small';
+  size?: "normal" | "small";
 }>();
 
 // Unicode Mahjong Tiles: U+1F000 to U+1F02B
 const TILE_MAP: Record<string, string> = {
   // Characters (Wan-zu)
-  '1m': '🀇', '2m': '🀈', '3m': '🀉', '4m': '🀊', '5m': '🀋', '6m': '🀌', '7m': '🀍', '8m': '🀎', '9m': '🀏',
+  "1m": "🀇",
+  "2m": "🀈",
+  "3m": "🀉",
+  "4m": "🀊",
+  "5m": "🀋",
+  "6m": "🀌",
+  "7m": "🀍",
+  "8m": "🀎",
+  "9m": "🀏",
   // Dots (Pin-zu)
-  '1p': '🀙', '2p': '🀚', '3p': '🀛', '4p': '🀜', '5p': '🀝', '6p': '🀞', '7p': '🀟', '8p': '🀠', '9p': '🀡',
+  "1p": "🀙",
+  "2p": "🀚",
+  "3p": "🀛",
+  "4p": "🀜",
+  "5p": "🀝",
+  "6p": "🀞",
+  "7p": "🀟",
+  "8p": "🀠",
+  "9p": "🀡",
   // Bamboo (Sou-zu)
-  '1s': '🀐', '2s': '🀑', '3s': '🀒', '4s': '🀓', '5s': '🀔', '6s': '🀕', '7s': '🀖', '8s': '🀗', '9s': '🀘',
+  "1s": "🀐",
+  "2s": "🀑",
+  "3s": "🀒",
+  "4s": "🀓",
+  "5s": "🀔",
+  "6s": "🀕",
+  "7s": "🀖",
+  "8s": "🀗",
+  "9s": "🀘",
   // Honors (Ji-hai)
-  '1z': '🀀', '2z': '🀁', '3z': '🀂', '4z': '🀃', // Ton, Nan, Sha, Pei
-  '5z': '🀆', '6z': '🀅', '7z': '🀄',             // Haku, Hatsu, Chun
+  "1z": "🀀",
+  "2z": "🀁",
+  "3z": "🀂",
+  "4z": "🀃", // Ton, Nan, Sha, Pei
+  "5z": "🀆",
+  "6z": "🀅",
+  "7z": "🀄", // Haku, Hatsu, Chun
 };
 
 const tileChar = computed(() => {
-  if (props.tile === '?') return '';
+  if (props.tile === "?") return "";
   return TILE_MAP[props.tile] || props.tile;
 });
 
 const colorClass = computed(() => {
-  if (props.tile.endsWith('m')) return 'color-man';
-  if (props.tile.endsWith('p')) return 'color-pin';
-  if (props.tile.endsWith('s')) return 'color-sou';
-  if (props.tile === '6z') return 'color-hatsu'; // Green Dragon
-  if (props.tile === '7z') return 'color-chun';  // Red Dragon
-  return '';
+  if (props.tile.endsWith("m")) return "color-man";
+  if (props.tile.endsWith("p")) return "color-pin";
+  if (props.tile.endsWith("s")) return "color-sou";
+  if (props.tile === "6z") return "color-hatsu"; // Green Dragon
+  if (props.tile === "7z") return "color-chun"; // Red Dragon
+  return "";
 });
-
 </script>
 
 <style scoped>
@@ -119,7 +143,7 @@ const colorClass = computed(() => {
   backface-visibility: hidden;
   border-radius: 4px;
   border: 1px solid #ccc;
-  box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .front {
@@ -140,18 +164,34 @@ const colorClass = computed(() => {
   font-size: 3rem;
   line-height: 1;
   font-family: serif; /* Better for Unicode tiles */
-  text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.2);
+  text-shadow: 0.5px 0.5px 1px rgba(0, 0, 0, 0.2);
 }
 
 /* Colors based on traditional Mahjong sets */
-.color-man { color: #d32f2f; }   /* Red */
-.color-pin { color: #1976d2; }   /* Blue */
-.color-sou { color: #388e3c; }   /* Green */
-.color-hatsu { color: #2e7d32; } /* Green Dragon */
-.color-chun { color: #c62828; }  /* Red Dragon */
+.color-man {
+  color: #d32f2f;
+} /* Red */
+.color-pin {
+  color: #1976d2;
+} /* Blue */
+.color-sou {
+  color: #388e3c;
+} /* Green */
+.color-hatsu {
+  color: #2e7d32;
+} /* Green Dragon */
+.color-chun {
+  color: #c62828;
+} /* Red Dragon */
 
 /* Adjust font sizes */
-.is-horizontal .tile-char { font-size: 2.5rem; }
-[size="small"] .tile-char { font-size: 2rem; }
-[size="small"].is-horizontal .tile-char { font-size: 1.8rem; }
+.is-horizontal .tile-char {
+  font-size: 2.5rem;
+}
+[size="small"] .tile-char {
+  font-size: 2rem;
+}
+[size="small"].is-horizontal .tile-char {
+  font-size: 1.8rem;
+}
 </style>
