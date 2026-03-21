@@ -1,6 +1,7 @@
-import { BaseGameState, GameRuleset } from "../../GameRules";
+import type { BaseGameState, GameRuleset } from "../../GameRules";
 import type { IGameRNG } from "../../utils/IGameRNG";
-import { EnergyType, PokemonPocketRegistry } from "./PokemonPocketRegistry";
+import type { EnergyType } from "./PokemonPocketRegistry";
+import { PokemonPocketRegistry } from "./PokemonPocketRegistry";
 
 // ==========================================
 // 1. 状態とアクションの定義
