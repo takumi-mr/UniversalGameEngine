@@ -40,10 +40,22 @@ export interface IAIPlayer<TState extends BaseGameState, TAction extends BaseGam
 
     reset?(): void
 
-    getDiagnostics?(): Record<string, any>
+    getDiagnostics?(): Record<string, AIDiagnosticValue>
 
     evaluateState?(state: TState): Promise<{
         value: number
         policy: Map<string, number>
     }>
 }
+
+/**
+ * 診断情報の値に使用できる型（再帰的定義）
+ */
+export type AIDiagnosticValue =
+    | string
+    | number
+    | boolean
+    | null
+    | undefined
+    | { [key: string]: AIDiagnosticValue }
+    | AIDiagnosticValue[];

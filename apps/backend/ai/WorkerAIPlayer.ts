@@ -6,7 +6,7 @@
 import { Worker } from 'worker_threads';
 import path from 'path';
 import type { BaseGameState, BaseGameAction } from '@engine/shared/GameRules';
-import type { IAIPlayer } from '@engine/shared/ai/IAIPlayer';
+import type { IAIPlayer, AIDiagnosticValue } from '@engine/shared/ai/IAIPlayer';
 import type { WorkerRequest, WorkerResponse } from './ai-worker';
 
 // ai-worker.ts のパスを解決する
@@ -103,7 +103,7 @@ export class WorkerAIPlayer<
         }
     }
 
-    public getDiagnostics(): Record<string, any> {
+    public getDiagnostics(): Record<string, AIDiagnosticValue> {
         return {
             playerId: this.playerId,
             aiType: this.aiType,

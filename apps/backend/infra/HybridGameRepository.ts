@@ -1,5 +1,5 @@
 // apps/backend/infra/HybridGameRepository.ts
-import { MongoClient, Db, type Document } from 'mongodb';
+import { MongoClient, Db, type Document, type UpdateFilter } from 'mongodb';
 import Redis from 'ioredis';
 import type { IGameRepository } from '@engine/shared/stores/repository';
 
@@ -7,17 +7,19 @@ import type { IGameRepository } from '@engine/shared/stores/repository';
 interface GameDocument<T> extends Document {
     _id: string; // ここで string であることを明示
     state: T;
+    type?: string;
     finishedAt?: Date;
 }
 
 export class HybridGameRepository<TState> implements IGameRepository<TState> {
     private redis: Redis;
     private mongoDb: Db;
+    private mongoClient: MongoClient;
 
     constructor(redisUrl: string, mongoUrl: string) {
         this.redis = new Redis(redisUrl);
-        const client = new MongoClient(mongoUrl);
-        this.mongoDb = client.db('game_platform');
+        this.mongoClient = new MongoClient(mongoUrl);
+        this.mongoDb = this.mongoClient.db('game_platform');
     }
 
     private get collection() {
@@ -68,7 +70,7 @@ export class HybridGameRepository<TState> implements IGameRepository<TState> {
         if (isFinished) {
             await this.collection.updateOne(
                 { _id: gameId },
-                { $set: { state, finishedAt: new Date() } as any },
+                { $set: { state, finishedAt: new Date() } as UpdateFilter<GameDocument<TState>> },
                 { upsert: true }
             );
         }
@@ -80,15 +82,25 @@ export class HybridGameRepository<TState> implements IGameRepository<TState> {
      */
     async loadSession(gameId: string): Promise<{ type: string; state: TState } | null> {
         const cached = await this.redis.get(`game:session:${gameId}`);
-        if (cached) return JSON.parse(cached);
+        if (cached) return JSON.parse(cached) as { type: string; state: TState };
 
         // Redis になければ MongoDB のアーカイブから探す（state のみ保存されているため type は不明）
         const archived = await this.collection.findOne({ _id: gameId });
-        return archived ? { type: (archived as any).type ?? '', state: archived.state as TState } : null;
+        if (!archived) return null;
+
+        return {
+            type: archived.type ?? '',
+            state: archived.state
+        };
     }
 
     async deleteSession(gameId: string): Promise<void> {
         await this.redis.del(`game:session:${gameId}`);
         await this.delete(gameId);
+    }
+
+    async close(): Promise<void> {
+        await this.redis.quit();
+        await this.mongoClient.close();
     }
 }
