@@ -122,7 +122,7 @@ const selectedHandIndex = ref<number | null>(null);
 
 // --- State Helpers ---
 const myPlayerId = computed(() => props.myPlayerId || "");
-const isPlayer = computed(() => props.state.playerIds.includes(myPlayerId.value));
+const _isPlayer = computed(() => props.state.playerIds.includes(myPlayerId.value));
 const isHost = computed(() => props.state.playerIds[0] === myPlayerId.value);
 
 const opponentId = computed(() => props.state.playerIds.find((id) => id !== myPlayerId.value));
