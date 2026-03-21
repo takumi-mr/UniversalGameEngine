@@ -1,10 +1,25 @@
 // packages/shared/utils/crypto.ts
 
 /**
- * 同期的かつ環境（Node/Browser）に依存しないSHA-256の実装
- * 注意: パフォーマンスとポータビリティを優先した軽量版
+ * UTF-8文字列をバイナリ文字列（charCodeAtで0-255に収まる形式）に変換するヘルパー
  */
-export function sha256(ascii: string): string {
+const encoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
+function toUtf8BinaryString(str: string): string {
+    if (encoder) {
+        return String.fromCharCode(...encoder.encode(str));
+    }
+    // TextEncoderがない環境向けのフォールバック
+    return unescape(encodeURIComponent(str));
+}
+
+/**
+ * 同期的かつ環境（Node/Browser）に依存しないSHA-256の実装
+ * @param message ハッシュ化する文字列
+ * @param isRawBinary 既にバイナリ文字列化されている場合はtrue（内部計算用）
+ */
+export function sha256(message: string, isRawBinary: boolean = false): string {
+    let ascii = isRawBinary ? message : toUtf8BinaryString(message);
+
     function rightRotate(value: number, amount: number) {
         return (value >>> amount) | (value << (32 - amount));
     }
@@ -12,12 +27,13 @@ export function sha256(ascii: string): string {
     const mathPow = Math.pow;
     const maxWord = mathPow(2, 32);
     const lengthProperty = 'length';
-    let i, j; // Used as a counter across the whole file
+    let i, j;
     let result = '';
 
     const words: any[] = [];
     const asciiLength = ascii[lengthProperty];
-    const hash = (sha256 as any).h = (sha256 as any).h || [];
+    // 初期ハッシュ定数を保持する専用のキャッシュを作成（副作用防止）
+    const h0 = (sha256 as any).h0 = (sha256 as any).h0 || [];
     const k = (sha256 as any).k = (sha256 as any).k || [];
     let primeCounter = k[lengthProperty];
 
@@ -29,19 +45,22 @@ export function sha256(ascii: string): string {
     if (!primeCounter) {
         for (let n = 2; primeCounter < 64; n++) {
             if (isPrime(n)) {
-                if (primeCounter < 8) hash[primeCounter] = (mathPow(n, 1 / 2) * maxWord) | 0;
+                if (primeCounter < 8) h0[primeCounter] = (mathPow(n, 1 / 2) * maxWord) | 0;
                 k[primeCounter] = (mathPow(n, 1 / 3) * maxWord) | 0;
                 primeCounter++;
             }
         }
     }
 
+    // 計算用配列には毎回コピーを渡す
+    const hash = h0.slice(0);
+
     ascii += '\x80'; // Append 1000...nd bit
     while (ascii[lengthProperty] % 64 - 56) ascii += '\x00'; // Append zeros
 
     for (i = 0; i < ascii[lengthProperty]; i++) {
         j = ascii.charCodeAt(i);
-        if (j >> 8) return ''; // ASCII check: only accept characters in range 0-255
+        if (j >> 8) return ''; // ASCII check: isRawBinaryがfalseならここは通らないはず
         words[i >> 2] |= j << ((3 - i % 4) * 8);
     }
     words[words[lengthProperty]] = ((asciiLength / 8) / maxWord) | 0;
@@ -96,25 +115,16 @@ function hexToAscii(hex: string): string {
 }
 
 /**
- * HMCA-SHA256の実装
+ * HMAC-SHA256の実装
  */
 export function hmacSha256(key: string, message: string): string {
     const blockSize = 64;
-    // マルチバイト文字（日本語など）が来ても安全なようにUTF-8のバイト列ベースの文字列に変換
-    const encoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
-    const toUtf8BinaryString = (str: string) => {
-        if (encoder) {
-            return String.fromCharCode(...encoder.encode(str));
-        }
-        // Fallback if TextEncoder is unavailable
-        return decodeURIComponent(encodeURIComponent(str)).split('').map(c => c).join(''); // This is still fundamentally broken for multibyte if TextEncoder is missing, but acceptable fallback
-    };
 
     let keyStr = toUtf8BinaryString(key);
     const msgStr = toUtf8BinaryString(message);
 
     if (keyStr.length > blockSize) {
-        keyStr = hexToAscii(sha256(keyStr));
+        keyStr = hexToAscii(sha256(keyStr, true)); // 内部計算なのでtrueを渡す
     }
     while (keyStr.length < blockSize) {
         keyStr += '\x00';
@@ -128,10 +138,11 @@ export function hmacSha256(key: string, message: string): string {
         iKeyPad += String.fromCharCode(charCode ^ 0x36);
     }
 
-    const innerHashHex = sha256(iKeyPad + msgStr);
+    // 内部計算用（すでにバイナリ文字列化されている）のでフラグにtrueを渡す
+    const innerHashHex = sha256(iKeyPad + msgStr, true);
     const innerHashAscii = hexToAscii(innerHashHex);
 
-    return sha256(oKeyPad + innerHashAscii);
+    return sha256(oKeyPad + innerHashAscii, true);
 }
 
 /**

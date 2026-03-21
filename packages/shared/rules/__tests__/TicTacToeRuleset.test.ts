@@ -43,15 +43,15 @@ describe("TicTacToeRuleset", () => {
         // Horizontal win
         let state = TicTacToeRuleset.getInitialState();
         state.board = [1, 1, 1, 0, 0, 0, 0, 0, 0];
-        expect(TicTacToeRuleset.checkWinCondition(state)).toEqual({ isFinished: true, message: "O Wins" });
+        expect(TicTacToeRuleset.checkWinCondition(state)).toEqual({ isFinished: true, message: "O Wins", winnerIds: ["1"] });
 
         // Vertical win
         state.board = [-1, 0, 0, -1, 0, 0, -1, 0, 0];
-        expect(TicTacToeRuleset.checkWinCondition(state)).toEqual({ isFinished: true, message: "X Wins" });
+        expect(TicTacToeRuleset.checkWinCondition(state)).toEqual({ isFinished: true, message: "X Wins", winnerIds: ["-1"] });
 
         // Diagonal win
         state.board = [1, 0, 0, 0, 1, 0, 0, 0, 1];
-        expect(TicTacToeRuleset.checkWinCondition(state)).toEqual({ isFinished: true, message: "O Wins" });
+        expect(TicTacToeRuleset.checkWinCondition(state)).toEqual({ isFinished: true, message: "O Wins", winnerIds: ["1"] });
 
         // Draw
         state.board = [
@@ -59,7 +59,7 @@ describe("TicTacToeRuleset", () => {
             1, -1, 1,
             -1, 1, -1
         ];
-        expect(TicTacToeRuleset.checkWinCondition(state)).toEqual({ isFinished: true, message: "Draw" });
+        expect(TicTacToeRuleset.checkWinCondition(state)).toEqual({ isFinished: true, message: "Draw", winnerIds: [] });
 
         // Ongoing
         state.board = [1, -1, 1, 0, 0, 0, 0, 0, 0];

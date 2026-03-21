@@ -2,29 +2,42 @@ import { UniversalEngine } from '@engine/shared/UniversalEngine';
 import { HybridGameRepository } from '../infra/HybridGameRepository';
 import { GenericGameServer } from '@engine/shared/network/GenericGameServer';
 import { Server } from 'socket.io';
-import { generate, compare } from 'fast-json-patch';
+import { compare } from 'fast-json-patch';
 import { calculateStateHash } from '@engine/shared';
 import { streamManager } from '../network/StreamManager';
 import type { IAIPlayer } from '@engine/shared/ai/IAIPlayer';
+import { gameRegistry } from '@engine/shared/GameRegistry';
 
 export class SocketGameServer extends GenericGameServer<any, any> {
     private io: Server;
     // ソケットごとに最後に送信した「マスク済み状態」を記録する
     private lastSentState: Map<string, any> = new Map();
+
+    // ゲームタイプ（ensureSession / saveSession で使用）
+    public gameType: string = '';
     
     // AIプレイヤーの管理と、思考中の重複呼び出し防止
     public aiPlayers: Map<string, IAIPlayer<any, any>> = new Map();
     private computingAIPlayers: Set<string> = new Set();
 
-    constructor(roomId: string, engine: UniversalEngine<any, any>, io: Server) {
+    constructor(roomId: string, engine: UniversalEngine<any, any>, io: Server, gameType?: string) {
         super(roomId, engine);
         this.io = io;
+        this.gameType = gameType ?? '';
     }
 
     public override broadcastState(targetSocketId?: string): void {
         const state = this.engine.getState();
         const players = state.players ? (Object.values(state.players).filter(Boolean) as string[]) : [];
         const isForceFull = !!targetSocketId;
+
+        // ★ Redis に最新状態をゲームタイプごと書き込む（ステートレス化の核心）
+        // 全ての状態変化（人間着手・AI着手の両方）をカバーする
+        if (this.gameType) {
+            repo.saveSession(this.roomId, this.gameType, state, state.status === 'FINISHED').catch(err =>
+                console.error(`[Redis] Failed to save session for game ${this.roomId}:`, err)
+            );
+        }
 
         this.io.in(this.roomId).fetchSockets().then(sockets => {
             for (const socket of sockets) {
@@ -159,3 +172,43 @@ export const repo = new HybridGameRepository<any>(
     process.env.REDIS_URL || 'redis://localhost:6379',
     process.env.MONGO_URL || 'mongodb://localhost:27017'
 );
+
+/**
+ * ★ セッションをメモリから取得する。存在しない場合は Redis / MongoDB から復元する。
+ * これにより、バックエンドをステートレスにしてスケールアウト可能にする。
+ *
+ * @param gameId ゲーム ID
+ * @param io Socket.IO サーバーインスタンス
+ * @returns ゲームセッション、または null（存在しない場合）
+ */
+export async function ensureSession(gameId: string, io: Server): Promise<GameSession | null> {
+    // 1. まずメモリキャッシュをチェック（最速）
+    const existing = sessions.get(gameId);
+    if (existing) return existing;
+
+    // 2. Redis / MongoDB から { type, state } を復元する
+    let savedData: { type: string; state: any } | null = null;
+    try {
+        savedData = await repo.loadSession(gameId);
+    } catch (err) {
+        console.error(`[ensureSession] Failed to load session ${gameId} from storage:`, err);
+    }
+
+    if (!savedData || !savedData.type) return null;
+
+    const def = gameRegistry.getDefinition(savedData.type);
+    if (!def) {
+        console.warn(`[ensureSession] Unknown game type '${savedData.type}' for game ${gameId}`);
+        return null;
+    }
+
+    const engine = new UniversalEngine(def.ruleset);
+    engine.loadState(savedData.state);
+    const normalizedType = savedData.type.toLowerCase().replace(/-/g, '_');
+    const server = new SocketGameServer(gameId, engine, io, normalizedType);
+    const session: GameSession = { server, type: normalizedType };
+
+    sessions.set(gameId, session);
+    console.log(`[ensureSession] Game ${gameId} restored from storage (type: ${savedData.type})`);
+    return session;
+}
