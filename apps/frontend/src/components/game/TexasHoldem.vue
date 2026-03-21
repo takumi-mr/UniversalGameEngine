@@ -54,7 +54,7 @@
             </div>
 
             <div class="hole-cards opponent-cards">
-              <div v-for="c in state.hands[opponent.id]" :key="c" class="playing-card small-card">
+              <div v-for="c in (state.hands[opponent.id] as any)?.value" :key="c" class="playing-card small-card">
                 <CardInner :card-str="c" />
               </div>
             </div>
@@ -163,7 +163,7 @@ const isPlayer = computed(() => {
   return props.state.playerIds.includes(props.myPlayerId || "");
 });
 
-const myHand = computed(() => props.state.hands[myPlayerId.value] || []);
+const myHand = computed(() => (props.state.hands[myPlayerId.value] as any)?.value || []);
 const isMyTurn = computed(
   () => isPlayer.value && props.state.activePlayers?.includes(myPlayerId.value),
 );

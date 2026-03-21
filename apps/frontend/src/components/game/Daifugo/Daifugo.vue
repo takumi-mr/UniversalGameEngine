@@ -110,7 +110,7 @@ const isPlayer = computed(() => {
 const isMyTurn = computed(() => {
   return isPlayer.value && props.state.playerIds[props.state.turnIndex] === myId.value;
 });
-const myHand = computed(() => props.state.hands[myId.value] || []);
+const myHand = computed(() => (props.state.hands[myId.value] as any)?.value || []);
 
 // 相手プレイヤーのリスト
 const opponents = computed(() => {
@@ -118,7 +118,7 @@ const opponents = computed(() => {
     .filter((id) => id !== myId.value)
     .map((id) => ({
       id,
-      cardCount: props.state.hands[id]?.length || 0,
+      cardCount: (props.state.hands[id] as any)?.value?.length || 0,
     }));
 });
 

@@ -1,6 +1,3 @@
-// packages/shared/utils/hash.ts
-import type { BaseGameState } from "../GameRules";
-
 /**
  * 送信・受信される状態オブジェクトのハッシュ値を計算する
  * 注意: 完全に厳密である必要はないが、クライアントとサーバで同じ結果になる必要がある。
