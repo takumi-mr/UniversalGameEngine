@@ -199,7 +199,9 @@ const discardsMe = computed(() => props.state.discards[props.myPlayerId || ""] |
 
 const pIdAcross = computed(() => getPlayerAtOffset(2));
 const discardsAcross = computed(() => props.state.discards[pIdAcross.value] || []);
-const handCountAcross = computed(() => (props.state.hands[pIdAcross.value] as any)?.value.length || 0);
+const handCountAcross = computed(
+  () => (props.state.hands[pIdAcross.value] as any)?.value.length || 0,
+);
 
 const pIdLeft = computed(() => getPlayerAtOffset(3));
 const discardsLeft = computed(() => props.state.discards[pIdLeft.value] || []);
@@ -207,7 +209,9 @@ const handCountLeft = computed(() => (props.state.hands[pIdLeft.value] as any)?.
 
 const pIdRight = computed(() => getPlayerAtOffset(1));
 const discardsRight = computed(() => props.state.discards[pIdRight.value] || []);
-const handCountRight = computed(() => (props.state.hands[pIdRight.value] as any)?.value.length || 0);
+const handCountRight = computed(
+  () => (props.state.hands[pIdRight.value] as any)?.value.length || 0,
+);
 
 // Actions
 const availableActions = computed(() => {

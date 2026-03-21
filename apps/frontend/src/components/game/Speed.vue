@@ -23,7 +23,10 @@
     <div class="center-area">
       <!-- Side Piles (Used when stuck) -->
       <div class="side-pile-group">
-        <div v-if="(state.sidePiles as any)?.value?.[0]?.length > 0" class="card back mini pile-shadow">
+        <div
+          v-if="(state.sidePiles as any)?.value?.[0]?.length > 0"
+          class="card back mini pile-shadow"
+        >
           <span class="count">{{ (state.sidePiles as any).value[0].length }}</span>
         </div>
         <div v-else class="empty-slot mini" />
@@ -46,7 +49,10 @@
       </div>
 
       <div class="side-pile-group">
-        <div v-if="(state.sidePiles as any)?.value?.[1]?.length > 0" class="card back mini pile-shadow">
+        <div
+          v-if="(state.sidePiles as any)?.value?.[1]?.length > 0"
+          class="card back mini pile-shadow"
+        >
           <span class="count">{{ (state.sidePiles as any).value[1].length }}</span>
         </div>
         <div v-else class="empty-slot mini" />
@@ -122,7 +128,9 @@ const isHost = computed(() => props.state.playerIds[0] === myPlayerId.value);
 const opponentId = computed(() => props.state.playerIds.find((id) => id !== myPlayerId.value));
 
 const myHand = computed(() => (props.state.hands[myPlayerId.value] as any)?.value || []);
-const myDeckCount = computed(() => (props.state.personalDecks[myPlayerId.value] as any)?.value?.length || 0);
+const myDeckCount = computed(
+  () => (props.state.personalDecks[myPlayerId.value] as any)?.value?.length || 0,
+);
 
 const opponentHandCount = computed(() => {
   if (!opponentId.value) return 0;

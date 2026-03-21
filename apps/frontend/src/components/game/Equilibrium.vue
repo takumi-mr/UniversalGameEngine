@@ -45,7 +45,9 @@
         <div class="my-status player-badge">
           <div class="name">You ({{ myPlayerId }})</div>
           <div class="stats">❤️ {{ myData.hp }} | 👻 {{ myData.soulPoints }}</div>
-          <div v-if="(myData.hiddenGoal as any)?.value" class="goal">🎯 Goal: {{ (myData.hiddenGoal as any).value.name }}</div>
+          <div v-if="(myData.hiddenGoal as any)?.value" class="goal">
+            🎯 Goal: {{ (myData.hiddenGoal as any).value.name }}
+          </div>
         </div>
 
         <div class="hand-container">

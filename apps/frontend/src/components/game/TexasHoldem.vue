@@ -54,7 +54,11 @@
             </div>
 
             <div class="hole-cards opponent-cards">
-              <div v-for="c in (state.hands[opponent.id] as any)?.value" :key="c" class="playing-card small-card">
+              <div
+                v-for="c in (state.hands[opponent.id] as any)?.value"
+                :key="c"
+                class="playing-card small-card"
+              >
                 <CardInner :card-str="c" />
               </div>
             </div>
