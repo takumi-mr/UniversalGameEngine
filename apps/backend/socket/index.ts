@@ -6,6 +6,11 @@ import { gameRegistry } from '@engine/shared/GameRegistry';
 import { UniversalEngine } from '@engine/shared/UniversalEngine';
 import { setIoInstance, scheduleRoomCleanup, clearRoomCleanup, updatePresence } from './roomManager';
 import { streamManager } from '../network/StreamManager';
+import { GrpcBotPlayer } from '@engine/shared/ai/GrpcBotPlayer';
+import { RandomPlayer } from '@engine/shared/ai/RandomPlayer';
+import { MinimaxPlayer } from '@engine/shared/ai/MinimaxPlayer';
+import { MCTSPlayer } from '@engine/shared/ai/MCTSPlayer';
+import { aiTensorRegistry } from '@engine/shared/ai/AITensorAdapterRegistry';
 
 export const setupSocketIO = (io: Server) => {
     setIoInstance(io);
@@ -50,6 +55,46 @@ export const setupSocketIO = (io: Server) => {
                 const engine = new UniversalEngine(def.ruleset, options);
                 const server = new SocketGameServer(gameId, engine, io);
                 sessions.set(gameId, { server, type: normalizedType });
+
+                // AI追加のリクエストがあれば初期化する
+                if (options?.addAi) {
+                    const state = engine.getState();
+                    if (state.players) {
+                        const slotKeys = Object.keys(state.players);
+                        if (slotKeys.length > 0) {
+                            const aiSlotKey = slotKeys[slotKeys.length - 1] as string; // 人間が先に入れるように後方のスロットをAIにする
+                            const botId = 'bot_' + Math.random().toString(36).substring(7);
+                            state.players[aiSlotKey] = botId;
+
+                            let botPlayer: any = null;
+                            const aiType = options.addAi;
+
+                            if (aiType === 'grpc_bot') {
+                                botPlayer = new GrpcBotPlayer(botId, "gRPC External Bot", (turnState, legalActions) => {
+                                    const adapter = aiTensorRegistry.getAdapter(normalizedType);
+                                    if (adapter) {
+                                        const stateTensor = adapter.encodeState(turnState, botId);
+                                        const legalActionIds = turnState.activePlayers?.includes(botId) 
+                                            ? adapter.encodeLegalActions(turnState, botId) 
+                                            : [];
+                                        streamManager.notifyBotTurn(gameId, botId, stateTensor, legalActionIds);
+                                    }
+                                });
+                            } else if (aiType === 'random') {
+                                botPlayer = new RandomPlayer(botId, "Random AI");
+                            } else if (aiType === 'minimax') {
+                                botPlayer = new MinimaxPlayer(botId, "Minimax AI", 3); // Depth 3
+                            } else if (aiType === 'mcts') {
+                                botPlayer = new MCTSPlayer(botId, "MCTS AI", 1000); // 1000 iterations
+                            }
+
+                            if (botPlayer) {
+                                server.aiPlayers.set(botId, botPlayer);
+                                console.log(`[AI] Spawned ${aiType} ${botId} in game ${gameId}`);
+                            }
+                        }
+                    }
+                }
 
                 // 作成した本人に ID を送り返す
                 socket.emit('game-created', gameId);

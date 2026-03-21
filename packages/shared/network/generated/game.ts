@@ -25,6 +25,9 @@ export interface ProtoGrpcType {
     ResetGameResponse: MessageTypeDefinition
     StepRequest: MessageTypeDefinition
     StepResponse: MessageTypeDefinition
+    SubmitTurnRequest: MessageTypeDefinition
+    WaitForTurnRequest: MessageTypeDefinition
+    WaitForTurnResponse: MessageTypeDefinition
   }
 }
 

@@ -92,6 +92,23 @@ message ResetGameResponse {
     repeated string active_players = 3;
 }
 
+// 実際のプレイでAIボットがターンを待避・送信するためのリクエスト
+message WaitForTurnRequest {
+    string game_id = 1;
+    string player_id = 2;
+}
+
+message WaitForTurnResponse {
+    repeated float state_tensor = 1;
+    repeated int32 legal_action_ids = 2;
+}
+
+message SubmitTurnRequest {
+    string game_id = 1;
+    string player_id = 2;
+    int32 action_id = 3;
+}
+
 service GameService {
     // 単発のRPC
     rpc CreateGame(CreateGameRequest) returns (CreateGameResponse);
@@ -104,6 +121,10 @@ service GameService {
     // AI学習ループ専用のエンドポイント
     rpc Step(StepRequest) returns (StepResponse);
     rpc Reset(ResetGameRequest) returns (ResetGameResponse);
+
+    // AIプレイ用のエンドポイント
+    rpc WaitForTurn(WaitForTurnRequest) returns (stream WaitForTurnResponse);
+    rpc SubmitTurn(SubmitTurnRequest) returns (CommonResponse);
 }
 
 message GameEvent {

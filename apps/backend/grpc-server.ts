@@ -251,6 +251,44 @@ const gameServiceHandlers: GameServiceHandlers = {
         } catch (err: any) {
             callback({ code: grpc.status.INTERNAL, message: err.message } as any);
         }
+    },
+
+    WaitForTurn: (call) => {
+        const { gameId, playerId } = call.request;
+        streamManager.addBotStream(gameId, playerId, call);
+
+        call.on('cancelled', () => {
+            streamManager.removeBotStream(gameId, playerId);
+        });
+    },
+
+    SubmitTurn: (call, callback) => {
+        const { gameId, playerId, actionId } = call.request;
+        const session = sessions.get(gameId);
+        if (!session) return callback({ code: grpc.status.NOT_FOUND, message: 'Game session not found' });
+
+        try {
+            const def = gameRegistry.getDefinition(session.type);
+            const adapter = aiTensorRegistry.getAdapter(session.type);
+            if (!def || !adapter) return callback({ code: grpc.status.INTERNAL, message: 'Ruleset or AI Tensor Adapter not found' });
+
+            const aiPlayer = session.server.aiPlayers.get(playerId);
+            if (!aiPlayer || typeof (aiPlayer as any).submitMove !== 'function') {
+                return callback({ code: grpc.status.INVALID_ARGUMENT, message: 'Player is not a GrpcBotPlayer or has no submitMove method' });
+            }
+
+            const state = session.server.engine.getState();
+            const action = adapter.decodeAction(state, actionId, playerId);
+            
+            const success = (aiPlayer as any).submitMove(action);
+            if (success) {
+                callback(null, { success: true, message: 'Bot Move Submitted' });
+            } else {
+                callback(null, { success: false, message: 'Bot is not waiting for a move' });
+            }
+        } catch (err: any) {
+            callback({ code: grpc.status.INTERNAL, message: err.message } as any);
+        }
     }
 };
 

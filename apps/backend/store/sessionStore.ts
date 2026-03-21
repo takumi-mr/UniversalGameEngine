@@ -5,11 +5,16 @@ import { Server } from 'socket.io';
 import { generate, compare } from 'fast-json-patch';
 import { calculateStateHash } from '@engine/shared';
 import { streamManager } from '../network/StreamManager';
+import type { IAIPlayer } from '@engine/shared/ai/IAIPlayer';
 
 export class SocketGameServer extends GenericGameServer<any, any> {
     private io: Server;
     // ソケットごとに最後に送信した「マスク済み状態」を記録する
     private lastSentState: Map<string, any> = new Map();
+    
+    // AIプレイヤーの管理と、思考中の重複呼び出し防止
+    public aiPlayers: Map<string, IAIPlayer<any, any>> = new Map();
+    private computingAIPlayers: Set<string> = new Set();
 
     constructor(roomId: string, engine: UniversalEngine<any, any>, io: Server) {
         super(roomId, engine);
@@ -86,6 +91,36 @@ export class SocketGameServer extends GenericGameServer<any, any> {
                 }
             };
         });
+
+        // AIのターンであれば自動実行する
+        this.checkAndExecuteAiTurns();
+    }
+
+    private checkAndExecuteAiTurns() {
+        const state = this.engine.getState();
+        if (state.status !== 'PLAYING') return;
+
+        const activePlayers = state.activePlayers || [];
+        for (const playerId of activePlayers) {
+            const aiPlayer = this.aiPlayers.get(playerId);
+            if (aiPlayer && !this.computingAIPlayers.has(playerId)) {
+                this.computingAIPlayers.add(playerId);
+                
+                const legalActions = this.engine.getLegalActions(playerId);
+                aiPlayer.computeNextMove(state, legalActions).then(action => {
+                    this.computingAIPlayers.delete(playerId);
+                    
+                    // ゲームが進行して別プレイヤーのターンになっていないか確認してアクションを実行
+                    const currentState = this.engine.getState();
+                    if (currentState.status === 'PLAYING' && currentState.activePlayers?.includes(playerId) && action) {
+                        this.handleAction(playerId, action);
+                    }
+                }).catch(err => {
+                    this.computingAIPlayers.delete(playerId);
+                    console.error(`[AI] Error computing move for player ${playerId}:`, err);
+                });
+            }
+        }
     }
 
     public handleDisconnect(socketId: string): void {

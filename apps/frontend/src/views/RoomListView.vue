@@ -55,16 +55,53 @@
               </div>
               <v-spacer></v-spacer>
               <div class="d-flex gap-2">
-                <v-btn
-                  color="primary"
-                  size="large"
-                  prepend-icon="mdi-plus"
-                  class="rounded-lg font-weight-bold"
-                  :loading="creating"
-                  @click="createNewRoom"
-                >
-                  {{ $t('common.create_new_room') }}
-                </v-btn>
+                <v-menu>
+                  <template v-slot:activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      color="primary"
+                      size="large"
+                      prepend-icon="mdi-plus"
+                      append-icon="mdi-menu-down"
+                      class="rounded-lg font-weight-bold"
+                      :loading="creating"
+                    >
+                      {{ $t('common.create_new_room') }}
+                    </v-btn>
+                  </template>
+                  <v-list>
+                    <v-list-item @click="createNewRoom()">
+                      <template v-slot:prepend>
+                        <v-icon icon="mdi-account-multiple" class="mr-2"></v-icon>
+                      </template>
+                      <v-list-item-title>Play with Human</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="createNewRoom('random')">
+                      <template v-slot:prepend>
+                        <v-icon icon="mdi-robot-outline" class="mr-2"></v-icon>
+                      </template>
+                      <v-list-item-title>Play with AI (Random)</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="createNewRoom('minimax')">
+                      <template v-slot:prepend>
+                        <v-icon icon="mdi-robot" class="mr-2"></v-icon>
+                      </template>
+                      <v-list-item-title>Play with AI (Minimax)</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="createNewRoom('mcts')">
+                      <template v-slot:prepend>
+                        <v-icon icon="mdi-head-cog" class="mr-2"></v-icon>
+                      </template>
+                      <v-list-item-title>Play with AI (MCTS)</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="createNewRoom('grpc_bot')">
+                      <template v-slot:prepend>
+                        <v-icon icon="mdi-cloud-outline" class="mr-2"></v-icon>
+                      </template>
+                      <v-list-item-title>Play with AI (gRPC External)</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
                 <v-btn
                   variant="outlined"
                   size="large"
@@ -244,12 +281,17 @@ const fetchRooms = () => roomStore.fetchRooms(gameType.value);
 
 onMounted(fetchRooms);
 
-const createNewRoom = async () => {
+const createNewRoom = async (aiType?: string) => {
   creating.value = true;
   try {
     // ゲーム固有の起動前フックを実行（数独の場合は問題生成など）
     const hookFn = gameHooks[gameType.value];
-    const gameOptions = hookFn ? await hookFn() : undefined;
+    let gameOptions: any = hookFn ? await hookFn() : {};
+    
+    if (aiType) {
+      if (!gameOptions) gameOptions = {};
+      gameOptions.addAi = aiType;
+    }
 
     const token = authStore.token || '';
     const API_BASE = 'http://127.0.0.1:3000';

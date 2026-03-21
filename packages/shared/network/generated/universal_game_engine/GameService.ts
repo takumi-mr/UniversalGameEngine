@@ -13,6 +13,9 @@ import type { ResetGameRequest as _universal_game_engine_ResetGameRequest, Reset
 import type { ResetGameResponse as _universal_game_engine_ResetGameResponse, ResetGameResponse__Output as _universal_game_engine_ResetGameResponse__Output } from '../universal_game_engine/ResetGameResponse';
 import type { StepRequest as _universal_game_engine_StepRequest, StepRequest__Output as _universal_game_engine_StepRequest__Output } from '../universal_game_engine/StepRequest';
 import type { StepResponse as _universal_game_engine_StepResponse, StepResponse__Output as _universal_game_engine_StepResponse__Output } from '../universal_game_engine/StepResponse';
+import type { SubmitTurnRequest as _universal_game_engine_SubmitTurnRequest, SubmitTurnRequest__Output as _universal_game_engine_SubmitTurnRequest__Output } from '../universal_game_engine/SubmitTurnRequest';
+import type { WaitForTurnRequest as _universal_game_engine_WaitForTurnRequest, WaitForTurnRequest__Output as _universal_game_engine_WaitForTurnRequest__Output } from '../universal_game_engine/WaitForTurnRequest';
+import type { WaitForTurnResponse as _universal_game_engine_WaitForTurnResponse, WaitForTurnResponse__Output as _universal_game_engine_WaitForTurnResponse__Output } from '../universal_game_engine/WaitForTurnResponse';
 
 export interface GameServiceClient extends grpc.Client {
   CreateGame(argument: _universal_game_engine_CreateGameRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_universal_game_engine_CreateGameResponse__Output>): grpc.ClientUnaryCall;
@@ -65,6 +68,20 @@ export interface GameServiceClient extends grpc.Client {
   streamEvents(argument: _universal_game_engine_JoinGameRequest, metadata: grpc.Metadata, options?: grpc.CallOptions): grpc.ClientReadableStream<_universal_game_engine_GameEvent__Output>;
   streamEvents(argument: _universal_game_engine_JoinGameRequest, options?: grpc.CallOptions): grpc.ClientReadableStream<_universal_game_engine_GameEvent__Output>;
   
+  SubmitTurn(argument: _universal_game_engine_SubmitTurnRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_universal_game_engine_CommonResponse__Output>): grpc.ClientUnaryCall;
+  SubmitTurn(argument: _universal_game_engine_SubmitTurnRequest, metadata: grpc.Metadata, callback: grpc.requestCallback<_universal_game_engine_CommonResponse__Output>): grpc.ClientUnaryCall;
+  SubmitTurn(argument: _universal_game_engine_SubmitTurnRequest, options: grpc.CallOptions, callback: grpc.requestCallback<_universal_game_engine_CommonResponse__Output>): grpc.ClientUnaryCall;
+  SubmitTurn(argument: _universal_game_engine_SubmitTurnRequest, callback: grpc.requestCallback<_universal_game_engine_CommonResponse__Output>): grpc.ClientUnaryCall;
+  submitTurn(argument: _universal_game_engine_SubmitTurnRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_universal_game_engine_CommonResponse__Output>): grpc.ClientUnaryCall;
+  submitTurn(argument: _universal_game_engine_SubmitTurnRequest, metadata: grpc.Metadata, callback: grpc.requestCallback<_universal_game_engine_CommonResponse__Output>): grpc.ClientUnaryCall;
+  submitTurn(argument: _universal_game_engine_SubmitTurnRequest, options: grpc.CallOptions, callback: grpc.requestCallback<_universal_game_engine_CommonResponse__Output>): grpc.ClientUnaryCall;
+  submitTurn(argument: _universal_game_engine_SubmitTurnRequest, callback: grpc.requestCallback<_universal_game_engine_CommonResponse__Output>): grpc.ClientUnaryCall;
+  
+  WaitForTurn(argument: _universal_game_engine_WaitForTurnRequest, metadata: grpc.Metadata, options?: grpc.CallOptions): grpc.ClientReadableStream<_universal_game_engine_WaitForTurnResponse__Output>;
+  WaitForTurn(argument: _universal_game_engine_WaitForTurnRequest, options?: grpc.CallOptions): grpc.ClientReadableStream<_universal_game_engine_WaitForTurnResponse__Output>;
+  waitForTurn(argument: _universal_game_engine_WaitForTurnRequest, metadata: grpc.Metadata, options?: grpc.CallOptions): grpc.ClientReadableStream<_universal_game_engine_WaitForTurnResponse__Output>;
+  waitForTurn(argument: _universal_game_engine_WaitForTurnRequest, options?: grpc.CallOptions): grpc.ClientReadableStream<_universal_game_engine_WaitForTurnResponse__Output>;
+  
 }
 
 export interface GameServiceHandlers extends grpc.UntypedServiceImplementation {
@@ -80,6 +97,10 @@ export interface GameServiceHandlers extends grpc.UntypedServiceImplementation {
   
   StreamEvents: grpc.handleServerStreamingCall<_universal_game_engine_JoinGameRequest__Output, _universal_game_engine_GameEvent>;
   
+  SubmitTurn: grpc.handleUnaryCall<_universal_game_engine_SubmitTurnRequest__Output, _universal_game_engine_CommonResponse>;
+  
+  WaitForTurn: grpc.handleServerStreamingCall<_universal_game_engine_WaitForTurnRequest__Output, _universal_game_engine_WaitForTurnResponse>;
+  
 }
 
 export interface GameServiceDefinition extends grpc.ServiceDefinition {
@@ -89,4 +110,6 @@ export interface GameServiceDefinition extends grpc.ServiceDefinition {
   SendChat: MethodDefinition<_universal_game_engine_ChatMessage, _universal_game_engine_CommonResponse, _universal_game_engine_ChatMessage__Output, _universal_game_engine_CommonResponse__Output>
   Step: MethodDefinition<_universal_game_engine_StepRequest, _universal_game_engine_StepResponse, _universal_game_engine_StepRequest__Output, _universal_game_engine_StepResponse__Output>
   StreamEvents: MethodDefinition<_universal_game_engine_JoinGameRequest, _universal_game_engine_GameEvent, _universal_game_engine_JoinGameRequest__Output, _universal_game_engine_GameEvent__Output>
+  SubmitTurn: MethodDefinition<_universal_game_engine_SubmitTurnRequest, _universal_game_engine_CommonResponse, _universal_game_engine_SubmitTurnRequest__Output, _universal_game_engine_CommonResponse__Output>
+  WaitForTurn: MethodDefinition<_universal_game_engine_WaitForTurnRequest, _universal_game_engine_WaitForTurnResponse, _universal_game_engine_WaitForTurnRequest__Output, _universal_game_engine_WaitForTurnResponse__Output>
 }

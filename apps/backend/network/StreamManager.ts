@@ -10,6 +10,9 @@ interface StreamInfo {
 
 class StreamManager {
     private activeStreams = new Map<string, Set<StreamInfo>>();
+    
+    // AI用待機ストリーム (gameId -> playerId -> stream)
+    private botStreams = new Map<string, Map<string, GrpcStream>>();
 
     /**
      * ストリームを登録する
@@ -68,6 +71,49 @@ class StreamManager {
                     info.stream.write(event);
                 } catch (err) {
                     console.error(`[StreamManager] Failed to broadcast to stream for user ${info.userId} in game ${gameId}:`, err);
+                }
+            }
+        }
+    }
+
+    /**
+     * AIボットのターン待ち受けストリームを登録する
+     */
+    public addBotStream(gameId: string, playerId: string, stream: GrpcStream) {
+        if (!this.botStreams.has(gameId)) {
+            this.botStreams.set(gameId, new Map());
+        }
+        this.botStreams.get(gameId)!.set(playerId, stream);
+    }
+
+    /**
+     * AIボットのストリームを解除する
+     */
+    public removeBotStream(gameId: string, playerId: string) {
+        const gameStreams = this.botStreams.get(gameId);
+        if (gameStreams) {
+            gameStreams.delete(playerId);
+            if (gameStreams.size === 0) {
+                this.botStreams.delete(gameId);
+            }
+        }
+    }
+
+    /**
+     * 特別のAIプレイヤーにターンが回ってきたことを通知する
+     */
+    public notifyBotTurn(gameId: string, playerId: string, stateTensor: number[], legalActionIds: number[]) {
+        const gameStreams = this.botStreams.get(gameId);
+        if (gameStreams) {
+            const stream = gameStreams.get(playerId);
+            if (stream) {
+                try {
+                    stream.write({
+                        stateTensor,
+                        legalActionIds
+                    });
+                } catch (err) {
+                    console.error(`[StreamManager] Failed to send turn data to bot ${playerId} in game ${gameId}:`, err);
                 }
             }
         }
