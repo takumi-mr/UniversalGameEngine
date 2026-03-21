@@ -130,7 +130,7 @@ export const setupSocketIO = (io: Server) => {
                             state.status = 'PLAYING';
                             console.log(`[AI] All slots filled — game ${gameId} auto-started as PLAYING`);
                         }
-                        
+
                         // 初期のアクティブプレイヤーを設定
                         if (!state.activePlayers || state.activePlayers.length === 0) {
                             const activeIds: string[] = [];
@@ -155,7 +155,7 @@ export const setupSocketIO = (io: Server) => {
                 scheduleRoomCleanup(gameId);
             } catch (error) {
                 console.error(`Failed to create game ${type}:`, error);
-                socket.emit('error-message', `Failed to create game: ${(error as any).message || error}`);
+                socket.emit('error-message', `Failed to create game: ${(error as Error).message || error}`);
             }
         });
 

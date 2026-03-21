@@ -8,8 +8,8 @@ export interface GameMetadata {
 
 export interface GameCreateOptions {
     type?: string;
-    gameOptions?: any;
-    [key: string]: any;
+    gameOptions?: Record<string, unknown>;
+    [key: string]: unknown;
 }
 
 export interface ChatMessage {

@@ -50,22 +50,22 @@ export interface Secret<T> {
     // 閲覧可能なプレイヤーIDのリスト。 "*" は全員。
     visibleTo: string[];
     // マスク時の代替値。未指定の場合はデフォルト（"?" など）が使用される
-    maskedValue?: any;
+    maskedValue?: unknown;
 }
 
-export function createSecret<T>(value: T, visibleTo: string[], maskedValue?: any): Secret<T> {
+export function createSecret<T>(value: T, visibleTo: string[], maskedValue?: unknown): Secret<T> {
     return { __isSecret: true, value, visibleTo, maskedValue };
 }
 
-export function isSecret(obj: any): obj is Secret<any> {
-    return !!(obj && typeof obj === 'object' && (obj as any).__isSecret === true);
+export function isSecret(obj: unknown): obj is Secret<unknown> {
+    return !!(obj && typeof obj === 'object' && (obj as Record<string, unknown>).__isSecret === true);
 }
 
 import type { IGameRNG } from "./utils/IGameRNG";
 
-export interface GameRuleset<TState extends BaseGameState, TAction extends BaseGameAction> {
+export interface GameRuleset<TState extends BaseGameState, TAction extends BaseGameAction, TOptions = Record<string, unknown>> {
     // ゲームの初期状態を生成する関数
-    getInitialState: (options?: any, rng?: IGameRNG) => TState;
+    getInitialState: (options?: TOptions, rng?: IGameRNG) => TState;
 
     // そのアクションが現在の状態で「合法手」かどうかを判定する関数
     isValidAction: (state: TState, action: TAction) => boolean;

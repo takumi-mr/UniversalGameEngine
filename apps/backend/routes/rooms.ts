@@ -25,7 +25,7 @@ router.get('/my', (req, res) => {
     try {
         const token = authHeader.split(' ')[1];
         if (!token) return res.status(401).json({ error: 'No token' });
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
         const userId = decoded.userId;
         const io = getIoInstance();
         const myRooms = Array.from(sessions.entries())
