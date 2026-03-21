@@ -18,7 +18,7 @@ import { MancalaRuleset } from './rules/MancalaRuleset';
 import { WordleRuleset } from './rules/WordleRuleset';
 import { SpeedRuleset } from './rules/SpeedRuleset';
 import { MinesweeperRuleset } from './rules/MinesweeperRuleset';
-
+import { PokemonPocketRuleset } from './rules/PokemonPocket/PokemonPocketRuleset';
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
     type: string;
     name: string;
@@ -233,6 +233,16 @@ class GameRegistry {
             description: 'トランプの「スピード」。場札と±1の数字のカードを素早く出せ！',
             emoji: '⚡',
             rules: '台札と数字が1つ違い（A-2-3...K-A）のカードを、手札から場に出します。手札は山札から自動で5枚まで補充されます。先に全て出し切った方の勝ちです。詰まったら「めくる」ボタンで脇の札を台札に移動します。',
+        });
+        this.register({
+            type: 'pokemon_pocket',
+            name: 'Pokémon TCG Pocket',
+            ruleset: new PokemonPocketRuleset(),
+            minPlayers: 2,
+            maxPlayers: 2,
+            description: 'Pokémon Trading Card Game Pocketのルールをベースにしたカードゲームです。3ポイント先取で勝利！',
+            emoji: '🃏',
+            rules: 'エネルギーゾーンから毎ターンエネルギーをつけ、ポケモンを育てて戦います。相手のポケモンをきぜつさせて3ポイント獲得すると勝利です。',
         });
     }
 
