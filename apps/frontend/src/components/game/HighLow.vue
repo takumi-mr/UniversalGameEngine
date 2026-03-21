@@ -8,54 +8,83 @@
     </div>
 
     <div class="table-area">
+      <!-- Player 2 (Top) -->
       <div class="player-zone player2-zone" :class="{ 'active-turn': state.currentTurn === 2 }">
         <div class="player-info">
           <div class="avatar">👤</div>
           <div class="name">Player 2 {{ state.players?.['2'] ? `(${state.players['2']})` : '' }}</div>
           <div class="score">Score: <span>{{ state.scores[2] }}</span></div>
         </div>
-        <div class="card-slot">
-          <div v-if="state.field[2]" class="playing-card face-up">
-            <CardInner :card="state.field[2]" />
-          </div>
-          <div v-else class="playing-card empty-slot"></div>
+        
+        <div v-if="state.status === 'PLAYING' && state.currentTurn === 2" class="guess-controls">
+          <button class="guess-btn high" :disabled="!isMyTurn(2)" @click="makeGuess('HIGH')">
+            <span class="icon">▲</span> HIGH
+          </button>
+          <button class="guess-btn low" :disabled="!isMyTurn(2)" @click="makeGuess('LOW')">
+            <span class="icon">▼</span> LOW
+          </button>
         </div>
-        <button 
-          v-if="state.status === 'PLAYING'"
-          class="draw-btn" 
-          :disabled="state.currentTurn !== 2"
-          @click="drawCard(2)"
-        >
-          {{ state.currentTurn === 2 ? '引く (Draw)' : '待機中...' }}
-        </button>
+        <div v-else class="status-placeholder">
+          {{ state.currentTurn === 2 ? 'Thinking...' : 'Waiting...' }}
+        </div>
       </div>
 
+      <!-- Center Board -->
       <div class="center-zone">
-        <div class="deck-container">
-          <div class="deck-count">残り: {{ state.deck.length }}枚</div>
-          <div class="deck-visual" :class="{ 'is-empty': state.deck.length === 0 }">
-            <div v-if="state.deck.length > 0" class="card-back"></div>
-            <div v-else class="deck-empty-text">Empty</div>
+        <div class="card-display">
+          <div class="card-label">BASE CARD</div>
+          <div class="card-slot">
+            <div v-if="state.baseCard" class="playing-card face-up">
+              <div class="card-inner" :class="{ 'is-red': state.baseCard.suit === '♥' || state.baseCard.suit === '♦' }">
+                <div class="top-left">
+                  <div class="rank">{{ getRankLabel(state.baseCard.rank) }}</div>
+                  <div class="suit">{{ state.baseCard.suit }}</div>
+                </div>
+                <div class="center-suit">{{ state.baseCard.suit }}</div>
+              </div>
+            </div>
+            <div v-else class="playing-card empty-slot"></div>
           </div>
         </div>
-        <div class="vs-badge">VS</div>
+
+        <div class="vs-divider">
+          <div class="deck-container">
+            <div class="deck-count">{{ state.deck.length }}</div>
+            <div class="deck-visual" :class="{ 'is-empty': state.deck.length === 0 }"></div>
+          </div>
+        </div>
+
+        <div class="card-display result">
+          <div class="card-label">RESULT</div>
+          <div class="card-slot">
+            <div v-if="state.lastResultCard" class="playing-card face-up result-anim">
+              <div class="card-inner" :class="{ 'is-red': state.lastResultCard.suit === '♥' || state.lastResultCard.suit === '♦' }">
+                <div class="top-left">
+                  <div class="rank">{{ getRankLabel(state.lastResultCard.rank) }}</div>
+                  <div class="suit">{{ state.lastResultCard.suit }}</div>
+                </div>
+                <div class="center-suit">{{ state.lastResultCard.suit }}</div>
+              </div>
+            </div>
+            <div v-else class="playing-card empty-slot"></div>
+          </div>
+        </div>
       </div>
 
+      <!-- Player 1 (Bottom) -->
       <div class="player-zone player1-zone" :class="{ 'active-turn': state.currentTurn === 1 }">
-        <button 
-          v-if="state.status === 'PLAYING'"
-          class="draw-btn" 
-          :disabled="state.currentTurn !== 1"
-          @click="drawCard(1)"
-        >
-          {{ state.currentTurn === 1 ? '引く (Draw)' : '待機中...' }}
-        </button>
-        <div class="card-slot">
-          <div v-if="state.field[1]" class="playing-card face-up">
-            <CardInner :card="state.field[1]" />
-          </div>
-          <div v-else class="playing-card empty-slot"></div>
+        <div v-if="state.status === 'PLAYING' && state.currentTurn === 1" class="guess-controls">
+          <button class="guess-btn high" :disabled="!isMyTurn(1)" @click="makeGuess('HIGH')">
+            <span class="icon">▲</span> HIGH
+          </button>
+          <button class="guess-btn low" :disabled="!isMyTurn(1)" @click="makeGuess('LOW')">
+            <span class="icon">▼</span> LOW
+          </button>
         </div>
+        <div v-else class="status-placeholder">
+          {{ state.currentTurn === 1 ? 'Thinking...' : 'Waiting...' }}
+        </div>
+
         <div class="player-info">
           <div class="name">Player 1 {{ state.players?.['1'] ? `(${state.players['1']})` : '' }}</div>
           <div class="score">Score: <span>{{ state.scores[1] }}</span></div>
@@ -66,47 +95,31 @@
 </template>
 
 <script setup lang="ts">
-import { defineComponent } from 'vue';
-import type { HighLowState, DrawAction, Card } from '@engine/shared/rules/HighLowRuleset';
+import type { HighLowState, HighLowAction } from '@engine/shared/rules/HighLowRuleset';
 
 const props = defineProps<{ 
   state: HighLowState,
   myPlayerId?: string
 }>();
-const emit = defineEmits<{ (e: 'action', action: DrawAction): void }>();
 
-// カード描画用の軽量インラインコンポーネント（HighLow特有のデータ構造に対応）
-const CardInner = defineComponent({
-  props: { card: { type: Object as () => Card, required: true } },
-  setup() {
-    
-    return () => {
-      // JSXライクなレンダー関数（Vue 3）は使わず、シンプルなHTML文字列やクラス判定に回します
-      // ここでは template 内で使える computed プロパティとして提供
-      return null; 
-    };
-  },
-  template: `
-    <div class="card-inner" :class="{ 'is-red': card.suit === '♥' || card.suit === '♦' }">
-      <div class="top-left">
-        <div class="rank">{{ card.rank === 1 ? 'A' : card.rank === 11 ? 'J' : card.rank === 12 ? 'Q' : card.rank === 13 ? 'K' : card.rank }}</div>
-        <div class="suit">{{ card.suit }}</div>
-      </div>
-      <div class="center-suit">{{ card.suit }}</div>
-    </div>
-  `
-});
+const emit = defineEmits<{ (e: 'action', action: HighLowAction): void }>();
 
-// カードを引くアクション
-const drawCard = (playerNumber: 1 | 2) => {
+const getRankLabel = (rank: number) => {
+  if (rank === 1) return 'A';
+  if (rank === 11) return 'J';
+  if (rank === 12) return 'Q';
+  if (rank === 13) return 'K';
+  return rank.toString();
+};
+
+const isMyTurn = (playerNumber: 1 | 2) => {
+  if (!props.state.players) return false;
+  return props.state.players[playerNumber] === props.myPlayerId;
+};
+
+const makeGuess = (choice: 'HIGH' | 'LOW') => {
   if (props.state.status !== 'PLAYING') return;
-  if (props.state.currentTurn !== playerNumber) return;
-
-  // 観戦者ガード
-  const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
-  if (!isPlayer) return;
-
-  emit('action', { type: 'DRAW', player: playerNumber });
+  emit('action', { type: 'GUESS', choice, playerId: props.myPlayerId });
 };
 </script>
 
@@ -167,149 +180,173 @@ const drawCard = (playerNumber: 1 | 2) => {
   flex-direction: column;
   justify-content: space-between;
   width: 100%;
-  max-width: 600px;
+  max-width: 800px;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 32px;
+  padding: 40px;
   position: relative;
 }
 
 /* --- Player Zones --- */
 .player-zone {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 16px;
-  transition: all 0.3s;
-  padding: 16px;
+  justify-content: space-between;
+  width: 100%;
+  padding: 20px;
   border-radius: 16px;
+  transition: all 0.3s;
 }
+
 .player-zone.active-turn {
   background: rgba(59, 130, 246, 0.1);
   box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
 }
 
 .player-info {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
-.player-info .name { font-weight: bold; font-size: 1.1rem; color: #e2e8f0; }
-.player-info .score { font-size: 0.9rem; color: #94a3b8; margin-top: 4px; }
-.player-info .score span { font-size: 1.2rem; font-weight: bold; color: #facc15; }
 
-.draw-btn {
-  background: #3b82f6;
-  color: white;
+.name { font-weight: bold; font-size: 1.2rem; color: #f8fafc; }
+.score { color: #94a3b8; }
+.score span { color: #facc15; font-size: 1.5rem; font-weight: bold; }
+
+/* --- Guess Controls --- */
+.guess-controls {
+  display: flex;
+  gap: 16px;
+}
+
+.guess-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
   border: none;
-  padding: 12px 32px;
-  border-radius: 50px;
-  font-size: 1rem;
+  border-radius: 20px;
+  color: white;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-}
-.draw-btn:hover:not(:disabled) { transform: translateY(-2px); background: #60a5fa; }
-.draw-btn:disabled { background: #475569; color: #94a3b8; box-shadow: none; cursor: not-allowed; }
-
-/* --- Cards & Slots --- */
-.card-slot {
-  width: 100px;
-  height: 140px;
 }
 
-.playing-card {
-  width: 100%;
-  height: 100%;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+.guess-btn .icon { font-size: 1.5rem; margin-bottom: 4px; }
 
-.empty-slot {
-  border: 2px dashed rgba(255, 255, 255, 0.2);
-  background: rgba(0, 0, 0, 0.2);
-}
+.guess-btn.high { background: #ef4444; box-shadow: 0 4px 0 #b91c1c; }
+.guess-btn.high:hover:not(:disabled) { background: #f87171; transform: translateY(-2px); box-shadow: 0 6px 0 #b91c1c; }
 
-.face-up {
-  background: white;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  color: black;
-  animation: flipIn 0.4s ease-out forwards;
-}
+.guess-btn.low { background: #3b82f6; box-shadow: 0 4px 0 #1d4ed8; }
+.guess-btn.low:hover:not(:disabled) { background: #60a5fa; transform: translateY(-2px); box-shadow: 0 6px 0 #1d4ed8; }
 
-@keyframes flipIn {
-  0% { transform: rotateY(90deg) scale(0.9); opacity: 0; }
-  100% { transform: rotateY(0deg) scale(1); opacity: 1; }
-}
+.guess-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 2px 0 #1d4ed8; }
+.guess-btn:disabled { background: #475569; box-shadow: none; opacity: 0.5; cursor: not-allowed; }
 
-/* Card Inner Styling */
-:deep(.card-inner) {
-  width: 100%; height: 100%;
-  position: relative; padding: 6px; box-sizing: border-box;
+.status-placeholder {
+  color: #64748b;
+  font-style: italic;
 }
-:deep(.card-inner.is-red) { color: #e11d48; }
-:deep(.top-left) { position: absolute; top: 6px; left: 8px; text-align: center; line-height: 1.1;}
-:deep(.top-left .rank) { font-size: 1.2rem; font-weight: bold; }
-:deep(.top-left .suit) { font-size: 1rem; }
-:deep(.center-suit) { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; opacity: 0.8; }
 
 /* --- Center Zone --- */
 .center-zone {
   display: flex;
   align-items: center;
   justify-content: center;
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  gap: 32px;
+  gap: 40px;
+  margin: 20px 0;
 }
 
-.vs-badge {
-  background: #ef4444;
-  color: white;
-  font-weight: 900;
-  font-style: italic;
-  padding: 8px 12px;
-  border-radius: 50%;
-  font-size: 1.2rem;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
-  z-index: 10;
-}
-
-.deck-container {
+.card-display {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+}
+
+.card-label {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #94a3b8;
+  letter-spacing: 2px;
+}
+
+.card-slot {
+  width: 120px;
+  height: 168px;
+}
+
+.playing-card {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  background: white;
+  position: relative;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+  color: black;
+}
+
+.empty-slot {
+  background: rgba(0,0,0,0.2);
+  border: 2px dashed rgba(255,255,255,0.1);
+  box-shadow: none;
+}
+
+.result-anim {
+  animation: dealCard 0.5s ease-out;
+}
+
+@keyframes dealCard {
+  from { transform: translateX(100px) rotate(15deg); opacity: 0; }
+  to { transform: translateX(0) rotate(0); opacity: 1; }
+}
+
+/* Card Inner */
+.card-inner {
+  width: 100%; height: 100%;
+  padding: 12px;
+}
+.card-inner.is-red { color: #ef4444; }
+.top-left { text-align: left; line-height: 1; }
+.top-left .rank { font-size: 1.5rem; font-weight: bold; }
+.top-left .suit { font-size: 1.2rem; }
+.center-suit { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 4rem; opacity: 0.9; }
+
+/* VS Divider / Deck */
+.vs-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.deck-container {
+  position: relative;
+  width: 60px;
+  height: 84px;
 }
 
 .deck-count {
-  font-size: 0.8rem;
-  color: #cbd5e1;
-  background: rgba(0,0,0,0.5);
-  padding: 2px 8px;
-  border-radius: 10px;
+  position: absolute;
+  top: -24px;
+  width: 100%;
+  text-align: center;
+  font-weight: bold;
+  color: #facc15;
 }
 
 .deck-visual {
-  width: 80px;
-  height: 112px;
-  border-radius: 6px;
+  width: 100%;
+  height: 100%;
+  background: #1e293b;
+  border: 2px solid #475569;
+  border-radius: 8px;
   box-shadow: 
-    -2px -2px 0 #fff, -4px -4px 0 #cbd5e1, 
-    -6px -6px 0 #fff, -8px -8px 0 #94a3b8;
-  background-image: repeating-linear-gradient(45deg, #1e3a8a, #1e3a8a 5px, #2563eb 5px, #2563eb 10px);
-  border: 2px solid white;
+    -2px -2px 0 #334155,
+    -4px -4px 0 #1e293b,
+    -6px -6px 0 #334155;
 }
-.deck-visual.is-empty {
-  background: rgba(0,0,0,0.2);
-  border: 2px dashed rgba(255,255,255,0.2);
-  box-shadow: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.deck-empty-text { font-size: 0.9rem; color: #64748b; font-weight: bold; }
 </style>
