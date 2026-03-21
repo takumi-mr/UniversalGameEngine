@@ -218,7 +218,7 @@ const passTurn = () => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  background: rgba(0,0,0,0.3);
+  background: rgba(var(--v-theme-on-surface), 0.1);
 }
 .turn-info { font-size: 1.2rem; font-weight: bold; }
 .turn-label { color: #94a3b8; font-size: 0.9rem; margin-right: 8px; }
@@ -241,10 +241,10 @@ const passTurn = () => {
   display: flex; justify-content: center; gap: 16px; padding: 16px;
 }
 .opponent-panel {
-  background: rgba(30, 41, 59, 0.8);
+  background: rgba(var(--v-theme-surface), 0.8);
   padding: 8px 16px; border-radius: 8px;
   text-align: center; position: relative;
-  border: 2px solid transparent;
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.1);
 }
 .opponent-panel.active-op { border-color: #fbbf24; box-shadow: 0 0 12px rgba(251, 191, 36, 0.4); }
 .op-name { font-weight: bold; font-size: 0.9rem; }
@@ -268,11 +268,11 @@ const passTurn = () => {
 .deck-area { text-align: center; }
 .deck-card {
   width: 90px; height: 130px;
-  background: #111;
-  border: 4px solid white;
+  background: rgba(var(--v-theme-on-surface), 0.1);
+  border: 4px solid rgb(var(--v-theme-on-surface));
   border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: -4px 4px 0 #333, -8px 8px 0 #222;
+  box-shadow: -4px 4px 0 rgba(0,0,0,0.2), -8px 8px 0 rgba(0,0,0,0.1);
   cursor: not-allowed; opacity: 0.8;
   transition: all 0.2s;
 }
@@ -290,12 +290,13 @@ const passTurn = () => {
 
 /* --- My Area --- */
 .my-area {
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(var(--v-theme-surface), 0.95);
   padding: 20px;
-  border-top: 1px solid rgba(255,255,255,0.1);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   transition: background 0.3s;
+  color: rgb(var(--v-theme-on-surface));
 }
-.my-area.is-my-turn { background: rgba(30, 58, 138, 0.6); }
+.my-area.is-my-turn { background: rgba(var(--v-theme-primary), 0.1); }
 
 .my-header { display: flex; justify-content: space-between; align-items: center; max-width: 800px; margin: 0 auto 16px; }
 .my-name { font-weight: bold; font-size: 1.1rem; }
@@ -322,7 +323,7 @@ const passTurn = () => {
 .is-yellow { background: #eab308; color: white; }
 .is-green { background: #22c55e; color: white; }
 .is-blue { background: #3b82f6; color: white; }
-.is-wild { background: #171717; color: white; }
+.is-wild { background: rgb(var(--v-theme-on-surface), 0.2); border: 2px solid rgb(var(--v-theme-on-surface)); color: rgb(var(--v-theme-on-surface)); }
 
 /* Card Inner Component Styles */
 :deep(.card-inner) {
@@ -335,12 +336,12 @@ const passTurn = () => {
 :deep(.top-left) { top: 4px; left: 6px; }
 :deep(.bottom-right) { bottom: 4px; right: 6px; transform: rotate(180deg); }
 :deep(.center-value) {
-  background: white; color: inherit; /* 外側の色が継承される仕掛け（CSSの都合上、親の背景色に合わせる場合は工夫が必要ですが、ここでは白地に文字色というシンプルなデザインにします） */
+  background: white; color: inherit;
   width: 70%; height: 70%; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-weight: 900; font-size: 2.2rem; font-style: italic;
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
-  color: #333; /* 文字は黒系に固定 */
+  color: #333;
 }
 :deep(.center-value.is-symbol) { font-size: 1.6rem; }
 

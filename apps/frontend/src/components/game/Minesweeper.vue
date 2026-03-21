@@ -19,8 +19,8 @@
                 'revealed': cell.isRevealed,
                 'hidden': !cell.isRevealed,
                 'flagged': !cell.isRevealed && cell.isFlagged,
-                'mine': cell.isRevealed && cell.secret.isMine,
-                ['number-' + (cell.secret.neighborMines || 0)]: cell.isRevealed && !cell.secret.isMine && cell.secret.neighborMines !== undefined,
+                'mine': cell.isRevealed && cell.secret.value.isMine,
+                ['number-' + (cell.secret.value.neighborMines || 0)]: cell.isRevealed && !cell.secret.value.isMine && cell.secret.value.neighborMines !== undefined,
                 'game-over': state.status === 'FINISHED'
               }"
               @click.left="handleLeftClick(r, c)"
@@ -29,9 +29,9 @@
               <Transition name="fade" mode="out-in">
                 <!-- Revealed content -->
                 <div v-if="cell.isRevealed" class="cell-content revealed-content">
-                  <span v-if="cell.secret.isMine" class="bomb-icon">💣</span>
-                  <span v-else-if="cell.secret.neighborMines && cell.secret.neighborMines > 0" class="number">
-                    {{ cell.secret.neighborMines }}
+                  <span v-if="cell.secret.value.isMine" class="bomb-icon">💣</span>
+                  <span v-else-if="cell.secret.value.neighborMines && cell.secret.value.neighborMines > 0" class="number">
+                    {{ cell.secret.value.neighborMines }}
                   </span>
                 </div>
                 <!-- Hidden content -->
@@ -80,7 +80,7 @@ const isSpectator = computed(() => {
   return !Object.values(props.state.players).includes(props.myPlayerId || '');
 });
 
-const isGameActive = computed(() => props.state.status === 'PLAYING' || props.state.status === 'INITIALIZED');
+const isGameActive = computed(() => props.state.status === 'PLAYING');
 
 const handleLeftClick = (row: number, col: number) => {
   if (isSpectator.value || !isGameActive.value) return;
@@ -298,14 +298,14 @@ const mineCountDisplay = computed(() => {
 }
 
 /* Numbers Colors */
-.number-1 .number { color: #3b82f6; text-shadow: 0 0 8px rgba(59, 130, 246, 0.4); } /* Blue */
-.number-2 .number { color: #10b981; text-shadow: 0 0 8px rgba(16, 185, 129, 0.4); } /* Green */
-.number-3 .number { color: #ef4444; text-shadow: 0 0 8px rgba(239, 68, 68, 0.4); } /* Red */
-.number-4 .number { color: #8b5cf6; text-shadow: 0 0 8px rgba(139, 92, 246, 0.4); } /* Purple */
-.number-5 .number { color: #f59e0b; text-shadow: 0 0 8px rgba(245, 158, 11, 0.4); } /* Amber */
-.number-6 .number { color: #06b6d4; text-shadow: 0 0 8px rgba(6, 182, 212, 0.4); } /* Cyan */
-.number-7 .number { color: #f43f5e; text-shadow: 0 0 8px rgba(244, 63, 94, 0.4); } /* Rose */
-.number-8 .number { color: #57534e; text-shadow: 0 0 8px rgba(87, 83, 78, 0.4); }  /* Stone */
+.number-1 .number { color: rgb(var(--v-theme-primary)); } 
+.number-2 .number { color: rgb(var(--v-theme-secondary)); }
+.number-3 .number { color: rgb(var(--v-theme-error)); }
+.number-4 .number { color: rgb(var(--v-theme-info)); }
+.number-5 .number { color: rgb(var(--v-theme-warning)); }
+.number-6 .number { color: #06b6d4; }
+.number-7 .number { color: #f43f5e; }
+.number-8 .number { color: #57534e; }
 
 /* Result Overlay */
 .result-overlay {

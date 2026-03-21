@@ -82,7 +82,7 @@ watch(() => props.state, (newState) => {
 .othello-container {
   width: 100%;
   height: 100%;
-  background: #000;
+  background: rgb(var(--v-theme-background));
   font-family: 'Outfit', sans-serif;
   overflow: hidden;
 }
@@ -100,7 +100,7 @@ watch(() => props.state, (newState) => {
   align-items: center;
   gap: 40px;
   padding: 20px;
-  background: linear-gradient(to bottom, rgba(30, 41, 59, 0.4), transparent);
+  background: linear-gradient(to bottom, rgba(var(--v-theme-surface), 0.4), transparent);
   z-index: 10;
 }
 
@@ -109,18 +109,18 @@ watch(() => props.state, (newState) => {
   align-items: center;
   gap: 12px;
   padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.05);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   transition: all 0.3s ease;
   opacity: 0.6;
 }
 .score-card.active {
   opacity: 1;
   transform: scale(1.05);
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(99, 102, 241, 0.5);
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+  background: rgba(var(--v-theme-on-surface), 0.1);
+  border-color: rgba(var(--v-theme-primary), 0.5);
+  box-shadow: 0 0 20px rgba(var(--v-theme-primary), 0.2);
 }
 
 .score-card .avatar {
@@ -130,12 +130,13 @@ watch(() => props.state, (newState) => {
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.7;
 }
 .score-card .score {
   font-size: 1.4rem;
   font-weight: 800;
-  color: #fff;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .status-center {
@@ -145,8 +146,8 @@ watch(() => props.state, (newState) => {
 .turn-msg {
   font-size: 1rem;
   font-weight: 600;
-  color: #c4b5fd;
-  text-shadow: 0 0 10px rgba(196, 181, 253, 0.3);
+  color: rgb(var(--v-theme-secondary));
+  text-shadow: 0 0 10px rgba(var(--v-theme-secondary), 0.3);
 }
 
 .board-3d-wrap {

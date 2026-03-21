@@ -123,8 +123,8 @@ const placePiece = (index: number) => {
   text-transform: uppercase;
   letter-spacing: 1px;
 }
-.active.turn-box:nth-child(1) .symbol { color: #00f2fe; text-shadow: 0 0 15px rgba(0, 242, 254, 0.6); }
-.active.turn-box:nth-child(3) .symbol { color: #f000ff; text-shadow: 0 0 15px rgba(240, 0, 255, 0.6); }
+.active.turn-box:nth-child(1) .symbol { color: rgb(var(--v-theme-primary)); text-shadow: 0 0 15px rgba(var(--v-theme-primary), 0.6); }
+.active.turn-box:nth-child(3) .symbol { color: rgb(var(--v-theme-secondary)); text-shadow: 0 0 15px rgba(var(--v-theme-secondary), 0.6); }
 
 .vs {
   font-weight: 800;

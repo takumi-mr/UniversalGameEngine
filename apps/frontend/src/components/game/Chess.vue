@@ -190,25 +190,26 @@ const cancelPromotion = () => {
   z-index: 10;
 }
 .panel {
-  background: rgba(0, 0, 0, 0.75);
-  color: white;
+  background: rgba(var(--v-theme-surface), 0.9);
+  color: rgb(var(--v-theme-on-surface));
   padding: 15px;
-  border-radius: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   min-width: 250px;
 }
 .room-info button {
-  background: #3498db;
+  background: rgb(var(--v-theme-primary));
   border: none;
-  color: white;
+  color: rgb(var(--v-theme-on-primary));
   padding: 4px 10px;
   margin-left: 10px;
   cursor: pointer;
   border-radius: 4px;
 }
-.error { color: #e74c3c; font-weight: bold; margin-bottom: 10px; }
-.status-msg { color: #f1c40f; font-weight: bold; font-size: 1.2em; margin-bottom: 10px; }
-.color-white { color: #ffffff; text-shadow: 0 0 5px rgba(255,255,255,0.5); font-weight: bold; }
-.color-black { color: #aaaaaa; font-weight: bold; }
+.error { color: rgb(var(--v-theme-error)); font-weight: bold; margin-bottom: 10px; }
+.status-msg { color: rgb(var(--v-theme-warning)); font-weight: bold; font-size: 1.2em; margin-bottom: 10px; }
+.color-white { color: rgb(var(--v-theme-primary)); font-weight: bold; }
+.color-black { color: rgb(var(--v-theme-secondary)); font-weight: bold; }
 
 /* チェス盤面 */
 .board-wrapper {
@@ -221,10 +222,10 @@ const cancelPromotion = () => {
   grid-template-columns: repeat(8, 1fr);
   grid-template-rows: repeat(8, 1fr);
   aspect-ratio: 1 / 1;
-  border: 8px solid #3d2b1f; /* 外枠の木枠風の色 */
-  background-color: #3d2b1f;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-  border-radius: 4px;
+  border: 4px solid rgba(var(--v-theme-on-surface), 0.1);
+  background-color: rgba(var(--v-theme-on-surface), 0.05);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  border-radius: 8px;
 }
 
 /* マス目 (市松模様) */
@@ -236,15 +237,15 @@ const cancelPromotion = () => {
   user-select: none;
 }
 .light-square {
-  background-color: #f0d9b5; /* チェス.comでおなじみの明るい木の色 */
+  background-color: rgba(var(--v-theme-on-surface), 0.05);
 }
 .dark-square {
-  background-color: #b58863; /* 暗い木の色 */
+  background-color: rgba(var(--v-theme-on-surface), 0.15);
 }
 
 /* インタラクション (選択・ハイライト) */
 .is-selected {
-  background-color: rgba(255, 255, 51, 0.6) !important; /* 選択したマスの黄色ハイライト */
+  background-color: rgba(var(--v-theme-primary), 0.4) !important;
 }
 .is-valid-move {
   cursor: pointer;
@@ -276,12 +277,12 @@ const cancelPromotion = () => {
   transform: translateY(2px);
 }
 .piece-white {
-  color: #ffffff;
+  color: rgb(var(--v-theme-primary));
+  text-shadow: 0 0 10px rgba(var(--v-theme-primary), 0.3);
 }
 .piece-black {
-  color: #000000;
-  text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 2px 3px 2px rgba(0,0,0,0.5); 
-  /* 黒駒が暗いマスで見えにくくなるのを防ぐため、白フチをつけるテクニック */
+  color: rgb(var(--v-theme-secondary));
+  text-shadow: 0 0 10px rgba(var(--v-theme-secondary), 0.3);
 }
 
 /* プロモーション・ダイアログ */
@@ -295,11 +296,13 @@ const cancelPromotion = () => {
   z-index: 100;
 }
 .promotion-modal {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  padding: 24px;
+  border-radius: 16px;
   text-align: center;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
 }
 .promotion-options {
   display: flex;
@@ -309,23 +312,29 @@ const cancelPromotion = () => {
 }
 .promotion-options button {
   font-size: 2rem;
-  padding: 10px 20px;
+  padding: 12px 24px;
   cursor: pointer;
-  background: #f0f0f0;
-  border: 2px solid #ccc;
-  border-radius: 8px;
-  transition: background 0.2s;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  color: rgb(var(--v-theme-on-surface));
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 12px;
+  transition: all 0.2s;
 }
 .promotion-options button:hover {
-  background: #e0e0e0;
-  border-color: #3498db;
+  background: rgba(var(--v-theme-primary), 0.1);
+  border-color: rgb(var(--v-theme-primary));
 }
 .cancel-btn {
-  padding: 8px 16px;
-  background: #e74c3c;
-  color: white;
-  border: none;
-  border-radius: 4px;
+  padding: 10px 20px;
+  background: rgba(var(--v-theme-error), 0.1);
+  color: rgb(var(--v-theme-error));
+  border: 1px solid rgba(var(--v-theme-error), 0.3);
+  border-radius: 8px;
   cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.cancel-btn:hover {
+  background: rgba(var(--v-theme-error), 0.2);
 }
 </style>

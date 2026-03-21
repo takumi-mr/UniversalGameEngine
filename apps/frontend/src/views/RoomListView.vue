@@ -110,7 +110,7 @@
 
             <v-row v-else-if="rooms.length > 0">
               <v-col v-for="room in rooms" :key="room.id" cols="12" sm="6" md="4">
-                <v-card class="rounded-xl pa-4 bg-surface" border="none">
+                <v-card class="room-card rounded-xl pa-4" border="none">
                   <v-card-item>
                     <template v-slot:prepend>
                       <v-icon icon="mdi-door-open" color="primary" size="32"></v-icon>
@@ -150,7 +150,7 @@
 
             <v-sheet
               v-else
-              class="text-center pa-12 rounded-xl bg-surface-variant"
+              class="text-center pa-12 rounded-xl empty-sheet"
               border="none"
               color="transparent"
             >
@@ -473,5 +473,23 @@ const setLocale = (lang: string) => {
 <style scoped>
 .gap-2 {
   gap: 8px;
+}
+
+.room-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  background: rgba(var(--v-theme-on-surface), 0.03) !important;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+}
+
+.room-card:hover {
+  transform: translateY(-4px);
+  background: rgba(var(--v-theme-on-surface), 0.06) !important;
+  border-color: rgba(var(--v-theme-primary), 0.3) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+}
+
+.empty-sheet {
+  background: rgba(var(--v-theme-on-surface), 0.02) !important;
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.1) !important;
 }
 </style>

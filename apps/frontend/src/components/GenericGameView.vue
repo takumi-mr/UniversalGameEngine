@@ -139,7 +139,7 @@ import type { RubiksState, RubiksAction } from '@engine/shared/rules/RubicCubeRu
 import type { ChessState, ChessAction } from '@engine/shared/rules/ChessRuleset';
 import type { EquilibriumState, EquilibriumAction } from '@engine/shared/rules/EquilibriumRuleset';
 import type { ShogiState, ShogiAction } from '@engine/shared/rules/ShogiRuleset';
-import type { HighLowState, DrawAction } from '@engine/shared/rules/HighLowRuleset';
+import type { HighLowState, HighLowAction } from '@engine/shared/rules/HighLowRuleset';
 import type { MancalaState, MancalaAction } from '@engine/shared/rules/MancalaRuleset';
 import type { SudokuState, SudokuAction } from '@engine/shared/rules/SudokuRuleset';
 import type { MahjongState, MahjongAction } from '@engine/shared/rules/mahjong/MahjongRuleset';
@@ -149,7 +149,7 @@ import type { MinesweeperState, MinesweeperAction } from '@engine/shared/rules/M
 
 // 共用体型の定義
 type GameState = TicTacToeState | OthelloState | Othello3DState | RubiksState | ChessState | EquilibriumState | ShogiState | BaseGameState | HighLowState | MancalaState | SudokuState | MahjongState | WordleState | SpeedState | MinesweeperState;
-type GameAction = TicTacToeAction | OthelloAction | Othello3DAction | RubiksAction | ChessAction | EquilibriumAction | ShogiAction | BaseGameAction | DrawAction | MancalaAction | SudokuAction | MahjongAction | WordleAction | SpeedAction | MinesweeperAction;
+type GameAction = TicTacToeAction | OthelloAction | Othello3DAction | RubiksAction | ChessAction | EquilibriumAction | ShogiAction | BaseGameAction | HighLowAction | MancalaAction | SudokuAction | MahjongAction | WordleAction | SpeedAction | MinesweeperAction;
 
 const props = defineProps<{
   gameType: string;
@@ -376,10 +376,10 @@ function onSendChat({ message, channel, recipientId }: { message: string, channe
 
 /* === Default State Block === */
 .state-block {
-  background: rgba(var(--v-theme-surface), 0.7);
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgba(var(--v-theme-surface), 0.5);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   border-radius: 16px;
-  padding: 20px 24px;
+  padding: 24px;
 }
 .state-header {
   display: flex;

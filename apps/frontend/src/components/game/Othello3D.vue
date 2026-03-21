@@ -97,10 +97,10 @@ watch(() => props.state, (newState) => {
 }
 
 .status-msg {
-  background: rgba(99, 102, 241, 0.2);
+  background: rgba(var(--v-theme-primary), 0.15);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  color: #c4b5fd;
+  border: 1px solid rgba(var(--v-theme-primary), 0.3);
+  color: rgb(var(--v-theme-primary));
   padding: 8px 16px;
   border-radius: 8px;
   font-weight: 600;
@@ -110,13 +110,13 @@ watch(() => props.state, (newState) => {
 }
 
 .game-info {
-  background: rgba(30, 41, 59, 0.8);
+  background: rgba(var(--v-theme-surface), 0.8);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   padding: 16px;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-  color: white;
+  color: rgb(var(--v-theme-on-surface));
   min-width: 160px;
 }
 
@@ -126,11 +126,12 @@ watch(() => props.state, (newState) => {
   margin-bottom: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #94a3b8;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.6;
 }
 
-.color-black { color: #f1f5f9; }
-.color-white { color: #6366f1; text-shadow: 0 0 8px rgba(99, 102, 241, 0.5); }
+.color-black { color: rgb(var(--v-theme-primary)); }
+.color-white { color: rgb(var(--v-theme-secondary)); text-shadow: 0 0 8px rgba(var(--v-theme-secondary), 0.5); }
 
 .score-board {
   display: flex;
@@ -150,8 +151,8 @@ watch(() => props.state, (newState) => {
   height: 12px;
   border-radius: 50%;
 }
-.dot.black { background: #334155; border: 1px solid rgba(255,255,255,0.2); }
-.dot.white { background: #6366f1; box-shadow: 0 0 8px rgba(99, 102, 241, 0.8); }
+.dot.black { background: rgb(var(--v-theme-primary)); border: 1px solid rgba(var(--v-theme-on-surface), 0.2); }
+.dot.white { background: rgb(var(--v-theme-secondary)); box-shadow: 0 0 8px rgba(var(--v-theme-secondary), 0.8); }
 
 .canvas-layer {
   width: 100%;

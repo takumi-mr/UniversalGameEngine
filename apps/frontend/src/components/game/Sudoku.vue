@@ -196,9 +196,9 @@ onUnmounted(() => {
 }
 
 .victory-banner {
-  background: rgba(16, 185, 129, 0.2);
-  border: 1px solid #10b981;
-  color: #34d399;
+  background: rgba(var(--v-theme-success), 0.2);
+  border: 1px solid rgb(var(--v-theme-success));
+  color: rgb(var(--v-theme-success));
   padding: 12px 24px;
   border-radius: 8px;
   font-size: 1.2rem;
@@ -212,8 +212,8 @@ onUnmounted(() => {
 .board-wrapper {
   width: 100%;
   aspect-ratio: 1 / 1;
-  background: #1e293b;
-  border-radius: 4px;
+  background: rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 8px;
   padding: 4px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
@@ -224,7 +224,7 @@ onUnmounted(() => {
   grid-template-rows: repeat(9, 1fr);
   width: 100%;
   height: 100%;
-  background: #334155; /* 線のベース色 */
+  background: rgba(var(--v-theme-on-surface), 0.2); /* 線のベース色 */
 }
 
 /* --- マス目 --- */
@@ -235,39 +235,39 @@ onUnmounted(() => {
   justify-content: center;
   font-size: clamp(1.2rem, 5vw, 2rem);
   font-weight: 500;
-  color: #60a5fa; /* 入力数字の色 */
+  color: rgb(var(--v-theme-primary)); /* 入力数字の色 */
   cursor: pointer;
   user-select: none;
   transition: background-color 0.1s;
   
   /* 基本の細い罫線 */
-  border-right: 1px solid #334155;
-  border-bottom: 1px solid #334155;
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
 }
 
 /* 固定マス（初期数字）のスタイル */
 .cell.is-fixed {
-  color: #f8fafc; /* 固定数字は白ではっきり表示 */
+  color: rgb(var(--v-theme-on-surface)); /* 固定数字はテーマの色ではっきり表示 */
   font-weight: 700;
 }
 
 /* 3x3ブロックの太い境界線 */
-.cell.border-right-thick { border-right: 2px solid #94a3b8; }
-.cell.border-bottom-thick { border-bottom: 2px solid #94a3b8; }
-.cell.border-left-thick { border-left: 2px solid #94a3b8; }
-.cell.border-top-thick { border-top: 2px solid #94a3b8; }
-.cell.border-right-outer { border-right: 2px solid #94a3b8; }
-.cell.border-bottom-outer { border-bottom: 2px solid #94a3b8; }
+.cell.border-right-thick { border-right: 3px solid rgba(var(--v-theme-on-surface), 0.3); }
+.cell.border-bottom-thick { border-bottom: 3px solid rgba(var(--v-theme-on-surface), 0.3); }
+.cell.border-left-thick { border-left: 3px solid rgba(var(--v-theme-on-surface), 0.3); }
+.cell.border-top-thick { border-top: 3px solid rgba(var(--v-theme-on-surface), 0.3); }
+.cell.border-right-outer { border-right: 3px solid rgba(var(--v-theme-on-surface), 0.3); }
+.cell.border-bottom-outer { border-bottom: 3px solid rgba(var(--v-theme-on-surface), 0.3); }
 
 /* ハイライト表示 */
 .cell.is-related {
-  background-color: #1e293b; /* 同行・同列・同ブロック */
+  background-color: rgba(var(--v-theme-primary), 0.05); /* 同行・同列・同ブロック */
 }
 .cell.is-same-number {
   background-color: rgba(96, 165, 250, 0.2); /* 同じ数字 */
 }
 .cell.is-selected {
-  background-color: rgba(96, 165, 250, 0.4) !important; /* 選択マスは最優先 */
+  background-color: rgba(var(--v-theme-primary), 0.3) !important; /* 選択マスは最優先 */
 }
 
 /* --- ナンバーパッド --- */
@@ -279,20 +279,20 @@ onUnmounted(() => {
 }
 
 .num-btn {
-  background: #1e293b;
-  border: 1px solid #334155;
-  color: #e2e8f0;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  color: rgb(var(--v-theme-on-surface));
   font-size: 1.5rem;
   font-weight: 700;
   padding: 12px 0;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s;
   font-family: inherit;
 }
 .num-btn:hover:not(:disabled) {
-  background: #334155;
-  border-color: #60a5fa;
+  background: rgba(var(--v-theme-primary), 0.1);
+  border-color: rgb(var(--v-theme-primary));
   transform: translateY(-2px);
 }
 .num-btn:active:not(:disabled) {
