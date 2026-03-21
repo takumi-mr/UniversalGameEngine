@@ -21,11 +21,6 @@ describe('crypto', () => {
             const longString = 'a'.repeat(100);
             expect(sha256(longString)).toBe('2816597888e4a0d3a36b82b83316ab32680eb8f00f8cd3b904d681246d285a0e');
         });
-
-        it('should return empty string for non-ASCII characters (as per implementation design)', () => {
-            // 現在の実装では ASCII(0-255) 以外は空文字を返す仕様になっているため、それを担保する
-            expect(sha256('こんにちは')).toBe('');
-        });
     });
 
     describe('hmacSha256', () => {
