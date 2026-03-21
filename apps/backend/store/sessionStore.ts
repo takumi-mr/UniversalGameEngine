@@ -15,7 +15,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
 
     // ゲームタイプ（ensureSession / saveSession で使用）
     public gameType: string = '';
-    
+
     // AIプレイヤーの管理と、思考中の重複呼び出し防止
     public aiPlayers: Map<string, IAIPlayer<any, any>> = new Map();
     private computingAIPlayers: Set<string> = new Set();
@@ -47,7 +47,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
                 const userId = socket.data.userId;
                 const targetId = players.includes(userId) ? userId : 'SPECTATOR';
                 const maskedState = this.engine.getMaskedState(targetId);
-                
+
                 // version と hash を付与
                 maskedState.version = state.version;
                 maskedState.hash = calculateStateHash(maskedState);
@@ -56,13 +56,12 @@ export class SocketGameServer extends GenericGameServer<any, any> {
                 const previousState = this.lastSentState.get(socketId);
 
                 // 強制フル更新でない場合、かつ以前の状態がある場合は差分を試みる
-                if (!isForceFull && previousState && 
-                    previousState.version !== undefined && 
-                    previousState.version < maskedState.version) 
-                {
+                if (!isForceFull && previousState &&
+                    previousState.version !== undefined &&
+                    previousState.version < maskedState.version) {
                     // 差分（パッチ）を生成
                     const patch = compare(previousState, maskedState);
-                    
+
                     if (patch.length > 0) {
                         const patchPayload = JSON.stringify(patch);
                         const statePayload = JSON.stringify(maskedState);
@@ -127,7 +126,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
             const aiPlayer = this.aiPlayers.get(playerId);
             if (aiPlayer && !this.computingAIPlayers.has(playerId)) {
                 this.computingAIPlayers.add(playerId);
-                
+
                 const legalActions = this.engine.getLegalActions(playerId);
                 if (legalActions.length === 0) {
                     this.computingAIPlayers.delete(playerId);
@@ -136,7 +135,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
 
                 aiPlayer.computeNextMove(state, legalActions).then(action => {
                     this.computingAIPlayers.delete(playerId);
-                    
+
                     // ゲームの状態が依然として進行中で、かつAIが依然としてそのプレイヤーとしてのアクションが可能か確認
                     const currentState = this.engine.getState();
                     const currentLegal = this.engine.getLegalActions(playerId);
@@ -202,7 +201,7 @@ export async function ensureSession(gameId: string, io: Server): Promise<GameSes
         return null;
     }
 
-    const engine = new UniversalEngine(def.ruleset);
+    const engine = new UniversalEngine(def.ruleset, {});
     engine.loadState(savedData.state);
     const normalizedType = savedData.type.toLowerCase().replace(/-/g, '_');
     const server = new SocketGameServer(gameId, engine, io, normalizedType);

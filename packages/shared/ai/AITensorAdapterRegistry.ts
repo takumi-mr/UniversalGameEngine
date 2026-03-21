@@ -2,11 +2,11 @@
 import { BaseGameState, BaseGameAction } from '../GameRules';
 import type { IAITensorAdapter } from './IAITensorAdapter';
 
-class AITensorAdapterRegistry {
+class AITensorAdapterRegistry<TState extends BaseGameState, TAction extends BaseGameAction> {
     // 任意のゲームタイプ文字列に対して、アダプターを保持する
-    private adapters = new Map<string, IAITensorAdapter<any, any>>();
+    private adapters = new Map<string, IAITensorAdapter<TState, TAction>>();
 
-    public register<TState extends BaseGameState, TAction extends BaseGameAction>(
+    public register(
         gameType: string,
         adapter: IAITensorAdapter<TState, TAction>
     ): void {

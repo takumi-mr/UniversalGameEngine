@@ -14,8 +14,13 @@ interface MockAction extends BaseGameAction {
     data?: any;
 }
 
+interface MockOptions {
+    initialCount: number;
+    clientSeed?: string;
+}
+
 // Mock ruleset
-const mockRules: GameRuleset<MockState, MockAction> = {
+const mockRules: GameRuleset<MockState, MockAction, MockOptions> = {
     getInitialState: (options) => ({
         status: "PLAYING",
         version: 0,
@@ -47,10 +52,10 @@ const mockRules: GameRuleset<MockState, MockAction> = {
 };
 
 describe("UniversalEngine", () => {
-    let engine: UniversalEngine<MockState, MockAction>;
+    let engine: UniversalEngine<MockState, MockAction, MockOptions>;
 
     beforeEach(() => {
-        engine = new UniversalEngine(mockRules, { initialCount: 5 });
+        engine = new UniversalEngine<MockState, MockAction, MockOptions>(mockRules, { initialCount: 5 });
     });
 
     test("should initialize with initial state", () => {
@@ -64,7 +69,7 @@ describe("UniversalEngine", () => {
         const savedState: MockState = { status: "PLAYING", version: 10, count: 20 };
         const history: MockAction[] = [{ type: "INCREMENT", value: 5 }];
         engine.loadState(savedState, history);
-        
+
         expect(engine.getState().count).toBe(20);
         expect(engine.history.length).toBe(1);
     });
@@ -107,7 +112,7 @@ describe("UniversalEngine", () => {
         const secret = createSecret({
             nested: createSecret("Deep Secret", ["player1"])
         }, ["player1"]);
-        
+
         engine.dispatch({ type: "SET_SECRET", data: secret });
 
         const stateForP1 = engine.getMaskedState("player1");

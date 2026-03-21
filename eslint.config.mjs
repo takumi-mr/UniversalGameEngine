@@ -9,6 +9,7 @@ export default [
       '**/dist/**',
       '**/dist-electron/**',
       '**/node_modules/**',
+      '**/generated/**',
       '.bun/**',
       '**/coverage/**'
     ]
