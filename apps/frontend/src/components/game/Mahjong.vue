@@ -22,7 +22,7 @@
               size="small"
             />
           </div>
-          <div class="wall-count">🀫 {{ state.wall.length }}</div>
+          <div class="wall-count">🀫 {{ (state.wall as any).value.length }}</div>
         </div>
 
         <!-- Top: Opponent (Across) -->
@@ -194,20 +194,24 @@ const canStart = computed(() => {
 });
 
 // Data for each position
-const myHand = computed(() => props.state.hands[props.myPlayerId || ""] || []);
+const myHand = computed(() => (props.state.hands[props.myPlayerId || ""] as any)?.value || []);
 const discardsMe = computed(() => props.state.discards[props.myPlayerId || ""] || []);
 
 const pIdAcross = computed(() => getPlayerAtOffset(2));
 const discardsAcross = computed(() => props.state.discards[pIdAcross.value] || []);
-const handCountAcross = computed(() => props.state.hands[pIdAcross.value]?.length || 0);
+const handCountAcross = computed(
+  () => (props.state.hands[pIdAcross.value] as any)?.value.length || 0,
+);
 
 const pIdLeft = computed(() => getPlayerAtOffset(3));
 const discardsLeft = computed(() => props.state.discards[pIdLeft.value] || []);
-const handCountLeft = computed(() => props.state.hands[pIdLeft.value]?.length || 0);
+const handCountLeft = computed(() => (props.state.hands[pIdLeft.value] as any)?.value.length || 0);
 
 const pIdRight = computed(() => getPlayerAtOffset(1));
 const discardsRight = computed(() => props.state.discards[pIdRight.value] || []);
-const handCountRight = computed(() => props.state.hands[pIdRight.value]?.length || 0);
+const handCountRight = computed(
+  () => (props.state.hands[pIdRight.value] as any)?.value.length || 0,
+);
 
 // Actions
 const availableActions = computed(() => {

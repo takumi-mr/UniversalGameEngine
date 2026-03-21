@@ -45,12 +45,14 @@
         <div class="my-status player-badge">
           <div class="name">You ({{ myPlayerId }})</div>
           <div class="stats">❤️ {{ myData.hp }} | 👻 {{ myData.soulPoints }}</div>
-          <div v-if="myData.hiddenGoal" class="goal">🎯 Goal: {{ myData.hiddenGoal.name }}</div>
+          <div v-if="(myData.hiddenGoal as any)?.value" class="goal">
+            🎯 Goal: {{ (myData.hiddenGoal as any).value.name }}
+          </div>
         </div>
 
         <div class="hand-container">
           <div
-            v-for="card in myData.hand"
+            v-for="card in (myData.hand as any)?.value"
             :key="card.id"
             class="card"
             :class="{ disabled: state.phase !== 'MAIN' || !isMyTurn }"
@@ -177,7 +179,7 @@ const isPlayer = computed(() => {
 });
 
 const getRevealedCard = (opponentData: any) => {
-  return opponentData.hand.find((c: any) => c.id !== "hidden");
+  return (opponentData.hand as any)?.value?.find((c: any) => c.id !== "hidden");
 };
 
 // --- Actions ---

@@ -1,5 +1,5 @@
 // packages/shared/utils/ProvablyFairRNG.ts
-import { IGameRNG } from "./IGameRNG";
+import type { IGameRNG } from "./IGameRNG";
 import { hmacSha256 } from "./crypto";
 
 /**
