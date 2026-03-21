@@ -1,88 +1,64 @@
 <template>
   <div class="minesweeper-container">
     <div class="board-wrapper">
-      <div
-        v-if="state.message"
-        class="game-message"
-      >
+      <div v-if="state.message" class="game-message">
         {{ state.message }}
       </div>
 
       <div class="minesweeper-board-container">
-        <div 
-          class="minesweeper-board" 
-          :style="gridStyle"
-        >
-          <template
-            v-for="(row, r) in state.board"
-            :key="`row-${r}`"
-          >
-            <div 
-              v-for="(cell, c) in row" 
+        <div class="minesweeper-board" :style="gridStyle">
+          <template v-for="(row, r) in state.board" :key="`row-${r}`">
+            <div
+              v-for="(cell, c) in row"
               :key="`cell-${r}-${c}`"
               class="cell"
               :class="{
-                'revealed': cell.isRevealed,
-                'hidden': !cell.isRevealed,
-                'flagged': !cell.isRevealed && cell.isFlagged,
-                'mine': cell.isRevealed && cell.secret.value.isMine,
-                ['number-' + (cell.secret.value.neighborMines || 0)]: cell.isRevealed && !cell.secret.value.isMine && cell.secret.value.neighborMines !== undefined,
-                'game-over': state.status === 'FINISHED'
+                revealed: cell.isRevealed,
+                hidden: !cell.isRevealed,
+                flagged: !cell.isRevealed && cell.isFlagged,
+                mine: cell.isRevealed && cell.secret.value.isMine,
+                ['number-' + (cell.secret.value.neighborMines || 0)]:
+                  cell.isRevealed &&
+                  !cell.secret.value.isMine &&
+                  cell.secret.value.neighborMines !== undefined,
+                'game-over': state.status === 'FINISHED',
               }"
               @click.left="handleLeftClick(r, c)"
               @contextmenu.prevent="handleRightClick(r, c)"
             >
-              <Transition
-                name="fade"
-                mode="out-in"
-              >
+              <Transition name="fade" mode="out-in">
                 <!-- Revealed content -->
-                <div
-                  v-if="cell.isRevealed"
-                  class="cell-content revealed-content"
-                >
+                <div v-if="cell.isRevealed" class="cell-content revealed-content">
+                  <span v-if="cell.secret.value.isMine" class="bomb-icon">💣</span>
                   <span
-                    v-if="cell.secret.value.isMine"
-                    class="bomb-icon"
-                  >💣</span>
-                  <span
-                    v-else-if="cell.secret.value.neighborMines && cell.secret.value.neighborMines > 0"
+                    v-else-if="
+                      cell.secret.value.neighborMines && cell.secret.value.neighborMines > 0
+                    "
                     class="number"
                   >
                     {{ cell.secret.value.neighborMines }}
                   </span>
                 </div>
                 <!-- Hidden content -->
-                <div
-                  v-else
-                  class="cell-content hidden-content"
-                >
-                  <span
-                    v-if="cell.isFlagged"
-                    class="flag-icon"
-                  >🚩</span>
+                <div v-else class="cell-content hidden-content">
+                  <span v-if="cell.isFlagged" class="flag-icon">🚩</span>
                 </div>
               </Transition>
             </div>
           </template>
         </div>
       </div>
-      
+
       <!-- Controls / Info -->
       <div class="controls-panel">
         <div class="info-pill">
           <span class="icon">💣</span>
           <span class="value">{{ mineCountDisplay }} / {{ state.mineCount }}</span>
         </div>
-        <div class="rules-hint">
-          Left-click to reveal. Right-click to flag.
-        </div>
+        <div class="rules-hint">Left-click to reveal. Right-click to flag.</div>
       </div>
 
-      <div
-        v-if="state.status === 'FINISHED'"
-        class="result-overlay"
-      >
+      <div v-if="state.status === 'FINISHED'" class="result-overlay">
         <div class="result-content">
           <div class="winner-text">
             {{ state.message }}
@@ -94,47 +70,47 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed } from "vue";
 import type { MinesweeperState, MinesweeperAction } from "@engine/shared/rules/MinesweeperRuleset";
 
-const props = defineProps<{ 
-  state: MinesweeperState,
-  myPlayerId?: string 
+const props = defineProps<{
+  state: MinesweeperState;
+  myPlayerId?: string;
 }>();
 
-const emit = defineEmits<{ (e: 'action', action: MinesweeperAction): void }>();
+const emit = defineEmits<{ (e: "action", action: MinesweeperAction): void }>();
 
 const isSpectator = computed(() => {
   if (!props.state.players) return true;
-  return !Object.values(props.state.players).includes(props.myPlayerId || '');
+  return !Object.values(props.state.players).includes(props.myPlayerId || "");
 });
 
-const isGameActive = computed(() => props.state.status === 'PLAYING');
+const isGameActive = computed(() => props.state.status === "PLAYING");
 
 const handleLeftClick = (row: number, col: number) => {
   if (isSpectator.value || !isGameActive.value) return;
   const cell = props.state.board[row][col];
-  
+
   // Can only reveal unrevealed, unflagged cells
   if (!cell.isRevealed && !cell.isFlagged) {
-    emit('action', { type: 'REVEAL', row, col });
+    emit("action", { type: "REVEAL", row, col });
   }
 };
 
 const handleRightClick = (row: number, col: number) => {
   if (isSpectator.value || !isGameActive.value) return;
   const cell = props.state.board[row][col];
-  
+
   // Can only flag unrevealed cells
   if (!cell.isRevealed) {
-    emit('action', { type: 'FLAG', row, col });
+    emit("action", { type: "FLAG", row, col });
   }
 };
 
 const gridStyle = computed(() => {
   return {
     gridTemplateColumns: `repeat(${props.state.cols}, minmax(30px, 1fr))`,
-    gridTemplateRows: `repeat(${props.state.rows}, minmax(30px, 1fr))`
+    gridTemplateRows: `repeat(${props.state.rows}, minmax(30px, 1fr))`,
   };
 });
 
@@ -152,7 +128,7 @@ const mineCountDisplay = computed(() => {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@700&display=swap");
 
 .minesweeper-container {
   width: 100%;
@@ -160,7 +136,7 @@ const mineCountDisplay = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Outfit', sans-serif;
+  font-family: "Outfit", sans-serif;
   perspective: 1000px;
   overflow: auto;
   padding: 20px;
@@ -205,7 +181,7 @@ const mineCountDisplay = computed(() => {
   padding: 8px 16px;
   border-radius: 50px;
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .info-pill .icon {
@@ -213,7 +189,7 @@ const mineCountDisplay = computed(() => {
 }
 
 .info-pill .value {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   font-size: 1.1rem;
   font-weight: 700;
   color: rgb(var(--v-theme-on-surface));
@@ -231,7 +207,7 @@ const mineCountDisplay = computed(() => {
   padding: 10px;
   border-radius: 16px;
   background: rgba(var(--v-theme-surface), 0.3);
-  box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .minesweeper-board {
@@ -242,7 +218,7 @@ const mineCountDisplay = computed(() => {
   backdrop-filter: blur(12px);
   border-radius: 12px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.2);
-  box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
 }
 
 /* Base cell styling */
@@ -259,25 +235,37 @@ const mineCountDisplay = computed(() => {
   cursor: pointer;
   user-select: none;
   transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   font-weight: 700;
   font-size: clamp(0.8rem, 2vw, 1.2rem);
 }
 
 /* Hidden state (Covered) */
 .cell.hidden {
-  background: linear-gradient(135deg, rgba(var(--v-theme-surface), 0.8), rgba(var(--v-theme-surface), 0.4));
+  background: linear-gradient(
+    135deg,
+    rgba(var(--v-theme-surface), 0.8),
+    rgba(var(--v-theme-surface), 0.4)
+  );
   border-top: 2px solid rgba(255, 255, 255, 0.15);
   border-left: 2px solid rgba(255, 255, 255, 0.15);
   border-right: 2px solid rgba(0, 0, 0, 0.2);
   border-bottom: 2px solid rgba(0, 0, 0, 0.2);
-  box-shadow: inset 0 2px 4px rgba(255,255,255,0.05), 0 2px 4px rgba(0,0,0,0.15);
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.05),
+    0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .cell.hidden:hover:not(.game-over) {
-  background: linear-gradient(135deg, rgba(var(--v-theme-surface), 1), rgba(var(--v-theme-surface), 0.6));
+  background: linear-gradient(
+    135deg,
+    rgba(var(--v-theme-surface), 1),
+    rgba(var(--v-theme-surface), 0.6)
+  );
   transform: translateY(-1px);
-  box-shadow: inset 0 2px 4px rgba(255,255,255,0.1), 0 4px 8px rgba(0,0,0,0.2);
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.1),
+    0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .cell.hidden:active:not(.game-over) {
@@ -296,7 +284,7 @@ const mineCountDisplay = computed(() => {
 .cell.revealed {
   background: rgba(var(--v-theme-background), 0.4);
   border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: inset 0 2px 5px rgba(0,0,0,0.1) !important;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1) !important;
   cursor: default;
 }
 
@@ -308,9 +296,15 @@ const mineCountDisplay = computed(() => {
 }
 
 @keyframes pulse-error {
-  0% { box-shadow: 0 0 0 0 rgba(var(--v-theme-error), 0.7); }
-  70% { box-shadow: 0 0 0 6px rgba(var(--v-theme-error), 0); }
-  100% { box-shadow: 0 0 0 0 rgba(var(--v-theme-error), 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--v-theme-error), 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(var(--v-theme-error), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--v-theme-error), 0);
+  }
 }
 
 /* Content wrapper */
@@ -323,23 +317,42 @@ const mineCountDisplay = computed(() => {
 }
 
 .hidden-content {
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 /* Numbers Colors */
-.number-1 .number { color: rgb(var(--v-theme-primary)); } 
-.number-2 .number { color: rgb(var(--v-theme-secondary)); }
-.number-3 .number { color: rgb(var(--v-theme-error)); }
-.number-4 .number { color: rgb(var(--v-theme-info)); }
-.number-5 .number { color: rgb(var(--v-theme-warning)); }
-.number-6 .number { color: #06b6d4; }
-.number-7 .number { color: #f43f5e; }
-.number-8 .number { color: #57534e; }
+.number-1 .number {
+  color: rgb(var(--v-theme-primary));
+}
+.number-2 .number {
+  color: rgb(var(--v-theme-secondary));
+}
+.number-3 .number {
+  color: rgb(var(--v-theme-error));
+}
+.number-4 .number {
+  color: rgb(var(--v-theme-info));
+}
+.number-5 .number {
+  color: rgb(var(--v-theme-warning));
+}
+.number-6 .number {
+  color: #06b6d4;
+}
+.number-7 .number {
+  color: #f43f5e;
+}
+.number-8 .number {
+  color: #57534e;
+}
 
 /* Result Overlay */
 .result-overlay {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -355,7 +368,7 @@ const mineCountDisplay = computed(() => {
   padding: 24px 40px;
   border-radius: 20px;
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   animation: slide-up 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -367,14 +380,22 @@ const mineCountDisplay = computed(() => {
 }
 
 @keyframes slide-up {
-  from { transform: translateY(30px) scale(0.9); opacity: 0; }
-  to { transform: translateY(0) scale(1); opacity: 1; }
+  from {
+    transform: translateY(30px) scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 
 /* Fade Transition for cell reveals */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
 .fade-enter-from {

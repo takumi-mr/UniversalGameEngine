@@ -1,21 +1,15 @@
 <template>
   <div class="sudoku-container">
     <div class="game-wrapper">
-      <div
-        v-if="state.status === 'FINISHED'"
-        class="victory-banner"
-      >
-        🎉 {{ state.message || 'Sudoku Cleared!' }} 🎉
+      <div v-if="state.status === 'FINISHED'" class="victory-banner">
+        🎉 {{ state.message || "Sudoku Cleared!" }} 🎉
       </div>
 
       <div class="board-wrapper">
         <div class="sudoku-board">
-          <template
-            v-for="(row, rIndex) in state.board"
-            :key="`row-${rIndex}`"
-          >
-            <div 
-              v-for="(cell, cIndex) in row" 
+          <template v-for="(row, rIndex) in state.board" :key="`row-${rIndex}`">
+            <div
+              v-for="(cell, cIndex) in row"
               :key="`cell-${rIndex}-${cIndex}`"
               class="cell"
               :class="[
@@ -23,54 +17,48 @@
                 { 'is-selected': isSelected(rIndex, cIndex) },
                 { 'is-related': isRelated(rIndex, cIndex) },
                 { 'is-same-number': isSameNumber(cell.value) },
-                getBorderClasses(rIndex, cIndex)
+                getBorderClasses(rIndex, cIndex),
               ]"
               @click="selectCell(rIndex, cIndex)"
             >
-              {{ cell.value !== 0 ? cell.value : '' }}
+              {{ cell.value !== 0 ? cell.value : "" }}
             </div>
           </template>
         </div>
       </div>
 
       <div class="number-pad">
-        <button 
-          v-for="n in 9" 
-          :key="n" 
+        <button
+          v-for="n in 9"
+          :key="n"
           class="num-btn"
           :disabled="!canInput"
           @click="inputNumber(n)"
         >
           {{ n }}
         </button>
-        <button 
-          class="num-btn action-btn" 
-          :disabled="!canInput"
-          @click="inputNumber(0)"
-        >
-          ⌫
-        </button>
+        <button class="num-btn action-btn" :disabled="!canInput" @click="inputNumber(0)">⌫</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import type { SudokuState, SudokuAction } from '@engine/shared/rules/SudokuRuleset';
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import type { SudokuState, SudokuAction } from "@engine/shared/rules/SudokuRuleset";
 
-const props = defineProps<{ 
-  state: SudokuState,
-  myPlayerId?: string
+const props = defineProps<{
+  state: SudokuState;
+  myPlayerId?: string;
 }>();
-const emit = defineEmits<{ (e: 'action', action: SudokuAction): void }>();
+const emit = defineEmits<{ (e: "action", action: SudokuAction): void }>();
 
 // 選択中のマスの座標
 const selectedCell = ref<{ row: number; col: number } | null>(null);
 
 const isPlayer = computed(() => {
   if (!props.state.players) return true; // シングルプレイヤー
-  return Object.values(props.state.players).includes(props.myPlayerId || '');
+  return Object.values(props.state.players).includes(props.myPlayerId || "");
 });
 
 // --- ヘルパー: CSSクラスの計算 ---
@@ -78,12 +66,12 @@ const isPlayer = computed(() => {
 // 3x3ブロックの区切り線を太くするためのクラス付与
 const getBorderClasses = (r: number, c: number) => {
   return {
-    'border-right-thick': c === 2 || c === 5,
-    'border-bottom-thick': r === 2 || r === 5,
-    'border-left-thick': c === 0,
-    'border-top-thick': r === 0,
-    'border-right-outer': c === 8,
-    'border-bottom-outer': r === 8,
+    "border-right-thick": c === 2 || c === 5,
+    "border-bottom-thick": r === 2 || r === 5,
+    "border-left-thick": c === 0,
+    "border-top-thick": r === 0,
+    "border-right-outer": c === 8,
+    "border-bottom-outer": r === 8,
   };
 };
 
@@ -99,7 +87,8 @@ const isRelated = (r: number, c: number) => {
 
   const isSameRow = sr === r;
   const isSameCol = sc === c;
-  const isSameBlock = Math.floor(sr / 3) === Math.floor(r / 3) && Math.floor(sc / 3) === Math.floor(c / 3);
+  const isSameBlock =
+    Math.floor(sr / 3) === Math.floor(r / 3) && Math.floor(sc / 3) === Math.floor(c / 3);
 
   return isSameRow || isSameCol || isSameBlock;
 };
@@ -115,7 +104,7 @@ const isSameNumber = (val: number) => {
 // --- インタラクション ---
 
 const selectCell = (r: number, c: number) => {
-  if (props.state.status !== 'PLAYING') return;
+  if (props.state.status !== "PLAYING") return;
   if (!isPlayer.value) return; // 観戦者ガード
   selectedCell.value = { row: r, col: c };
 };
@@ -124,42 +113,42 @@ const selectCell = (r: number, c: number) => {
 const canInput = computed(() => {
   if (!selectedCell.value || !isPlayer.value) return false;
   const { row, col } = selectedCell.value;
-  return !props.state.board[row][col].isFixed && props.state.status === 'PLAYING';
+  return !props.state.board[row][col].isFixed && props.state.status === "PLAYING";
 });
 
 const inputNumber = (val: number) => {
   if (!canInput.value) return;
   const { row, col } = selectedCell.value!;
-  
+
   // エンジン側にアクションを送信（合法かどうかはエンジンの isValidAction で弾かれる）
-  emit('action', {
-    type: 'PLACE_NUMBER',
+  emit("action", {
+    type: "PLACE_NUMBER",
     row,
     col,
-    value: val
+    value: val,
   });
 };
 
 // --- キーボード操作のサポート ---
 
 const handleKeydown = (e: KeyboardEvent) => {
-  if (props.state.status !== 'PLAYING') return;
+  if (props.state.status !== "PLAYING") return;
 
   // 数字キー入力
-  if (e.key >= '1' && e.key <= '9') {
+  if (e.key >= "1" && e.key <= "9") {
     inputNumber(parseInt(e.key, 10));
   }
   // 消去キー
-  else if (e.key === 'Backspace' || e.key === 'Delete') {
+  else if (e.key === "Backspace" || e.key === "Delete") {
     inputNumber(0);
   }
   // 矢印キーによる移動
   else if (selectedCell.value) {
     let { row, col } = selectedCell.value;
-    if (e.key === 'ArrowUp') row = Math.max(0, row - 1);
-    else if (e.key === 'ArrowDown') row = Math.min(8, row + 1);
-    else if (e.key === 'ArrowLeft') col = Math.max(0, col - 1);
-    else if (e.key === 'ArrowRight') col = Math.min(8, col + 1);
+    if (e.key === "ArrowUp") row = Math.max(0, row - 1);
+    else if (e.key === "ArrowDown") row = Math.min(8, row + 1);
+    else if (e.key === "ArrowLeft") col = Math.max(0, col - 1);
+    else if (e.key === "ArrowRight") col = Math.min(8, col + 1);
 
     if (row !== selectedCell.value.row || col !== selectedCell.value.col) {
       e.preventDefault();
@@ -169,16 +158,16 @@ const handleKeydown = (e: KeyboardEvent) => {
 };
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeydown);
+  window.addEventListener("keydown", handleKeydown);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown);
+  window.removeEventListener("keydown", handleKeydown);
 });
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700&display=swap");
 
 .sudoku-container {
   width: 100%;
@@ -186,7 +175,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  font-family: 'Outfit', sans-serif;
+  font-family: "Outfit", sans-serif;
   padding: 20px;
 }
 
@@ -219,7 +208,7 @@ onUnmounted(() => {
   background: rgba(var(--v-theme-on-surface), 0.1);
   border-radius: 8px;
   padding: 4px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 .sudoku-board {
@@ -243,7 +232,7 @@ onUnmounted(() => {
   cursor: pointer;
   user-select: none;
   transition: background-color 0.1s;
-  
+
   /* 基本の細い罫線 */
   border-right: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
@@ -256,12 +245,24 @@ onUnmounted(() => {
 }
 
 /* 3x3ブロックの太い境界線 */
-.cell.border-right-thick { border-right: 3px solid rgba(var(--v-theme-on-surface), 0.3); }
-.cell.border-bottom-thick { border-bottom: 3px solid rgba(var(--v-theme-on-surface), 0.3); }
-.cell.border-left-thick { border-left: 3px solid rgba(var(--v-theme-on-surface), 0.3); }
-.cell.border-top-thick { border-top: 3px solid rgba(var(--v-theme-on-surface), 0.3); }
-.cell.border-right-outer { border-right: 3px solid rgba(var(--v-theme-on-surface), 0.3); }
-.cell.border-bottom-outer { border-bottom: 3px solid rgba(var(--v-theme-on-surface), 0.3); }
+.cell.border-right-thick {
+  border-right: 3px solid rgba(var(--v-theme-on-surface), 0.3);
+}
+.cell.border-bottom-thick {
+  border-bottom: 3px solid rgba(var(--v-theme-on-surface), 0.3);
+}
+.cell.border-left-thick {
+  border-left: 3px solid rgba(var(--v-theme-on-surface), 0.3);
+}
+.cell.border-top-thick {
+  border-top: 3px solid rgba(var(--v-theme-on-surface), 0.3);
+}
+.cell.border-right-outer {
+  border-right: 3px solid rgba(var(--v-theme-on-surface), 0.3);
+}
+.cell.border-bottom-outer {
+  border-bottom: 3px solid rgba(var(--v-theme-on-surface), 0.3);
+}
 
 /* ハイライト表示 */
 .cell.is-related {
@@ -317,7 +318,13 @@ onUnmounted(() => {
 }
 
 @keyframes popIn {
-  0% { transform: scale(0.9); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 </style>

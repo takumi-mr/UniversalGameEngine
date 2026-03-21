@@ -16,10 +16,7 @@ export interface UnoState extends BaseGameState {
   playerOrder: string[];
 }
 
-export type UnoActionType =
-  | "PLAY"
-  | "DRAW"
-  | "PASS";
+export type UnoActionType = "PLAY" | "DRAW" | "PASS";
 
 export interface UnoAction extends BaseGameAction {
   type: UnoActionType;
@@ -28,7 +25,6 @@ export interface UnoAction extends BaseGameAction {
 }
 
 export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
-
   getInitialState: (options?: any, rng?: IGameRNG): UnoState => {
     const players: string[] = options?.players ?? [];
 
@@ -53,14 +49,14 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
       currentColor: cardColor(first),
       drawStack: 0,
       playerOrder: players,
-      players: players.length > 0
-        ? { ...players } as Record<number, string>
-        : { 0: null, 1: null, 2: null, 3: null } // 4 slots
+      players:
+        players.length > 0
+          ? ({ ...players } as Record<number, string>)
+          : { 0: null, 1: null, 2: null, 3: null }, // 4 slots
     };
   },
 
   isValidAction: (state, action) => {
-
     if (state.status !== "PLAYING") return false;
 
     const player = state.playerOrder[state.turnIndex];
@@ -70,7 +66,6 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
     if (action.type === "DRAW") return true;
 
     if (action.type === "PLAY") {
-
       const hand = state.hands[player];
 
       if (!hand.includes(action.card!)) return false;
@@ -92,7 +87,6 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
     }
 
     return false;
-
   },
 
   reduce: (state, action, _rng?: IGameRNG) => {
@@ -101,7 +95,7 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
 
     if (action.type === "DRAW") {
       drawCards(newState, player, 1);
-      // In some rules, you can play the drawn card immediately, 
+      // In some rules, you can play the drawn card immediately,
       // but for simplicity, we'll just end the turn if they can't play it or choose not to.
       // Actually, after DRAW, typical UNO rules allow you to PLAY that card or PASS.
       // To keep it simple, we'll keep the turn with the same player but they must PASS or PLAY.
@@ -129,18 +123,22 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
 
       let skipNext = false;
 
-      if (value === 10) { // Skip
+      if (value === 10) {
+        // Skip
         skipNext = true;
-      } else if (value === 11) { // Reverse
+      } else if (value === 11) {
+        // Reverse
         if (newState.playerOrder.length === 2) {
           skipNext = true;
         } else {
           newState.direction *= -1;
         }
-      } else if (value === 12) { // Draw Two
+      } else if (value === 12) {
+        // Draw Two
         newState.drawStack += 2;
         skipNext = true;
-      } else if (value === 14) { // Wild Draw Four
+      } else if (value === 14) {
+        // Wild Draw Four
         newState.drawStack += 4;
         skipNext = true;
       }
@@ -172,7 +170,7 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
         return {
           isFinished: true,
           winnerIds: [p],
-          message: `${p} wins`
+          message: `${p} wins`,
         };
       }
     }
@@ -211,7 +209,7 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
     actions.push({ type: "PASS", playerId });
 
     return actions;
-  }
+  },
 };
 
 function cardColor(card: number) {

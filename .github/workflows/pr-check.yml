@@ -29,10 +29,10 @@ jobs:
       - name: Run Linter
         run: bun run lint
 
-      # 5. テストの実行
-      - name: Run Tests
-        run: bun test
-
       # いずれ型チェックを入れる
       # - name: Run Type Check
       #   run: bun run type-check
+
+      # 5. テストの実行
+      - name: Run Tests
+        run: bun test

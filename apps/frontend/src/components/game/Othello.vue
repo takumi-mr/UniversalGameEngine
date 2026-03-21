@@ -2,40 +2,26 @@
   <div class="othello-container">
     <div class="game-wrapper">
       <div class="side-info">
-        <div
-          class="score-card black"
-          :class="{ active: state.currentTurn === 1 }"
-        >
-          <div class="avatar">
-            ⚫
-          </div>
+        <div class="score-card black" :class="{ active: state.currentTurn === 1 }">
+          <div class="avatar">⚫</div>
           <div class="details">
-            <div class="label">
-              Black
-            </div>
+            <div class="label">Black</div>
             <div class="score">
               {{ state.scores[1] }}
             </div>
           </div>
         </div>
-        
+
         <div class="status-center">
           <div class="turn-msg">
             {{ state.message }}
           </div>
         </div>
 
-        <div
-          class="score-card white"
-          :class="{ active: state.currentTurn === -1 }"
-        >
-          <div class="avatar">
-            ⚪
-          </div>
+        <div class="score-card white" :class="{ active: state.currentTurn === -1 }">
+          <div class="avatar">⚪</div>
           <div class="details">
-            <div class="label">
-              White
-            </div>
+            <div class="label">White</div>
             <div class="score">
               {{ state.scores[-1] }}
             </div>
@@ -43,10 +29,7 @@
         </div>
       </div>
 
-      <div
-        ref="canvasContainer"
-        class="board-3d-wrap"
-      />
+      <div ref="canvasContainer" class="board-3d-wrap" />
     </div>
   </div>
 </template>
@@ -57,11 +40,11 @@ import type { OthelloState, OthelloAction } from "@engine/shared/rules/OthelloRu
 import { OthelloRuleset } from "@engine/shared/rules/OthelloRuleset";
 import { OthelloUI } from "../../three/OthelloUI";
 
-const props = defineProps<{ 
-  state: OthelloState,
-  myPlayerId?: string
+const props = defineProps<{
+  state: OthelloState;
+  myPlayerId?: string;
 }>();
-const emit = defineEmits<{ (e: 'action', action: OthelloAction): void }>();
+const emit = defineEmits<{ (e: "action", action: OthelloAction): void }>();
 
 const canvasContainer = ref<HTMLElement | null>(null);
 let threeUI: OthelloUI;
@@ -75,10 +58,11 @@ onMounted(() => {
   if (canvasContainer.value) {
     threeUI = new OthelloUI(canvasContainer.value, (action) => {
       // 観戦者ガード
-      const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
+      const isPlayer =
+        props.state.players && Object.values(props.state.players).includes(props.myPlayerId || "");
       if (!isPlayer) return;
-      
-      emit('action', action);
+
+      emit("action", action);
     });
     // 初回レンダリング
     threeUI.renderState(props.state, legalActions.value);
@@ -92,21 +76,25 @@ onUnmounted(() => {
 });
 
 // stateが更新されたらThree.js側に通知
-watch(() => props.state, (newState) => {
-  if (threeUI) {
-    threeUI.renderState(newState, legalActions.value);
-  }
-}, { deep: true });
+watch(
+  () => props.state,
+  (newState) => {
+    if (threeUI) {
+      threeUI.renderState(newState, legalActions.value);
+    }
+  },
+  { deep: true },
+);
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap");
 
 .othello-container {
   width: 100%;
   height: 100%;
   background: rgb(var(--v-theme-background));
-  font-family: 'Outfit', sans-serif;
+  font-family: "Outfit", sans-serif;
   overflow: hidden;
 }
 

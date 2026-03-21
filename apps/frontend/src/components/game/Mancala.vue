@@ -6,25 +6,15 @@
           class="score-card p2"
           :class="{ active: state.turn === -1 && state.status === 'PLAYING' }"
         >
-          <div class="label">
-            P2 (Top)
-          </div>
+          <div class="label">P2 (Top)</div>
           <div class="score">
             {{ state.scores[-1] }}
           </div>
         </div>
-        
+
         <div class="status-center">
-          <div
-            v-if="state.status === 'FINISHED'"
-            class="finished-msg"
-          >
-            GAME OVER
-          </div>
-          <div
-            v-else
-            class="turn-msg"
-          >
+          <div v-if="state.status === 'FINISHED'" class="finished-msg">GAME OVER</div>
+          <div v-else class="turn-msg">
             {{ state.message || (state.turn === 1 ? "Player 1's Turn" : "Player 2's Turn") }}
           </div>
         </div>
@@ -33,34 +23,29 @@
           class="score-card p1"
           :class="{ active: state.turn === 1 && state.status === 'PLAYING' }"
         >
-          <div class="label">
-            P1 (Bottom)
-          </div>
+          <div class="label">P1 (Bottom)</div>
           <div class="score">
             {{ state.scores[1] }}
           </div>
         </div>
       </div>
 
-      <div
-        ref="canvasContainer"
-        class="board-3d-wrap"
-      />
+      <div ref="canvasContainer" class="board-3d-wrap" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
-import type { MancalaState, MancalaAction } from '@engine/shared/rules/MancalaRuleset';
-import { MancalaUI } from '../../three/MancalaUI';
+import { ref, onMounted, onUnmounted, watch } from "vue";
+import type { MancalaState, MancalaAction } from "@engine/shared/rules/MancalaRuleset";
+import { MancalaUI } from "../../three/MancalaUI";
 
-const props = defineProps<{ 
-  state: MancalaState,
-  gameId: string,
-  myPlayerId: string 
+const props = defineProps<{
+  state: MancalaState;
+  gameId: string;
+  myPlayerId: string;
 }>();
-const emit = defineEmits<{ (e: 'action', action: MancalaAction): void }>();
+const emit = defineEmits<{ (e: "action", action: MancalaAction): void }>();
 
 const canvasContainer = ref<HTMLElement | null>(null);
 let mancala3D: MancalaUI;
@@ -72,15 +57,17 @@ onMounted(() => {
       canvasContainer.value,
       (action) => {
         // 観戦者ガード
-        const isPlayer = props.state.players && Object.values(props.state.players).includes(props.myPlayerId || '');
+        const isPlayer =
+          props.state.players &&
+          Object.values(props.state.players).includes(props.myPlayerId || "");
         if (!isPlayer) return;
 
         // Three.js 側からのアクション（クリック）を親へemit
-        emit('action', action);
+        emit("action", action);
       },
-      props.myPlayerId
+      props.myPlayerId,
     );
-    
+
     // 初回レンダリング
     mancala3D.renderState(props.state);
   }
@@ -93,21 +80,25 @@ onUnmounted(() => {
 });
 
 // state が更新されたら Three.js 側に通知
-watch(() => props.state, (newState) => {
-  if (mancala3D) {
-    mancala3D.renderState(newState);
-  }
-}, { deep: true });
+watch(
+  () => props.state,
+  (newState) => {
+    if (mancala3D) {
+      mancala3D.renderState(newState);
+    }
+  },
+  { deep: true },
+);
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap");
 
 .mancala-3d-container {
   width: 100%;
   height: 100%;
   background: #111; /* 背景は黒一色で、3Dを際立たせる */
-  font-family: 'Outfit', sans-serif;
+  font-family: "Outfit", sans-serif;
   overflow: hidden;
 }
 

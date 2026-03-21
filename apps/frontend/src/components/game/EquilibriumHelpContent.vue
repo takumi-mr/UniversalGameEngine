@@ -1,41 +1,23 @@
 <template>
   <div class="equilibrium-help">
-    <v-tabs
-      v-model="activeTab"
-      color="primary"
-      grow
-      class="mb-4"
-    >
-      <v-tab
-        v-for="(_, key) in tabConfigs"
-        :key="key"
-        :value="key"
-      >
+    <v-tabs v-model="activeTab" color="primary" grow class="mb-4">
+      <v-tab v-for="(_, key) in tabConfigs" :key="key" :value="key">
         {{ $t(`games.equilibrium.tabs.${key}.label`) }}
       </v-tab>
     </v-tabs>
 
     <v-window v-model="activeTab">
-      <v-window-item
-        v-for="(config, key) in tabConfigs"
-        :key="key"
-        :value="key"
-      >
+      <v-window-item v-for="(config, key) in tabConfigs" :key="key" :value="key">
         <div class="pa-4 help-tab-content">
           <div class="d-flex align-center mb-4">
-            <v-avatar
-              :color="config.color"
-              variant="tonal"
-              class="mr-3"
-              size="40"
-            >
+            <v-avatar :color="config.color" variant="tonal" class="mr-3" size="40">
               <v-icon :icon="config.icon" />
             </v-avatar>
             <h3 class="text-h6 font-weight-bold">
               {{ $t(`games.equilibrium.tabs.${key}.title`) }}
             </h3>
           </div>
-          
+
           <div class="text-body-1 content-text whitespace-pre-wrap">
             {{ $t(`games.equilibrium.tabs.${key}.content`) }}
           </div>
@@ -48,7 +30,7 @@
             border="start"
             density="compact"
           >
-            {{ $t('games.equilibrium.description') }}
+            {{ $t("games.equilibrium.description") }}
           </v-alert>
         </div>
       </v-window-item>
@@ -57,15 +39,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref } from "vue";
 
-const activeTab = ref('summary');
+const activeTab = ref("summary");
 
 const tabConfigs = {
-  summary: { icon: 'mdi-auto-fix', color: 'primary' },
-  goals: { icon: 'mdi-trophy-outline', color: 'warning' },
-  phases: { icon: 'mdi-sync', color: 'info' },
-  cards: { icon: 'mdi-cards-outline', color: 'success' },
+  summary: { icon: "mdi-auto-fix", color: "primary" },
+  goals: { icon: "mdi-trophy-outline", color: "warning" },
+  phases: { icon: "mdi-sync", color: "info" },
+  cards: { icon: "mdi-cards-outline", color: "success" },
 };
 </script>
 
@@ -88,8 +70,14 @@ const tabConfigs = {
 }
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Customizing scrollbar for the dialog content if it overflows */

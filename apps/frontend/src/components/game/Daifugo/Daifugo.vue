@@ -1,55 +1,38 @@
 <template>
   <div class="daifugo-view">
     <div class="opponents-area">
-      <div 
-        v-for="opponent in opponents" 
-        :key="opponent.id" 
+      <div
+        v-for="opponent in opponents"
+        :key="opponent.id"
         class="opponent-panel"
-        :class="{ 
+        :class="{
           'is-active': state.activePlayers?.includes(opponent.id),
           'has-passed': state.passedPlayers.includes(opponent.id),
-          'has-won': state.ranks.includes(opponent.id)
+          'has-won': state.ranks.includes(opponent.id),
         }"
       >
-        <div class="op-avatar">
-          👤
-        </div>
+        <div class="op-avatar">👤</div>
         <div class="op-info">
           <div class="op-name">
             {{ opponent.id }}
           </div>
-          <div class="op-cards">
-            残り: {{ opponent.cardCount }}枚
-          </div>
+          <div class="op-cards">残り: {{ opponent.cardCount }}枚</div>
         </div>
-        <div
-          v-if="state.passedPlayers.includes(opponent.id)"
-          class="badge pass"
-        >
-          PASS
-        </div>
-        <div
-          v-if="state.ranks.includes(opponent.id)"
-          class="badge won"
-        >
-          あがり
-        </div>
+        <div v-if="state.passedPlayers.includes(opponent.id)" class="badge pass">PASS</div>
+        <div v-if="state.ranks.includes(opponent.id)" class="badge won">あがり</div>
       </div>
     </div>
 
     <div class="table-area">
       <div class="table-center">
-        <div
-          v-if="state.tableCards.length === 0"
-          class="empty-table-msg"
-        >
-          カードを出してください<br>(あなたが親です)
+        <div v-if="state.tableCards.length === 0" class="empty-table-msg">
+          カードを出してください<br />(あなたが親です)
         </div>
-        
+
         <div class="played-cards">
-          <div 
-            v-for="(card, index) in state.tableCards" 
-            :key="'table-'+index" 
+          <div
+            v-for="(card, index) in state.tableCards"
+            :key="'table-' + index"
             class="playing-card table-card"
             :style="getCardStyle(card, index, state.tableCards.length)"
           >
@@ -57,55 +40,29 @@
           </div>
         </div>
 
-        <div
-          v-if="state.lastPlayedPlayerId"
-          class="last-played-by"
-        >
+        <div v-if="state.lastPlayedPlayerId" class="last-played-by">
           👉 出した人: {{ state.lastPlayedPlayerId }}
         </div>
       </div>
     </div>
 
-    <div
-      class="my-area"
-      :class="{ 'is-my-turn': isMyTurn }"
-    >
+    <div class="my-area" :class="{ 'is-my-turn': isMyTurn }">
       <div class="action-bar">
-        <div
-          v-if="isMyTurn"
-          class="turn-indicator"
-        >
-          🌟 あなたのターンです！
-        </div>
-        <div
-          v-else
-          class="turn-indicator waiting"
-        >
-          相手のターンを待っています...
-        </div>
+        <div v-if="isMyTurn" class="turn-indicator">🌟 あなたのターンです！</div>
+        <div v-else class="turn-indicator waiting">相手のターンを待っています...</div>
 
         <div class="buttons">
-          <button
-            class="btn btn-pass"
-            :disabled="!isMyTurn"
-            @click="passTurn"
-          >
-            パス
-          </button>
-          <button
-            class="btn btn-play"
-            :disabled="!canPlay"
-            @click="playCards"
-          >
+          <button class="btn btn-pass" :disabled="!isMyTurn" @click="passTurn">パス</button>
+          <button class="btn btn-play" :disabled="!canPlay" @click="playCards">
             出す ({{ selectedCards.size }}枚)
           </button>
         </div>
       </div>
 
       <div class="my-hand">
-        <div 
-          v-for="(card, index) in myHand" 
-          :key="'hand-'+card+'-'+index" 
+        <div
+          v-for="(card, index) in myHand"
+          :key="'hand-' + card + '-' + index"
           class="playing-card hand-card"
           :class="{ 'is-selected': selectedCards.has(card) }"
           @click="toggleCard(card)"
@@ -115,18 +72,11 @@
       </div>
     </div>
 
-    <div
-      v-if="state.status === 'FINISHED'"
-      class="result-overlay"
-    >
+    <div v-if="state.status === 'FINISHED'" class="result-overlay">
       <div class="result-modal">
         <h2>🎉 ゲーム終了 🎉</h2>
         <div class="rank-list">
-          <div
-            v-for="(pid, index) in state.ranks"
-            :key="pid"
-            class="rank-item"
-          >
+          <div v-for="(pid, index) in state.ranks" :key="pid" class="rank-item">
             <span class="rank-medal">{{ getMedal(index) }}</span>
             <span class="rank-role">{{ getRoleName(index, state.playerIds.length) }}</span>
             <span class="rank-name">{{ pid }}</span>
@@ -138,15 +88,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import type { DaifugoState, DaifugoAction, Card } from '@engine/shared/rules/DaifugoRuleset';
-import CardFace from './DaifugoCardFace.vue'; // 後述のカードコンポーネント
+import { ref, computed } from "vue";
+import type { DaifugoState, DaifugoAction, Card } from "@engine/shared/rules/DaifugoRuleset";
+import CardFace from "./DaifugoCardFace.vue"; // 後述のカードコンポーネント
 
-const props = defineProps<{ 
-  state: DaifugoState,
-  myPlayerId?: string
+const props = defineProps<{
+  state: DaifugoState;
+  myPlayerId?: string;
 }>();
-const emit = defineEmits<{ (e: 'action', action: DaifugoAction): void }>();
+const emit = defineEmits<{ (e: "action", action: DaifugoAction): void }>();
 
 // --- プレイヤー推論 ---
 const myId = computed(() => {
@@ -154,7 +104,7 @@ const myId = computed(() => {
 });
 
 const isPlayer = computed(() => {
-  return props.state.playerIds.includes(props.myPlayerId || '');
+  return props.state.playerIds.includes(props.myPlayerId || "");
 });
 
 const isMyTurn = computed(() => {
@@ -165,10 +115,10 @@ const myHand = computed(() => props.state.hands[myId.value] || []);
 // 相手プレイヤーのリスト
 const opponents = computed(() => {
   return props.state.playerIds
-    .filter(id => id !== myId.value)
-    .map(id => ({
+    .filter((id) => id !== myId.value)
+    .map((id) => ({
       id,
-      cardCount: props.state.hands[id]?.length || 0
+      cardCount: props.state.hands[id]?.length || 0,
     }));
 });
 
@@ -190,14 +140,14 @@ const canPlay = computed(() => isMyTurn.value && selectedCards.value.size > 0);
 const playCards = () => {
   if (!isPlayer.value) return; // 観戦者ガード
   if (!canPlay.value) return;
-  emit('action', { type: 'PLAY', cards: Array.from(selectedCards.value) });
+  emit("action", { type: "PLAY", cards: Array.from(selectedCards.value) });
   selectedCards.value.clear();
 };
 
 const passTurn = () => {
   if (!isPlayer.value) return; // 観戦者ガード
   if (!isMyTurn.value) return;
-  emit('action', { type: 'PASS' });
+  emit("action", { type: "PASS" });
   selectedCards.value.clear();
 };
 
@@ -207,20 +157,20 @@ const getCardStyle = (_card: Card, index: number, total: number) => {
   const rotation = (Math.random() - 0.5) * 6; // ほんの少しランダムに傾ける（臨場感）
   return {
     transform: `translateX(${offset}px) rotate(${rotation}deg)`,
-    zIndex: index
+    zIndex: index,
   };
 };
 
 // 役職名ヘルパー
 const getRoleName = (rankIndex: number, totalPlayers: number) => {
-  if (rankIndex === 0) return '大富豪';
-  if (rankIndex === 1) return '富豪';
-  if (rankIndex === totalPlayers - 1) return '大貧民';
-  if (rankIndex === totalPlayers - 2 && totalPlayers >= 3) return '貧民';
-  return '平民';
+  if (rankIndex === 0) return "大富豪";
+  if (rankIndex === 1) return "富豪";
+  if (rankIndex === totalPlayers - 1) return "大貧民";
+  if (rankIndex === totalPlayers - 2 && totalPlayers >= 3) return "貧民";
+  return "平民";
 };
 
-const getMedal = (index: number) => ['🥇', '🥈', '🥉', '💩'][index] || '🏅';
+const getMedal = (index: number) => ["🥇", "🥈", "🥉", "💩"][index] || "🏅";
 </script>
 
 <style scoped>
@@ -229,10 +179,14 @@ const getMedal = (index: number) => ['🥇', '🥈', '🥉', '💩'][index] || '
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at center, #1e5631 0%, #0a2e13 100%); /* カジノテーブル風の緑 */
+  background: radial-gradient(
+    circle at center,
+    #1e5631 0%,
+    #0a2e13 100%
+  ); /* カジノテーブル風の緑 */
   color: white;
   overflow: hidden;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 /* --- Opponents --- */
@@ -258,11 +212,21 @@ const getMedal = (index: number) => ['🥇', '🥈', '🥉', '💩'][index] || '
   box-shadow: 0 0 0 2px #facc15;
   background: rgba(250, 204, 21, 0.2);
 }
-.opponent-panel.has-passed { opacity: 0.5; }
+.opponent-panel.has-passed {
+  opacity: 0.5;
+}
 
-.op-avatar { font-size: 1.5rem; }
-.op-name { font-size: 0.85rem; font-weight: bold; }
-.op-cards { font-size: 0.75rem; color: #cbd5e1; }
+.op-avatar {
+  font-size: 1.5rem;
+}
+.op-name {
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+.op-cards {
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
 
 .badge {
   position: absolute;
@@ -273,8 +237,13 @@ const getMedal = (index: number) => ['🥇', '🥈', '🥉', '💩'][index] || '
   font-size: 0.7rem;
   font-weight: bold;
 }
-.badge.pass { background: #64748b; }
-.badge.won { background: #f59e0b; color: #fff; }
+.badge.pass {
+  background: #64748b;
+}
+.badge.won {
+  background: #f59e0b;
+  color: #fff;
+}
 
 /* --- Table --- */
 .table-area {
@@ -302,7 +271,7 @@ const getMedal = (index: number) => ['🥇', '🥈', '🥉', '💩'][index] || '
 
 .table-card {
   position: absolute;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .last-played-by {
@@ -320,7 +289,7 @@ const getMedal = (index: number) => ['🥇', '🥈', '🥉', '💩'][index] || '
 /* --- My Area --- */
 .my-area {
   padding: 24px;
-  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
   transition: transform 0.3s;
 }
 
@@ -337,9 +306,14 @@ const getMedal = (index: number) => ['🥇', '🥈', '🥉', '💩'][index] || '
   font-weight: bold;
   color: #facc15;
 }
-.turn-indicator.waiting { color: #94a3b8; }
+.turn-indicator.waiting {
+  color: #94a3b8;
+}
 
-.buttons { display: flex; gap: 12px; }
+.buttons {
+  display: flex;
+  gap: 12px;
+}
 
 .btn {
   padding: 10px 24px;
@@ -349,11 +323,26 @@ const getMedal = (index: number) => ['🥇', '🥈', '🥉', '💩'][index] || '
   border: none;
   transition: all 0.2s;
 }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-pass { background: #475569; color: white; }
-.btn-pass:hover:not(:disabled) { background: #64748b; }
-.btn-play { background: #3b82f6; color: white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
-.btn-play:hover:not(:disabled) { background: #60a5fa; transform: translateY(-2px); }
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-pass {
+  background: #475569;
+  color: white;
+}
+.btn-pass:hover:not(:disabled) {
+  background: #64748b;
+}
+.btn-play {
+  background: #3b82f6;
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+.btn-play:hover:not(:disabled) {
+  background: #60a5fa;
+  transform: translateY(-2px);
+}
 
 /* --- Hand --- */
 .my-hand {
@@ -369,18 +358,28 @@ const getMedal = (index: number) => ['🥇', '🥈', '🥉', '💩'][index] || '
   transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
   cursor: pointer;
 }
-.hand-card:first-child { margin-left: 0; }
-.hand-card:hover { transform: translateY(-15px); z-index: 100; }
+.hand-card:first-child {
+  margin-left: 0;
+}
+.hand-card:hover {
+  transform: translateY(-15px);
+  z-index: 100;
+}
 .hand-card.is-selected {
   transform: translateY(-25px);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.5), 0 0 0 2px #3b82f6;
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.5),
+    0 0 0 2px #3b82f6;
   z-index: 50;
 }
 
 /* --- Result Overlay --- */
 .result-overlay {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
@@ -393,18 +392,29 @@ const getMedal = (index: number) => ['🥇', '🥈', '🥉', '💩'][index] || '
   padding: 32px;
   border-radius: 16px;
   text-align: center;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
-.result-modal h2 { margin-bottom: 24px; color: #facc15; }
-.rank-list { display: flex; flex-direction: column; gap: 12px; }
+.result-modal h2 {
+  margin-bottom: 24px;
+  color: #facc15;
+}
+.rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 .rank-item {
   display: flex;
   align-items: center;
   gap: 16px;
   font-size: 1.2rem;
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   padding: 12px 24px;
   border-radius: 8px;
 }
-.rank-role { font-weight: bold; width: 80px; text-align: left; }
+.rank-role {
+  font-weight: bold;
+  width: 80px;
+  text-align: left;
+}
 </style>

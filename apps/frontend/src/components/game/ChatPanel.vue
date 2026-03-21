@@ -1,11 +1,7 @@
 <template>
   <div class="chat-panel">
     <div class="chat-header">
-      <v-icon
-        icon="mdi-chat"
-        size="small"
-        class="mr-2"
-      />
+      <v-icon icon="mdi-chat" size="small" class="mr-2" />
       <span class="header-title">Room Chat</span>
       <v-spacer />
       <v-btn-toggle
@@ -15,27 +11,13 @@
         variant="tonal"
         class="channel-toggle"
       >
-        <v-btn
-          value="public"
-          size="x-small"
-        >
-          Public
-        </v-btn>
-        <v-btn
-          value="private"
-          size="x-small"
-          :disabled="!isPlayer"
-        >
-          Private
-        </v-btn>
+        <v-btn value="public" size="x-small"> Public </v-btn>
+        <v-btn value="private" size="x-small" :disabled="!isPlayer"> Private </v-btn>
       </v-btn-toggle>
     </div>
 
     <!-- 宛先選択 (Privateの場合のみ表示) -->
-    <div
-      v-if="channel === 'private'"
-      class="recipient-selector"
-    >
+    <div v-if="channel === 'private'" class="recipient-selector">
       <span class="text-caption mr-2">To:</span>
       <v-select
         v-model="recipientId"
@@ -49,10 +31,7 @@
       />
     </div>
 
-    <div
-      ref="messageContainer"
-      class="chat-messages"
-    >
+    <div ref="messageContainer" class="chat-messages">
       <div
         v-for="(msg, index) in messages"
         :key="index"
@@ -60,10 +39,7 @@
       >
         <div class="message-meta">
           <span class="message-user">{{ msg.userId }}</span>
-          <span
-            v-if="msg.recipientId && msg.recipientId !== 'all'"
-            class="message-to"
-          >
+          <span v-if="msg.recipientId && msg.recipientId !== 'all'" class="message-to">
             ➔ {{ msg.recipientId }}
           </span>
           <v-spacer />
@@ -73,12 +49,7 @@
           {{ msg.message }}
         </div>
       </div>
-      <div
-        v-if="messages.length === 0"
-        class="empty-chat"
-      >
-        No messages yet.
-      </div>
+      <div v-if="messages.length === 0" class="empty-chat">No messages yet.</div>
     </div>
 
     <div class="chat-input-area">
@@ -108,12 +79,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUpdated, nextTick, computed } from 'vue';
+import { ref, onUpdated, nextTick, computed } from "vue";
 
 interface ChatMessage {
   userId: string;
   message: string;
-  channel: 'public' | 'private';
+  channel: "public" | "private";
   recipientId?: string;
   timestamp: string;
 }
@@ -126,35 +97,44 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'send', payload: { message: string, channel: 'public' | 'private', recipientId?: string }): void;
+  (
+    e: "send",
+    payload: {
+      message: string;
+      channel: "public" | "private";
+      recipientId?: string;
+    },
+  ): void;
 }>();
 
-const channel = ref<'public' | 'private'>('public');
-const recipientId = ref('all');
-const inputText = ref('');
+const channel = ref<"public" | "private">("public");
+const recipientId = ref("all");
+const inputText = ref("");
 const messageContainer = ref<HTMLElement | null>(null);
 
 const recipientOptions = computed(() => {
-  const options = [{ id: 'all', name: 'All Players' }];
-  props.players.filter(p => p !== props.myPlayerId).forEach(p => {
-    options.push({ id: p, name: p });
-  });
+  const options = [{ id: "all", name: "All Players" }];
+  props.players
+    .filter((p) => p !== props.myPlayerId)
+    .forEach((p) => {
+      options.push({ id: p, name: p });
+    });
   return options;
 });
 
 const formatTime = (ts: string) => {
   const date = new Date(ts);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
 
 const send = () => {
   if (!inputText.value.trim()) return;
-  emit('send', {
+  emit("send", {
     message: inputText.value.trim(),
     channel: channel.value,
-    recipientId: channel.value === 'private' ? recipientId.value : undefined
+    recipientId: channel.value === "private" ? recipientId.value : undefined,
   });
-  inputText.value = '';
+  inputText.value = "";
 };
 
 const scrollToBottom = () => {

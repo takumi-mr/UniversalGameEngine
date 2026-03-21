@@ -1,8 +1,8 @@
-version: '3'
+version: "3"
 
 vars:
-  REDIS_URL: 'redis://localhost:6379'
-  MONGO_URL: 'mongodb://localhost:27017/game_engine'
+  REDIS_URL: "redis://localhost:6379"
+  MONGO_URL: "mongodb://localhost:27017/game_engine"
 
 tasks:
   default:

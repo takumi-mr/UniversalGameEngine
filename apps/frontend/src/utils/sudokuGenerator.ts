@@ -66,16 +66,14 @@ const BLANK_COUNT: Record<string, number> = {
  * @param difficulty - 'easy' | 'medium' | 'hard'
  * @returns 9x9 の数字配列（0 = 空白マス）
  */
-export function generatePuzzle(difficulty: 'easy' | 'medium' | 'hard' = 'medium'): Board {
+export function generatePuzzle(difficulty: "easy" | "medium" | "hard" = "medium"): Board {
   // 完成盤面を生成
   const board = emptyBoard();
   solve(board);
 
   // ランダムにマスを削除して問題にする
   const blanks = BLANK_COUNT[difficulty] ?? 45;
-  const positions = shuffle(
-    Array.from({ length: 81 }, (_, i) => i)
-  ).slice(0, blanks);
+  const positions = shuffle(Array.from({ length: 81 }, (_, i) => i)).slice(0, blanks);
 
   for (const pos of positions) {
     board[Math.floor(pos / 9)][pos % 9] = 0;

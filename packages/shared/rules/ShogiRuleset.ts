@@ -3,51 +3,176 @@ import type { IGameRNG } from "../utils/IGameRNG";
 
 // --- 定数定義 ---
 const PIECES = {
-  FU: 1, KY: 2, KE: 3, GI: 4, KI: 5, KA: 6, HI: 7, OU: 8,
-  TO: 9, NY: 10, NK: 11, NG: 12, UM: 13, RY: 14
+  FU: 1,
+  KY: 2,
+  KE: 3,
+  GI: 4,
+  KI: 5,
+  KA: 6,
+  HI: 7,
+  OU: 8,
+  TO: 9,
+  NY: 10,
+  NK: 11,
+  NG: 12,
+  UM: 13,
+  RY: 14,
 };
 
 // 持ち駒になった時に元の駒に戻すためのマッピング
 const DEMOTE_MAP: Record<number, number> = {
-  9: 1, 10: 2, 11: 3, 12: 4, 13: 6, 14: 7
+  9: 1,
+  10: 2,
+  11: 3,
+  12: 4,
+  13: 6,
+  14: 7,
 };
 
 // 成った時の駒のマッピング
 const PROMOTE_MAP: Record<number, number> = {
-  1: 9, 2: 10, 3: 11, 4: 12, 6: 13, 7: 14
+  1: 9,
+  2: 10,
+  3: 11,
+  4: 12,
+  6: 13,
+  7: 14,
 };
 
 // 駒の動きの定義（先手基準。dx: X軸, dy: Y軸）
 // step: 1マスだけ動ける方向 / slide: 遮るものがない限りどこまでも動ける方向
-const MOVE_DEFS: Record<number, { step?: number[][], slide?: number[][] }> = {
+const MOVE_DEFS: Record<number, { step?: number[][]; slide?: number[][] }> = {
   1: { step: [[0, -1]] }, // 歩
   2: { slide: [[0, -1]] }, // 香
-  3: { step: [[-1, -2], [1, -2]] }, // 桂
-  4: { step: [[0, -1], [-1, -1], [1, -1], [-1, 1], [1, 1]] }, // 銀
-  5: { step: [[0, -1], [-1, -1], [1, -1], [-1, 0], [1, 0], [0, 1]] }, // 金
-  6: { slide: [[-1, -1], [1, -1], [-1, 1], [1, 1]] }, // 角
-  7: { slide: [[0, -1], [0, 1], [-1, 0], [1, 0]] }, // 飛
-  8: { step: [[0, -1], [-1, -1], [1, -1], [-1, 0], [1, 0], [0, 1], [-1, 1], [1, 1]] }, // 玉
+  3: {
+    step: [
+      [-1, -2],
+      [1, -2],
+    ],
+  }, // 桂
+  4: {
+    step: [
+      [0, -1],
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1],
+    ],
+  }, // 銀
+  5: {
+    step: [
+      [0, -1],
+      [-1, -1],
+      [1, -1],
+      [-1, 0],
+      [1, 0],
+      [0, 1],
+    ],
+  }, // 金
+  6: {
+    slide: [
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1],
+    ],
+  }, // 角
+  7: {
+    slide: [
+      [0, -1],
+      [0, 1],
+      [-1, 0],
+      [1, 0],
+    ],
+  }, // 飛
+  8: {
+    step: [
+      [0, -1],
+      [-1, -1],
+      [1, -1],
+      [-1, 0],
+      [1, 0],
+      [0, 1],
+      [-1, 1],
+      [1, 1],
+    ],
+  }, // 玉
   // 成り駒（金と同じ動き）
-  9: { step: [[0, -1], [-1, -1], [1, -1], [-1, 0], [1, 0], [0, 1]] },
-  10: { step: [[0, -1], [-1, -1], [1, -1], [-1, 0], [1, 0], [0, 1]] },
-  11: { step: [[0, -1], [-1, -1], [1, -1], [-1, 0], [1, 0], [0, 1]] },
-  12: { step: [[0, -1], [-1, -1], [1, -1], [-1, 0], [1, 0], [0, 1]] },
+  9: {
+    step: [
+      [0, -1],
+      [-1, -1],
+      [1, -1],
+      [-1, 0],
+      [1, 0],
+      [0, 1],
+    ],
+  },
+  10: {
+    step: [
+      [0, -1],
+      [-1, -1],
+      [1, -1],
+      [-1, 0],
+      [1, 0],
+      [0, 1],
+    ],
+  },
+  11: {
+    step: [
+      [0, -1],
+      [-1, -1],
+      [1, -1],
+      [-1, 0],
+      [1, 0],
+      [0, 1],
+    ],
+  },
+  12: {
+    step: [
+      [0, -1],
+      [-1, -1],
+      [1, -1],
+      [-1, 0],
+      [1, 0],
+      [0, 1],
+    ],
+  },
   // 馬と龍
-  13: { slide: [[-1, -1], [1, -1], [-1, 1], [1, 1]], step: [[0, -1], [0, 1], [-1, 0], [1, 0]] },
-  14: { slide: [[0, -1], [0, 1], [-1, 0], [1, 0]], step: [[-1, -1], [1, -1], [-1, 1], [1, 1]] }
+  13: {
+    slide: [
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1],
+    ],
+    step: [
+      [0, -1],
+      [0, 1],
+      [-1, 0],
+      [1, 0],
+    ],
+  },
+  14: {
+    slide: [
+      [0, -1],
+      [0, 1],
+      [-1, 0],
+      [1, 0],
+    ],
+    step: [
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1],
+    ],
+  },
 };
 
 const initialBoard = [
-  -2, -3, -4, -5, -8, -5, -4, -3, -2,
-  0, -7, 0, 0, 0, 0, 0, -6, 0,
-  -1, -1, -1, -1, -1, -1, -1, -1, -1,
-  0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0,
-  1, 1, 1, 1, 1, 1, 1, 1, 1,
-  0, 6, 0, 0, 0, 0, 0, 7, 0,
-  2, 3, 4, 5, 8, 5, 4, 3, 2
+  -2, -3, -4, -5, -8, -5, -4, -3, -2, 0, -7, 0, 0, 0, 0, 0, -6, 0, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 0, 6, 0, 0, 0, 0, 0, 7, 0, 2, 3, 4, 5, 8, 5, 4, 3, 2,
 ];
 
 // --- ヘルパー関数群 ---
@@ -135,7 +260,7 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
     board: [...initialBoard],
     hands: { 1: {}, "-1": {} },
     players: { 1: null, "-1": null },
-    activePlayers: []
+    activePlayers: [],
   }),
 
   isValidAction: (state, action) => {
@@ -158,13 +283,16 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
       const type = Math.abs(pieceVal);
       const [_, fromY] = toXY(action.from);
       const [__, toY] = toXY(action.to);
-      const canPromote = !!PROMOTE_MAP[type] && (isPromotionZone(fromY, state.turn) || isPromotionZone(toY, state.turn));
+      const canPromote =
+        !!PROMOTE_MAP[type] &&
+        (isPromotionZone(fromY, state.turn) || isPromotionZone(toY, state.turn));
 
       // 行き所のない駒の判定（強制成り）
       // 歩・香は1段目、桂馬は2段目に進むと成らなければならない
       let mustPromote = false;
-      if (type === PIECES.FU || type === PIECES.KY) mustPromote = (state.turn === 1 ? toY === 0 : toY === 8);
-      if (type === PIECES.KE) mustPromote = (state.turn === 1 ? toY <= 1 : toY >= 7);
+      if (type === PIECES.FU || type === PIECES.KY)
+        mustPromote = state.turn === 1 ? toY === 0 : toY === 8;
+      if (type === PIECES.KE) mustPromote = state.turn === 1 ? toY <= 1 : toY >= 7;
 
       if (action.promote && !canPromote) return false;
       if (!action.promote && mustPromote) return false;
@@ -209,13 +337,13 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
       board: [...state.board],
       hands: {
         1: { ...state.hands[1] },
-        "-1": { ...state.hands["-1"] }
-      }
+        "-1": { ...state.hands["-1"] },
+      },
     };
 
     if (action.type === "RESIGN") {
       newState.status = "FINISHED";
-      newState.message = `${state.turn === 1 ? 'Sente' : 'Gote'} Resigned`;
+      newState.message = `${state.turn === 1 ? "Sente" : "Gote"} Resigned`;
       return newState;
     }
 
@@ -251,7 +379,9 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
       newState.turn *= -1;
     }
 
-    newState.activePlayers = newState.players?.[newState.turn as 1 | -1] ? [newState.players[newState.turn as 1 | -1]!] : [];
+    newState.activePlayers = newState.players?.[newState.turn as 1 | -1]
+      ? [newState.players[newState.turn as 1 | -1]!]
+      : [];
     return newState;
   },
 
@@ -264,11 +394,19 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
 
     if (!king1) {
       const winnerId = state.players?.["-1"];
-      return { isFinished: true, winnerIds: winnerId ? [winnerId] : [], message: "Gote Wins" };
+      return {
+        isFinished: true,
+        winnerIds: winnerId ? [winnerId] : [],
+        message: "Gote Wins",
+      };
     }
     if (!king2) {
       const winnerId = state.players?.["1"];
-      return { isFinished: true, winnerIds: winnerId ? [winnerId] : [], message: "Sente Wins" };
+      return {
+        isFinished: true,
+        winnerIds: winnerId ? [winnerId] : [],
+        message: "Sente Wins",
+      };
     }
     return { isFinished: false };
   },
@@ -296,11 +434,13 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
 
       for (const to of moves) {
         const [__, toY] = toXY(to);
-        const canPromote = !!PROMOTE_MAP[type] && (isPromotionZone(fromY, turn) || isPromotionZone(toY, turn));
+        const canPromote =
+          !!PROMOTE_MAP[type] && (isPromotionZone(fromY, turn) || isPromotionZone(toY, turn));
 
         let mustPromote = false;
-        if (type === PIECES.FU || type === PIECES.KY) mustPromote = (turn === 1 ? toY === 0 : toY === 8);
-        if (type === PIECES.KE) mustPromote = (turn === 1 ? toY <= 1 : toY >= 7);
+        if (type === PIECES.FU || type === PIECES.KY)
+          mustPromote = turn === 1 ? toY === 0 : toY === 8;
+        if (type === PIECES.KE) mustPromote = turn === 1 ? toY <= 1 : toY >= 7;
 
         // 成れる場合は「成る手」と「成らない手」両方を生成
         if (canPromote && !mustPromote) {
@@ -325,7 +465,11 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
         const [x, y] = toXY(i);
 
         // 行き所のないマスの除外
-        if ((pieceType === PIECES.FU || pieceType === PIECES.KY) && (turn === 1 ? y === 0 : y === 8)) continue;
+        if (
+          (pieceType === PIECES.FU || pieceType === PIECES.KY) &&
+          (turn === 1 ? y === 0 : y === 8)
+        )
+          continue;
         if (pieceType === PIECES.KE && (turn === 1 ? y <= 1 : y >= 7)) continue;
 
         // 二歩の除外
@@ -348,5 +492,5 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
     // ボリュームが膨大になるため、AI・エンジン用として疑似合法手として返しています）
 
     return actions;
-  }
+  },
 };

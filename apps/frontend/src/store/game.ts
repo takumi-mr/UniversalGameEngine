@@ -1,6 +1,6 @@
-import { defineStore } from 'pinia';
+import { defineStore } from "pinia";
 
-export const useGameStore = defineStore('game', {
+export const useGameStore = defineStore("game", {
   state: () => ({
     currentGameType: null as string | null,
     currentRoomId: null as string | null,

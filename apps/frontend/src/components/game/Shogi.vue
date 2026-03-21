@@ -1,20 +1,11 @@
 <template>
-  <div
-    v-if="state"
-    class="shogi-container"
-  >
+  <div v-if="state" class="shogi-container">
     <div class="shogi-ui-overlay">
-      <div
-        v-if="state.message"
-        class="status-msg"
-      >
+      <div v-if="state.message" class="status-msg">
         {{ state.message }}
       </div>
 
-      <div
-        v-if="state.status === 'PLAYING'"
-        class="turn-indicator"
-      >
+      <div v-if="state.status === 'PLAYING'" class="turn-indicator">
         Turn:
         <span :class="state.turn === 1 ? 'color-sente' : 'color-gote'">
           {{ state.turn === 1 ? "Sente (先手)" : "Gote (後手)" }}
@@ -22,34 +13,20 @@
       </div>
 
       <div class="hands-board">
-        <div class="hand-gote">
-          後手持駒: {{ formatHand(state.hands['-1']) }}
-        </div>
-        <div class="hand-sente">
-          先手持駒: {{ formatHand(state.hands['1']) }}
-        </div>
+        <div class="hand-gote">後手持駒: {{ formatHand(state.hands["-1"]) }}</div>
+        <div class="hand-sente">先手持駒: {{ formatHand(state.hands["1"]) }}</div>
       </div>
 
-      <div
-        v-if="showPromoteDialog"
-        class="promote-dialog"
-      >
+      <div v-if="showPromoteDialog" class="promote-dialog">
         <p>成りますか？</p>
         <div class="dialog-buttons">
-          <button @click="confirmMove(true)">
-            成る
-          </button>
-          <button @click="confirmMove(false)">
-            成らない
-          </button>
+          <button @click="confirmMove(true)">成る</button>
+          <button @click="confirmMove(false)">成らない</button>
         </div>
       </div>
     </div>
 
-    <div
-      ref="canvasContainer"
-      class="canvas-layer"
-    />
+    <div ref="canvasContainer" class="canvas-layer" />
   </div>
 </template>
 
@@ -64,7 +41,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'action', action: ShogiAction): void;
+  (e: "action", action: ShogiAction): void;
 }>();
 
 const canvasContainer = ref<HTMLElement | null>(null);
@@ -77,14 +54,21 @@ let threeUI: ShogiUI;
 
 // 持ち駒をテキストで整形表示するヘルパー
 const PIECE_NAMES: Record<number, string> = {
-  1: "歩", 2: "香", 3: "桂", 4: "銀", 5: "金", 6: "角", 7: "飛", 8: "玉"
+  1: "歩",
+  2: "香",
+  3: "桂",
+  4: "銀",
+  5: "金",
+  6: "角",
+  7: "飛",
+  8: "玉",
 };
 
 const formatHand = (hand: Record<number, number>) => {
   if (!hand) return "なし";
   const str = Object.entries(hand)
     .filter(([_, count]) => count > 0)
-    .map(([piece, count]) => `${PIECE_NAMES[parseInt(piece)]}${count > 1 ? count : ''}`)
+    .map(([piece, count]) => `${PIECE_NAMES[parseInt(piece)]}${count > 1 ? count : ""}`)
     .join(" ");
   return str || "なし";
 };
@@ -106,25 +90,30 @@ onUnmounted(() => {
 });
 
 // props.state の変更を監視して Three.js 側を更新
-watch(() => props.state, (newState) => {
-  if (threeUI && newState) {
-    threeUI.renderState(newState);
-  }
-}, { deep: true });
+watch(
+  () => props.state,
+  (newState) => {
+    if (threeUI && newState) {
+      threeUI.renderState(newState);
+    }
+  },
+  { deep: true },
+);
 
 // Three.js 側からのアクション（クリック）を受け取る
 const handleActionFromUI = (action: ShogiAction, canPromote: boolean) => {
   // 観戦者ガード & 手番ガード
-  const isMyTurn = props.state.players && props.state.players[props.state.turn as 1 | -1] === props.myPlayerId;
+  const isMyTurn =
+    props.state.players && props.state.players[props.state.turn as 1 | -1] === props.myPlayerId;
   if (!isMyTurn) return;
 
-  if (action.type === 'MOVE' && canPromote) {
+  if (action.type === "MOVE" && canPromote) {
     // 成れる移動の場合、ダイアログを表示して待機
     pendingMoveAction.value = action;
     showPromoteDialog.value = true;
   } else {
     // それ以外（成り不可、または打つ）は即送信
-    emit('action', action);
+    emit("action", action);
   }
 };
 
@@ -132,7 +121,7 @@ const handleActionFromUI = (action: ShogiAction, canPromote: boolean) => {
 const confirmMove = (promote: boolean) => {
   if (pendingMoveAction.value) {
     pendingMoveAction.value.promote = promote;
-    emit('action', pendingMoveAction.value);
+    emit("action", pendingMoveAction.value);
   }
   showPromoteDialog.value = false;
   pendingMoveAction.value = null;
@@ -177,8 +166,14 @@ const confirmMove = (promote: boolean) => {
   display: inline-block;
 }
 
-.color-sente { color: #4ade80; font-weight: bold; }
-.color-gote { color: #f87171; font-weight: bold; }
+.color-sente {
+  color: #4ade80;
+  font-weight: bold;
+}
+.color-gote {
+  color: #f87171;
+  font-weight: bold;
+}
 
 .hands-board {
   background: rgba(0, 0, 0, 0.7);
@@ -188,8 +183,13 @@ const confirmMove = (promote: boolean) => {
   color: white;
 }
 
-.hand-gote { margin-bottom: 5px; color: #f87171; }
-.hand-sente { color: #4ade80; }
+.hand-gote {
+  margin-bottom: 5px;
+  color: #f87171;
+}
+.hand-sente {
+  color: #4ade80;
+}
 
 .promote-dialog {
   margin-top: 15px;
@@ -197,7 +197,7 @@ const confirmMove = (promote: boolean) => {
   padding: 15px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
   color: white;
   text-align: center;
 }

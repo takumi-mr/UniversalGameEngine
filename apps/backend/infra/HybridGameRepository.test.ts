@@ -13,7 +13,7 @@ mock.module("ioredis", () => ({
     set = mockRedisSet;
     get = mockRedisGet;
     del = mockRedisDel;
-  }
+  },
 }));
 
 // MongoDBのメソッドのモック
@@ -29,10 +29,10 @@ mock.module("mongodb", () => ({
           updateOne: mockMongoUpdateOne,
           findOne: mockMongoFindOne,
           deleteOne: mockMongoDeleteOne,
-        })
+        }),
       };
     }
-  }
+  },
 }));
 
 // ※モックの設定が終わった後にテスト対象をインポートします
@@ -80,7 +80,7 @@ describe("HybridGameRepository", () => {
       expect(mockMongoUpdateOne).toHaveBeenCalledWith(
         { _id: "game-1" },
         { $set: { state, finishedAt: expect.any(Date) } },
-        { upsert: true }
+        { upsert: true },
       );
     });
   });
