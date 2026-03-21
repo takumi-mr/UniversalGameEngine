@@ -56,4 +56,39 @@ export class HybridGameRepository<TState> implements IGameRepository<TState> {
         await this.redis.del(`game:${gameId}`);
         await this.collection.deleteOne({ _id: gameId });
     }
+
+    /**
+     * ゲームタイプと状態をまとめて保存する（ステートレス復元用）。
+     * Redis: game:session:{gameId} に { type, state } を保存する。
+     */
+    async saveSession(gameId: string, type: string, state: TState, isFinished = false): Promise<void> {
+        const payload = JSON.stringify({ type, state });
+        await this.redis.set(`game:session:${gameId}`, payload, 'EX', 86400);
+
+        if (isFinished) {
+            await this.collection.updateOne(
+                { _id: gameId },
+                { $set: { state, finishedAt: new Date() } as any },
+                { upsert: true }
+            );
+        }
+    }
+
+    /**
+     * saveSession で保存したセッション（type + state）を復元する。
+     * Redis → MongoDB の順で検索する。
+     */
+    async loadSession(gameId: string): Promise<{ type: string; state: TState } | null> {
+        const cached = await this.redis.get(`game:session:${gameId}`);
+        if (cached) return JSON.parse(cached);
+
+        // Redis になければ MongoDB のアーカイブから探す（state のみ保存されているため type は不明）
+        const archived = await this.collection.findOne({ _id: gameId });
+        return archived ? { type: (archived as any).type ?? '', state: archived.state as TState } : null;
+    }
+
+    async deleteSession(gameId: string): Promise<void> {
+        await this.redis.del(`game:session:${gameId}`);
+        await this.delete(gameId);
+    }
 }

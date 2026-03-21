@@ -1,15 +1,14 @@
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../config';
-import { sessions, repo, SocketGameServer } from '../store/sessionStore';
+import { sessions, repo, SocketGameServer, ensureSession } from '../store/sessionStore';
 import { gameRegistry } from '@engine/shared/GameRegistry';
 import { UniversalEngine } from '@engine/shared/UniversalEngine';
 import { setIoInstance, scheduleRoomCleanup, clearRoomCleanup, updatePresence } from './roomManager';
 import { streamManager } from '../network/StreamManager';
 import { GrpcBotPlayer } from '@engine/shared/ai/GrpcBotPlayer';
 import { RandomPlayer } from '@engine/shared/ai/RandomPlayer';
-import { MinimaxPlayer } from '@engine/shared/ai/MinimaxPlayer';
-import { MCTSPlayer } from '@engine/shared/ai/MCTSPlayer';
+import { WorkerAIPlayer } from '../ai/WorkerAIPlayer';
 import { aiTensorRegistry } from '@engine/shared/ai/AITensorAdapterRegistry';
 
 export const setupSocketIO = (io: Server) => {
@@ -53,7 +52,8 @@ export const setupSocketIO = (io: Server) => {
                 const gameId = Math.random().toString(36).substring(7);
                 const normalizedType = type.toLowerCase().replace(/-/g, '_');
                 const engine = new UniversalEngine(def.ruleset, options);
-                const server = new SocketGameServer(gameId, engine, io);
+                // ★ gameType を渡して broadcastState 内の saveSession が正しく動作するようにする
+                const server = new SocketGameServer(gameId, engine, io, normalizedType);
                 sessions.set(gameId, { server, type: normalizedType });
 
                 // AIボットを生成するヘルパー関数
@@ -71,9 +71,11 @@ export const setupSocketIO = (io: Server) => {
                     } else if (aiType === 'random') {
                         return new RandomPlayer(botId, `Random AI ${idx}`);
                     } else if (aiType === 'minimax') {
-                        return new MinimaxPlayer(botId, def.ruleset, { maxDepth: 3 }, `Minimax AI ${idx}`);
+                        // WorkerAIPlayer に委譲してメインスレッドをブロックしない
+                        return new WorkerAIPlayer(botId, normalizedType, 'minimax', { maxDepth: 3 }, `Minimax AI ${idx}`);
                     } else if (aiType === 'mcts') {
-                        return new MCTSPlayer(botId, def.ruleset, { iterations: 1000 }, `MCTS AI ${idx}`);
+                        // WorkerAIPlayer に委譲してメインスレッドをブロックしない
+                        return new WorkerAIPlayer(botId, normalizedType, 'mcts', { iterations: 1000 }, `MCTS AI ${idx}`);
                     }
                     return null;
                 };
@@ -163,23 +165,8 @@ export const setupSocketIO = (io: Server) => {
             clearRoomCleanup(gameId);
             socket.join(gameId);
 
-            // メモリになければDBから復元を試みる
-            if (!sessions.has(gameId.toLowerCase())) {
-                const savedData = await repo.load(gameId);
-                if (savedData) {
-                    const def = gameRegistry.getDefinition(savedData.type);
-                    if (def) {
-                        const engine = new UniversalEngine(def.ruleset);
-                        engine.loadState(savedData.state);
-                        const normalizedType = savedData.type.toLowerCase().replace(/-/g, '_');
-                        const server = new SocketGameServer(gameId, engine, io);
-                        sessions.set(gameId, { server, type: normalizedType });
-                        console.log(`Game ${gameId} restored from storage (${savedData.type})`);
-                    }
-                }
-            }
-
-            const session = sessions.get(gameId);
+            // ★ メモリになければ Redis / MongoDB から復元する（ステートレス対応）
+            const session = await ensureSession(gameId, io);
             if (!session) {
                 socket.emit('error-message', 'Game session not found');
                 return;
