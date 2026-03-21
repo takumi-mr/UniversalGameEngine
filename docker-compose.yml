@@ -1,4 +1,32 @@
 services:
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    ports:
+      - "3000:3000"
+      - "50051:50051"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - MONGO_URL=mongodb://mongodb:27017
+      - JWT_SECRET=dev-secret-key-change-this-in-production
+    depends_on:
+      - redis
+      - mongodb
+    restart: always
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    ports:
+      - "8080:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:3000
+    depends_on:
+      - backend
+    restart: always
+
   redis:
     image: redis:alpine
     ports:
@@ -10,5 +38,5 @@ services:
     ports:
       - "27017:27017"
     environment:
-      - MONGO_INITDB_DATABASE=game_engine
+      - MONGO_INITDB_DATABASE=game_platform
     restart: always
