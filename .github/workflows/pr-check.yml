@@ -27,7 +27,7 @@ jobs:
 
       # 依存関係のインストール
       - name: Install Dependencies
-        run: bun install
+        run: bun install --ignore-scripts
 
       # Linterの実行
       - name: Run Linter
