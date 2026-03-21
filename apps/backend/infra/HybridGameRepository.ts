@@ -5,7 +5,7 @@ import type { IGameRepository } from "@engine/shared/stores/repository";
 
 // 保存するドキュメントの型を定義
 interface GameDocument<T> extends Document {
-  _id: string; // ここで string であることを明示
+  _id: string;
   state: T;
   type?: string;
   finishedAt?: Date;
