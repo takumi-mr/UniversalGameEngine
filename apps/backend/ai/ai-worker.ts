@@ -5,6 +5,7 @@ import { parentPort } from 'worker_threads';
 import { gameRegistry } from '@engine/shared/GameRegistry';
 import { MinimaxPlayer } from '@engine/shared/ai/MinimaxPlayer';
 import { MCTSPlayer } from '@engine/shared/ai/MCTSPlayer';
+import type { BaseGameAction } from '@engine/shared';
 
 export interface WorkerRequest {
     /** 要求の一意な識別子（リクエスト・レスポンスの対応付けに使用） */
@@ -57,7 +58,7 @@ parentPort.on('message', async (req: WorkerRequest) => {
         const state = JSON.parse(stateJson);
         const legalActions = JSON.parse(legalActionsJson);
 
-        let action: any = null;
+        let action: BaseGameAction | null = null;
 
         if (aiType === 'minimax') {
             const player = new MinimaxPlayer(
@@ -89,11 +90,11 @@ parentPort.on('message', async (req: WorkerRequest) => {
             actionJson: action !== null ? JSON.stringify(action) : null,
         };
         parentPort!.postMessage(res);
-    } catch (err: any) {
+    } catch (err: unknown) {
         const res: WorkerResponse = {
             requestId,
             actionJson: null,
-            error: err?.message ?? String(err),
+            error: err instanceof Error ? err.message : String(err),
         };
         parentPort!.postMessage(res);
     }

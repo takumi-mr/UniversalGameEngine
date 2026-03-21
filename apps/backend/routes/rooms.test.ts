@@ -29,9 +29,9 @@ describe("Rooms Routes", () => {
     beforeEach(() => {
         setIoInstance(mockIo);
         sessions.clear();
-        
+
         // Setup mock sessions
-        const engine1 = new UniversalEngine(TicTacToeRuleset);
+        const engine1 = new UniversalEngine(TicTacToeRuleset, {});
         engine1.loadState({
             status: "PLAYING",
             version: 1,
@@ -75,7 +75,7 @@ describe("Rooms Routes", () => {
         const response = await request(app)
             .get("/my")
             .set("Authorization", `Bearer ${token}`);
-        
+
         expect(response.status).toBe(200);
         expect(response.body.rooms.length).toBe(1);
         expect(response.body.rooms[0].id).toBe("room1");

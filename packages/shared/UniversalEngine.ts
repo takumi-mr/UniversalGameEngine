@@ -5,21 +5,26 @@ import { ProvablyFairRNG } from "./utils/ProvablyFairRNG";
 import { sha256, generateRandomSeed } from "./utils/crypto";
 import type { IGameRNG } from "./utils/IGameRNG";
 
-// --- 2. 汎用エンジン本体 ---
-export class UniversalEngine<TState extends BaseGameState, TAction extends BaseGameAction> {
-    private state: TState;
-    private rules: GameRuleset<TState, TAction>;
-    public history: TAction[] = [];
-    public readonly options: any;
+interface InternalGameState extends BaseGameState {
+    prngSecret?: string;
+}
 
-    constructor(rules: GameRuleset<TState, TAction>, options?: any) {
+// --- 2. 汎用エンジン本体 ---
+export class UniversalEngine<TState extends BaseGameState, TAction extends BaseGameAction, TOptions = Record<string, unknown>> {
+    private state: TState & InternalGameState;
+    private rules: GameRuleset<TState, TAction, TOptions>;
+    public history: TAction[] = [];
+    public readonly options: TOptions;
+
+    constructor(rules: GameRuleset<TState, TAction, TOptions>, options: TOptions) {
         this.rules = rules;
-        this.options = options || {};
+        this.options = options;
 
         // RNGの初期化（オプションにシードがあれば使用）
         let rng: IGameRNG | undefined;
-        if (this.options.clientSeed) {
-            this.setupPRNG(this.options.clientSeed);
+        const opt = options as Record<string, unknown>;
+        if (typeof opt.clientSeed === 'string') {
+            this.setupPRNG(opt.clientSeed);
             rng = this.createRNGInstance();
         }
 
@@ -48,11 +53,11 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
         };
 
         // サーバーシードは Secret として保存（通常は誰も見れない、または終了時に公開）
-        (this.state as any).prngSecret = serverSeed;
+        this.state.prngSecret = serverSeed;
     }
 
     private createRNGInstance(): IGameRNG | undefined {
-        const secret = (this.state as any).prngSecret;
+        const secret = this.state.prngSecret;
         if (this.state.prngConfig && secret) {
             return new ProvablyFairRNG(
                 secret,
@@ -90,7 +95,7 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
      */
     public getMaskedState(playerId: string): TState {
         // 1. Secret 型を用いた自動マスク処理
-        let maskedState = this.autoMask(this.state, playerId);
+        let maskedState = this.autoMask(this.state, playerId) as TState;
 
         // 2. 既存のルールセット固有のマスク処理があれば適用 (互換性維持)
         if (this.rules.maskState) {
@@ -102,7 +107,7 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
     /**
      * オブジェクト内を再帰的に走査し、Secret型を見つけたら閲覧権限に応じてマスクする
      */
-    private autoMask(obj: any, playerId: string): any {
+    private autoMask(obj: unknown, playerId: string): unknown {
         if (obj === null || typeof obj !== 'object') {
             return obj;
         }
@@ -124,10 +129,11 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
             return obj.map(item => this.autoMask(item, playerId));
         }
 
-        // 通常のオブジェクトの処理
-        const result: any = {};
-        for (const [key, value] of Object.entries(obj)) {
-            result[key] = this.autoMask(value, playerId);
+        // Record<string, unknown> として安全に処理
+        const result: Record<string, unknown> = {};
+        const record = obj as Record<string, unknown>;
+        for (const key of Object.keys(record)) {
+            result[key] = this.autoMask(record[key], playerId);
         }
         return result;
     }

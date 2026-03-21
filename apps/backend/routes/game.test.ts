@@ -11,7 +11,7 @@ import { TicTacToeRuleset } from "@engine/shared/rules/TicTacToeRuleset";
 
 // Mock Socket.IO Server
 const mockIo = {
-    to: () => ({ emit: () => {} }),
+    to: () => ({ emit: () => { } }),
     sockets: {
         adapter: {
             rooms: new Map()
@@ -34,7 +34,7 @@ describe("Game Routes", () => {
         spyOn(repo, "delete").mockImplementation(() => Promise.resolve());
 
         // Setup mock sessions
-        const engine = new UniversalEngine(TicTacToeRuleset);
+        const engine = new UniversalEngine(TicTacToeRuleset, {});
         engine.loadState({
             status: "PLAYING",
             version: 1,
@@ -47,7 +47,7 @@ describe("Game Routes", () => {
             type: "tictactoe",
             server: {
                 engine,
-                broadcastState: () => {},
+                broadcastState: () => { },
                 getPollingState: (userId: string) => engine.getMaskedState(userId),
                 handleAction: (userId: string, action: any) => engine.dispatch({ ...action, playerId: userId })
             } as any
@@ -59,7 +59,7 @@ describe("Game Routes", () => {
         const response = await request(app)
             .post("/game1/leave")
             .set("Authorization", `Bearer ${token}`);
-        
+
         expect(response.status).toBe(200);
         const state = sessions.get("game1")?.server.engine.getState();
         expect(state.players[1]).toBeNull();
@@ -70,7 +70,7 @@ describe("Game Routes", () => {
         const response = await request(app)
             .get("/game1/state")
             .set("Authorization", `Bearer ${token}`);
-        
+
         expect(response.status).toBe(200);
         expect(response.body.state.status).toBe("PLAYING");
     });
@@ -81,7 +81,7 @@ describe("Game Routes", () => {
             .post("/game1/action")
             .set("Authorization", `Bearer ${token}`)
             .send({ type: "PLACE", index: 0 });
-        
+
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
         expect(response.body.state.board[0]).toBe(1);
@@ -93,7 +93,7 @@ describe("Game Routes", () => {
             .post("/game1/action")
             .set("Authorization", `Bearer ${token}`)
             .send({ type: "PLACE", index: 0 });
-        
+
         expect(response.status).toBe(400);
         expect(response.body.error).toBeDefined();
     });

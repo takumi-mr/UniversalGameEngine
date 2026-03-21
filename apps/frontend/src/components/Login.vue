@@ -112,8 +112,8 @@ const handleLogin = async () => {
   try {
     await authStore.login(username.value);
     router.push('/selection');
-  } catch (err: any) {
-    error.value = err.message;
+  } catch (err) {
+    error.value = (err as Error).message;
   } finally {
     loading.value = false;
   }

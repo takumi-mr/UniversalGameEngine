@@ -192,7 +192,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent, type Component } from 'vue';
 import { useRouter } from 'vue-router';
 import { SocketIoClient } from '../../network/SocketIoClient';
 import ChatPanel from './game/ChatPanel.vue';
@@ -243,7 +243,7 @@ const snackbarColor = ref('info');
 const chatMessages = ref<{ userId: string, message: string, channel: 'public' | 'private', timestamp: string }[]>([]);
 
 // 動的コンポーネントのマッピング
-const components: Record<string, any> = {
+const components: Record<string, Component> = {
   'tictactoe': defineAsyncComponent(() => import('./game/TicTacToe.vue')),
   'othello': defineAsyncComponent(() => import('./game/Othello.vue')),
   'othello_3d': defineAsyncComponent(() => import('./game/Othello3D.vue')),

@@ -17,8 +17,8 @@ router.post('/:gameId/leave', async (req, res) => {
     try {
         const token = authHeader.split(' ')[1];
         if (!token) return res.status(401).json({ error: 'No token' });
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
-        const userId = decoded.userId as string;
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+        const userId = decoded.userId;
 
         const session = sessions.get(gameId);
         if (!session) return res.status(404).json({ error: 'Game not found' });
@@ -73,7 +73,7 @@ router.get('/:gameId/state', async (req, res) => {
             if (savedData) {
                 const def = gameRegistry.getDefinition(savedData.type);
                 if (def) {
-                    const engine = new UniversalEngine(def.ruleset);
+                    const engine = new UniversalEngine(def.ruleset, {});
                     engine.loadState(savedData.state);
                     const io = getIoInstance();
                     const server = new SocketGameServer(gameId, engine, io);

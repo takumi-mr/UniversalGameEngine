@@ -3,13 +3,31 @@
 /**
  * UTF-8文字列をバイナリ文字列（charCodeAtで0-255に収まる形式）に変換するヘルパー
  */
-const encoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
 function toUtf8BinaryString(str: string): string {
-    if (encoder) {
-        return String.fromCharCode(...encoder.encode(str));
+    // モダンな環境（TextEncoderがある場合）
+    if (typeof TextEncoder !== 'undefined') {
+        const encoder = new TextEncoder();
+        const uint8Array = encoder.encode(str);
+        // Uint8Array を 1バイトずつの文字列に変換
+        let binary = '';
+        for (let i = 0; i < uint8Array.length; i++) {
+            binary += String.fromCharCode(uint8Array[i]);
+        }
+        return binary;
     }
-    // TextEncoderがない環境向けのフォールバック
-    return unescape(encodeURIComponent(str));
+
+    // TextEncoderすら存在しない極めて特殊な環境向けのフォールバック
+    // unescape の代わりに decodeURIComponent を組み合わせてバイナリ化する
+    // (ただし、現在の主要な実行環境でここを通ることはまずありません)
+    return encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) =>
+        String.fromCharCode(parseInt(p1, 16))
+    );
+}
+
+// キャッシュ用の型定義
+interface Sha256Cache {
+    h0?: number[];
+    k?: number[];
 }
 
 /**
@@ -30,12 +48,14 @@ export function sha256(message: string, isRawBinary: boolean = false): string {
     let i, j;
     let result = '';
 
-    const words: any[] = [];
+    const words: number[] = [];
     const asciiLength = ascii[lengthProperty];
     // 初期ハッシュ定数を保持する専用のキャッシュを作成（副作用防止）
-    const h0 = (sha256 as any).h0 = (sha256 as any).h0 || [];
-    const k = (sha256 as any).k = (sha256 as any).k || [];
-    let primeCounter = k[lengthProperty];
+    const cache = sha256 as unknown as Sha256Cache;
+    cache.h0 = cache.h0 || [];
+    cache.k = cache.k || [];
+
+    let primeCounter = cache.k.length;
 
     const isPrime = (n: number) => {
         for (let i = 2; i * i <= n; i++) if (n % i === 0) return false;
@@ -45,15 +65,16 @@ export function sha256(message: string, isRawBinary: boolean = false): string {
     if (!primeCounter) {
         for (let n = 2; primeCounter < 64; n++) {
             if (isPrime(n)) {
-                if (primeCounter < 8) h0[primeCounter] = (mathPow(n, 1 / 2) * maxWord) | 0;
-                k[primeCounter] = (mathPow(n, 1 / 3) * maxWord) | 0;
+                if (primeCounter < 8) cache.h0[primeCounter] = (mathPow(n, 1 / 2) * maxWord) | 0;
+                cache.k[primeCounter] = (mathPow(n, 1 / 3) * maxWord) | 0;
                 primeCounter++;
             }
         }
     }
 
-    // 計算用配列には毎回コピーを渡す
-    const hash = h0.slice(0);
+    // 計算用配列にはコピーを渡す
+    const hash = (cache.h0 as number[]).slice(0);
+    const k = cache.k as number[];
 
     ascii += '\x80'; // Append 1000...nd bit
     while (ascii[lengthProperty] % 64 - 56) ascii += '\x00'; // Append zeros

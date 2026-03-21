@@ -33,7 +33,7 @@ const WORDS = [
 
 export const WordleRuleset: GameRuleset<WordleState, WordleAction> = {
 
-    getInitialState: (options?: any, rng?: IGameRNG): WordleState => {
+    getInitialState: (_options?: any, rng?: IGameRNG): WordleState => {
         const secretWord = WORDS[rng ? rng.nextInt(0, WORDS.length - 1) : Math.floor(Math.random() * WORDS.length)];
         return {
             status: 'WAITING',

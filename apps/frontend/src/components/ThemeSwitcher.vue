@@ -11,12 +11,12 @@
     </template>
     <v-list>
       <v-list-item
-        v-for="theme in themes"
-        :key="theme.id"
-        :prepend-icon="theme.icon"
-        :title="theme.name"
-        :active="currentTheme === theme.id"
-        @click="setTheme(theme.id)"
+        v-for="item in themes"
+        :key="item.id"
+        :prepend-icon="item.icon"
+        :title="item.name"
+        :active="currentTheme === item.id"
+        @click="setTheme(item.id)"
       />
     </v-list>
   </v-menu>
