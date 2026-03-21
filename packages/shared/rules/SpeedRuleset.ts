@@ -180,6 +180,7 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
             }
         }
 
+        newState.activePlayers = (newState.status === 'PLAYING') ? newState.playerIds : [];
         return newState;
     },
 

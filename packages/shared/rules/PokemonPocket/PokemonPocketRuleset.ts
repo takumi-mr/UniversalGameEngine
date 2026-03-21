@@ -45,12 +45,13 @@ export type PokemonPocketAction =
 
 export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, PokemonPocketAction> {
 
-    public getInitialState(options: { playerIds: string[] }, rng?: IGameRNG): PokemonPocketState {
+    public getInitialState(options?: { playerIds?: string[] }, rng?: IGameRNG): PokemonPocketState {
         const playerData: Record<string, PocketPlayer> = {};
+        const playerIds = options?.playerIds || [];
         
         // 簡易的な初期化: お互いにバトル場にポケモンが1体いて、手札5枚、デッキ14枚
         // 後攻プレイヤーは1ターン目から攻撃可能。先攻は不可。エネルギー添付は先攻1ターン目は不可にする。
-        options.playerIds.forEach((id, idx) => {
+        playerIds.forEach((id, idx) => {
             const isP1 = idx === 0;
             const initialCardId = isP1 ? 'p_pikachu' : 'p_charmander';
             const deck = isP1 
@@ -77,8 +78,8 @@ export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, Pok
 
         return {
             status: 'PLAYING',
-            players: Object.fromEntries(options.playerIds.map(id => [id, id])),
-            activePlayers: [options.playerIds[0]],
+            players: Object.fromEntries(playerIds.map(id => [id, id])),
+            activePlayers: playerIds.length > 0 ? [playerIds[0]] : [],
             turnCount: 1,
             effectStack: [],
             playerData

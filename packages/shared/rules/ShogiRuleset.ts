@@ -134,7 +134,8 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
     turn: 1,
     board: [...initialBoard],
     hands: { 1: {}, "-1": {} },
-    players: { 1: null, "-1": null }
+    players: { 1: null, "-1": null },
+    activePlayers: []
   }),
 
   isValidAction: (state, action) => {
@@ -250,6 +251,7 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
       newState.turn *= -1;
     }
 
+    newState.activePlayers = newState.players?.[newState.turn as 1 | -1] ? [newState.players[newState.turn as 1 | -1]!] : [];
     return newState;
   },
 
@@ -273,6 +275,13 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
 
   getLegalActions: (state, playerId) => {
     if (state.status !== "PLAYING") return [];
+
+    // 手番チェック
+    if (state.players) {
+      const current = state.players[state.turn as 1 | -1];
+      if (current && current !== playerId) return [];
+    }
+
     const actions: ShogiAction[] = [];
     const turn = state.turn as 1 | -1;
 

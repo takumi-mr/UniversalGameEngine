@@ -108,6 +108,7 @@ export const HighLowRuleset: GameRuleset<HighLowState, DrawAction> = {
             }
         }
 
+        newState.activePlayers = newState.players?.[newState.currentTurn] ? [newState.players[newState.currentTurn]!] : [];
         return newState;
     },
 

@@ -280,6 +280,7 @@ export const ChessRuleset: GameRuleset<ChessState, ChessAction> = {
         // ターン交代
         if (newState.turn === -1) newState.fullMoves++;
         newState.turn = (newState.turn * -1) as 1 | -1;
+        newState.activePlayers = newState.players?.[newState.turn] ? [newState.players[newState.turn]!] : [];
 
         return newState;
     },

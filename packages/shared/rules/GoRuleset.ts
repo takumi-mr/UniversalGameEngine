@@ -121,7 +121,8 @@ export const GoRuleset: GameRuleset<GoState, GoAction> = {
       players: {
         "1": null,
         "-1": null
-      }
+      },
+      activePlayers: []
     };
   },
 
@@ -207,6 +208,7 @@ export const GoRuleset: GameRuleset<GoState, GoAction> = {
       newState.history.push(board.join(","));
     }
 
+    newState.activePlayers = newState.players?.[newState.turn] ? [newState.players[newState.turn]!] : [];
     return newState;
   },
 

@@ -119,7 +119,8 @@ export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction> = {
         status: 'PLAYING',
         faces: createSolvedFaces(),
         moveCount: 0,
-        players: { '1': null }
+        players: { '1': null },
+        activePlayers: []
     }),
 
     isValidAction: (state, action) => {
@@ -164,6 +165,7 @@ export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction> = {
         }
 
         newState.moveCount++;
+        newState.activePlayers = Object.values(newState.players || {}).filter(Boolean) as string[];
         return newState;
     },
 

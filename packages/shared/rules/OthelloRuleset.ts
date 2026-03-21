@@ -51,8 +51,8 @@ function generateLegalMoves(board: number[][], color: PlayerColor, size: number)
 }
 
 export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
-    getInitialState: (options = { size: 8 }, rng?: IGameRNG): OthelloState => {
-        const { size } = options;
+    getInitialState: (options = {}, rng?: IGameRNG): OthelloState => {
+        const size = options?.size ?? 8;
         const board = Array.from({ length: size }, () => Array(size).fill(0));
         const m = Math.floor(size / 2);
 
@@ -161,6 +161,7 @@ export const OthelloRuleset: GameRuleset<OthelloState, OthelloAction> = {
             board: nextBoard,
             currentTurn: finalTurn,
             scores: nextScores,
+            activePlayers: state.players?.[finalTurn] ? [state.players[finalTurn]!] : [],
             message,
         };
     },

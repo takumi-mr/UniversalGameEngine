@@ -39,7 +39,8 @@ export class SudokuRuleset implements GameRuleset<SudokuState, SudokuAction> {
         return {
             status: 'WAITING',
             players: { "1": null }, // 入室待ちにする
-            board
+            board,
+            activePlayers: []
         };
     }
 
@@ -73,7 +74,8 @@ export class SudokuRuleset implements GameRuleset<SudokuState, SudokuAction> {
 
         return {
             ...state,
-            board: newBoard
+            board: newBoard,
+            activePlayers: Object.values(state.players || {}).filter(Boolean) as string[]
         };
     }
 

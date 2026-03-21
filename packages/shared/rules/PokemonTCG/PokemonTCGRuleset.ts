@@ -59,9 +59,10 @@ export type PokemonTCGAction =
 export class PokemonTCGRuleset implements GameRuleset<PokemonTCGState, PokemonTCGAction> {
 
     // (初期化処理は簡略化: お互いにバトル場にポケモンが1体いて、サイドが3枚ある状態からスタートとします)
-    public getInitialState(options: { playerIds: string[] }, rng?: IGameRNG): PokemonTCGState {
+    public getInitialState(options?: { playerIds?: string[] }, rng?: IGameRNG): PokemonTCGState {
         const playerData: Record<string, PTCGPlayer> = {};
-        options.playerIds.forEach((id, idx) => {
+        const playerIds = options?.playerIds || [];
+        playerIds.forEach((id, idx) => {
             const isP1 = idx === 0;
             const initialCardId = isP1 ? 'p_pikachu' : 'p_charmander';
             playerData[id] = {
@@ -82,8 +83,8 @@ export class PokemonTCGRuleset implements GameRuleset<PokemonTCGState, PokemonTC
 
         return {
             status: 'PLAYING',
-            players: Object.fromEntries(options.playerIds.map(id => [id, id])),
-            activePlayers: [options.playerIds[0]],
+            players: Object.fromEntries(playerIds.map(id => [id, id])),
+            activePlayers: playerIds.length > 0 ? [playerIds[0]] : [],
             turnCount: 1,
             effectStack: [],
             playerData

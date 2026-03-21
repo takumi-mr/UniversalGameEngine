@@ -100,19 +100,36 @@ export class SocketGameServer extends GenericGameServer<any, any> {
         const state = this.engine.getState();
         if (state.status !== 'PLAYING') return;
 
-        const activePlayers = state.activePlayers || [];
-        for (const playerId of activePlayers) {
+        // 手番プレイヤーリストを取得。空の場合は「いずれかのAIに合法手があるか」をチェックして補足する
+        let activePlayerIds = state.activePlayers || [];
+        if (activePlayerIds.length === 0) {
+            for (const [playerId] of this.aiPlayers) {
+                if (this.engine.getLegalActions(playerId).length > 0) {
+                    activePlayerIds.push(playerId);
+                }
+            }
+        }
+
+        for (const playerId of activePlayerIds) {
             const aiPlayer = this.aiPlayers.get(playerId);
             if (aiPlayer && !this.computingAIPlayers.has(playerId)) {
                 this.computingAIPlayers.add(playerId);
                 
                 const legalActions = this.engine.getLegalActions(playerId);
+                if (legalActions.length === 0) {
+                    this.computingAIPlayers.delete(playerId);
+                    continue;
+                }
+
                 aiPlayer.computeNextMove(state, legalActions).then(action => {
                     this.computingAIPlayers.delete(playerId);
                     
-                    // ゲームが進行して別プレイヤーのターンになっていないか確認してアクションを実行
+                    // ゲームの状態が依然として進行中で、かつAIが依然としてそのプレイヤーとしてのアクションが可能か確認
                     const currentState = this.engine.getState();
-                    if (currentState.status === 'PLAYING' && currentState.activePlayers?.includes(playerId) && action) {
+                    const currentLegal = this.engine.getLegalActions(playerId);
+                    const canStillAct = currentLegal.some(a => JSON.stringify(a) === JSON.stringify(action));
+
+                    if (currentState.status === 'PLAYING' && canStillAct && action) {
                         this.handleAction(playerId, action);
                     }
                 }).catch(err => {
