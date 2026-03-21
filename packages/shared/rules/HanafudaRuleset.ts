@@ -1,4 +1,5 @@
 // packages/shared/rules/HanafudaRuleset.ts
+import { createSecret, type Secret } from '../GameRules';
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
 import type { IGameRNG } from '../utils/IGameRNG';
 
@@ -10,9 +11,9 @@ export interface HanafudaState extends BaseGameState {
     playerIds: string[]; // [親のID, 子のID]
     turnIndex: number;   // 0 or 1
 
-    deck: Card[];
+    deck: Secret<Card[]>;
     field: Card[];
-    hands: Record<string, Card[]>;
+    hands: Record<string, Secret<Card[]>>;
     captured: Record<string, Card[]>;
 
     phase:
@@ -90,7 +91,7 @@ const proceedToNextTurnOrYakuCheck = (state: HanafudaState, playerId: string): H
     }
 
     // 両者の手札が尽きたら流局
-    if (state.hands[state.playerIds[0]].length === 0 && state.hands[state.playerIds[1]].length === 0) {
+    if (state.hands[state.playerIds[0]].value.length === 0 && state.hands[state.playerIds[1]].value.length === 0) {
         state.status = 'FINISHED';
         state.message = "手札が尽きました。流局です。";
         state.activePlayers = [];
@@ -114,16 +115,21 @@ export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
     getInitialState: (options: { playerIds: string[] }, rng?: IGameRNG): HanafudaState => {
         // [TODO] 実運用時はoptions.playerIdsが存在するかチェックする
         const playerIds = options?.playerIds || ['player1', 'player2'];
-        const deck = createDeck(rng);
-        const hands: Record<string, Card[]> = { [playerIds[0]]: [], [playerIds[1]]: [] };
+        const deckArr = createDeck(rng);
+        const handsRaw = { [playerIds[0]]: [] as Card[], [playerIds[1]]: [] as Card[] };
         const captured: Record<string, Card[]> = { [playerIds[0]]: [], [playerIds[1]]: [] };
         const field: Card[] = [];
 
         for (let i = 0; i < 8; i++) {
-            hands[playerIds[0]].push(deck.pop()!);
-            hands[playerIds[1]].push(deck.pop()!);
-            field.push(deck.pop()!);
+            handsRaw[playerIds[0]].push(deckArr.pop()!);
+            handsRaw[playerIds[1]].push(deckArr.pop()!);
+            field.push(deckArr.pop()!);
         }
+
+        const hands: Record<string, Secret<Card[]>> = {
+            [playerIds[0]]: createSecret(handsRaw[playerIds[0]], [playerIds[0]], handsRaw[playerIds[0]].map(() => '?')),
+            [playerIds[1]]: createSecret(handsRaw[playerIds[1]], [playerIds[1]], handsRaw[playerIds[1]].map(() => '?'))
+        };
 
         return {
             status: 'WAITING',
@@ -131,7 +137,7 @@ export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
             activePlayers: [playerIds[0]], // 最初は親の番
             playerIds,
             turnIndex: 0,
-            deck,
+            deck: createSecret(deckArr, [], deckArr.map(() => '?')),
             field,
             hands,
             captured,
@@ -166,7 +172,7 @@ export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
 
         switch (state.phase) {
             case 'PLAY_HAND':
-                state.hands[playerId].forEach(card => {
+                state.hands[playerId].value.forEach(card => {
                     actions.push({ type: 'PLAY_CARD', card, playerId });
                 });
                 break;
@@ -218,7 +224,8 @@ export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
 
         switch (newState.phase) {
             case 'PLAY_HAND':
-                newState.hands[pId] = newState.hands[pId].filter(c => c !== action.card);
+                const newHand = newState.hands[pId].value.filter(c => c !== action.card);
+                newState.hands[pId] = createSecret(newHand, [pId], newHand.map(() => '?'));
                 // 変更点: 戻り値を受け取って明示的に代入する
                 newState.phase = handleCardMatch(action.card!, 'DRAW_DECK', 'CHOOSE_HAND_MATCH');
                 break;
@@ -232,10 +239,12 @@ export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
                 break;
 
             case 'DRAW_DECK':
-                if (newState.deck.length === 0) {
+                if (newState.deck.value.length === 0) {
                     return proceedToNextTurnOrYakuCheck(newState, pId);
                 }
-                const drawnCard = newState.deck.pop()!;
+                const dDeck = [...newState.deck.value];
+                const drawnCard = dDeck.pop()!;
+                newState.deck = createSecret(dDeck, [], dDeck.map(() => '?'));
                 // 変更点: 戻り値を受け取って明示的に代入する
                 newState.phase = handleCardMatch(drawnCard, 'PLAY_HAND', 'CHOOSE_DECK_MATCH');
 
@@ -282,19 +291,6 @@ export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
             return { isFinished: true, winnerIds, message: state.message };
         }
         return { isFinished: false };
-    },
-
-    // 相手の情報を隠蔽する
-    maskState: (state, playerId) => {
-        const maskedState = structuredClone(state);
-        // 山札を隠す
-        maskedState.deck = maskedState.deck.map(() => '?');
-        // 自分以外の手札を隠す
-        for (const pId of Object.keys(maskedState.hands)) {
-            if (pId !== playerId) {
-                maskedState.hands[pId] = maskedState.hands[pId].map(() => '?');
-            }
-        }
-        return maskedState;
     }
 };
+

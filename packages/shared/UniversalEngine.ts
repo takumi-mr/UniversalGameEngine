@@ -15,7 +15,7 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
     constructor(rules: GameRuleset<TState, TAction>, options?: any) {
         this.rules = rules;
         this.options = options || {};
-        
+
         // RNGの初期化（オプションにシードがあれば使用）
         let rng: IGameRNG | undefined;
         if (this.options.clientSeed) {
@@ -24,7 +24,7 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
         }
 
         this.state = this.rules.getInitialState(options, rng);
-        
+
         if (rng instanceof ProvablyFairRNG) {
             this.updateStateNonce(rng);
         }
@@ -40,7 +40,7 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
     public setupPRNG(clientSeed: string): void {
         const serverSeed = generateRandomSeed();
         const serverSeedHash = sha256(serverSeed);
-        
+
         this.state.prngConfig = {
             serverSeedHash,
             clientSeed,
@@ -48,7 +48,7 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
         };
 
         // サーバーシードは Secret として保存（通常は誰も見れない、または終了時に公開）
-        (this.state as any).prngSecret = serverSeed; 
+        (this.state as any).prngSecret = serverSeed;
     }
 
     private createRNGInstance(): IGameRNG | undefined {
@@ -144,7 +144,7 @@ export class UniversalEngine<TState extends BaseGameState, TAction extends BaseG
 
         // 2. 状態の更新 (Reducerパターン: 副作用を持たせず新しい状態を生成)
         this.state = this.rules.reduce(this.state, action, rng);
-        
+
         // nonceを同期
         if (rng) {
             this.updateStateNonce(rng);

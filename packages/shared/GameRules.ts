@@ -79,7 +79,10 @@ export interface GameRuleset<TState extends BaseGameState, TAction extends BaseG
     // ゲームが終了したかどうか、誰が勝ったかを判定する関数
     applyWinResult?: (state: TState, result: GameResult) => TState;
 
-    // 隠匿情報（相手の手牌など）をマスク（伏せた）状態を作成する関数 (オプショナル)
+    /**
+     * @deprecated Secret<T>に移行
+     * 隠匿情報（相手の手牌など）をマスク（伏せた）状態を作成する関数 (オプショナル)
+     */
     maskState?: (state: TState, playerId: string) => TState;
 
     // 制限時間切れの際に自動実行されるアクションを返す関数 (オプショナル)

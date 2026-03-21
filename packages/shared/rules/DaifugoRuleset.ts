@@ -1,4 +1,5 @@
 // packages/shared/rules/DaifugoRuleset.ts
+import { createSecret, type Secret } from '../GameRules';
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
 import type { IGameRNG } from '../utils/IGameRNG';
 
@@ -6,7 +7,7 @@ export type Card = string;
 
 export interface DaifugoState extends BaseGameState {
     playerIds: string[];         // 参加プレイヤー（通常4人など）
-    hands: Record<string, Card[]>; // 各プレイヤーの手札
+    hands: Record<string, Secret<Card[]>>; // 各プレイヤーの手札
 
     // トリック（場）の状態
     tableCards: Card[];          // 現在場に出ているカード
@@ -89,24 +90,26 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
         const opts = options || {};
         const playerIds = (opts.playerIds || []).filter((id: any) => !!id);
         const deck = createDeck(rng);
-        const hands: Record<string, Card[]> = {};
+        const hands: Record<string, Secret<Card[]>> = {};
 
         // 手札を均等に配る
         if (playerIds.length > 0) {
-            playerIds.forEach((pId: string) => (hands[pId] = []));
+            const rawHands: Record<string, Card[]> = {};
+            playerIds.forEach((pId: string) => (rawHands[pId] = []));
 
             let i = 0;
             while (deck.length > 0) {
                 const targetPlayerId = playerIds[i % playerIds.length];
-                if (hands[targetPlayerId]) {
-                    hands[targetPlayerId].push(deck.pop()!);
+                if (rawHands[targetPlayerId]) {
+                    rawHands[targetPlayerId].push(deck.pop()!);
                 }
                 i++;
             }
 
             // 手札を強さ順にソート（UX向上）
-            Object.keys(hands).forEach(pId => {
-                hands[pId].sort((a, b) => getCardStrength(a) - getCardStrength(b));
+            Object.keys(rawHands).forEach(pId => {
+                rawHands[pId].sort((a, b) => getCardStrength(a) - getCardStrength(b));
+                hands[pId] = createSecret(rawHands[pId], [pId], rawHands[pId].map(() => '?'));
             });
         }
 
@@ -139,7 +142,7 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
             const playCards = action.cards || [];
 
             // そもそも手札にそのカードを持っているか？
-            const hand = state.hands[pId];
+            const hand = state.hands[pId]?.value || [];
             for (const c of playCards) {
                 if (!hand.includes(c)) return false;
             }
@@ -169,7 +172,8 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
             const playCards = action.cards!;
 
             // 手札からカードを削除
-            newState.hands[pId] = newState.hands[pId].filter(c => !playCards.includes(c));
+            const newHand = newState.hands[pId].value.filter(c => !playCards.includes(c));
+            newState.hands[pId] = createSecret(newHand, [pId], newHand.map(() => '?'));
 
             // 場を更新
             newState.tableCards = playCards;
@@ -179,7 +183,7 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
             newState.passedPlayers = [];
 
             // あがり判定
-            if (newState.hands[pId].length === 0) {
+            if (newState.hands[pId].value.length === 0) {
                 newState.ranks.push(pId);
             }
         } else if (action.type === 'PASS') {
@@ -283,18 +287,7 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
         return newState;
     },
 
-    // 隠匿情報（相手の手札）のマスク処理
-    maskState: (state, targetPlayerId) => {
-        const maskedState = structuredClone(state);
 
-        for (const pId of Object.keys(maskedState.hands)) {
-            if (pId !== targetPlayerId) {
-                // 他人の手札は、枚数だけわかるように '?' で埋める
-                maskedState.hands[pId] = maskedState.hands[pId].map(() => '?');
-            }
-        }
-        return maskedState;
-    },
 
     getLegalActions: (state: DaifugoState, playerId: string): DaifugoAction[] => {
         if (state.status !== 'PLAYING') return [];
@@ -306,7 +299,7 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
         const passAction: DaifugoAction = { type: 'PASS', playerId };
         if (DaifugoRuleset.isValidAction(state, passAction)) actions.push(passAction);
 
-        const hand = state.hands[playerId];
+        const hand = state.hands[playerId]?.value;
         if (!hand) return actions;
 
         // 手牌をランクごとにグループ化して、同じ数のペアを生成（同じスート構成まで網羅すると膨大になるため簡易組み合わせ）

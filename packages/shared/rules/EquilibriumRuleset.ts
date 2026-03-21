@@ -13,6 +13,7 @@
  * The World's Most Interesting Game, According to AI
  */
 
+import { createSecret, type Secret } from '../GameRules';
 import type { BaseGameState, GameRuleset } from '../GameRules';
 import type { IGameRNG } from '../utils/IGameRNG';
 
@@ -47,9 +48,9 @@ export interface PlayerState {
     id: string;
     hp: number;
     soulPoints: number; // これが通貨であり、命を削るリソース
-    hand: Card[];
+    hand: Secret<Card[]>;
     board: Card[];      // 場に出して永続効果を発揮しているカード
-    hiddenGoal: Card | null;   // 現在の秘密の勝利条件
+    hiddenGoal: Secret<Card | null>;   // 現在の秘密の勝利条件
     fakeReveal?: Card;  // 相手を騙すために意図的に見せている「嘘のカード」
 }
 
@@ -74,6 +75,14 @@ function generateId(rng?: IGameRNG): string {
         return Math.floor(rng.nextFloat() * 100000000).toString(36);
     }
     return Math.random().toString(36).substring(2, 9);
+}
+
+function updatePlayerHandSecret(player: PlayerState, newHand: Card[]): void {
+    const maskedHand = newHand.map(() => ({ id: 'hidden', type: 'TRICK', name: 'Unknown', value: 0, cost: 0 } as Card));
+    if (player.fakeReveal && maskedHand.length > 0) {
+        maskedHand[0] = player.fakeReveal;
+    }
+    player.hand = createSecret(newHand, [player.id], maskedHand);
 }
 
 function drawInitialCards(rng?: IGameRNG): Card[] {
@@ -155,10 +164,11 @@ function resolveAuction(state: EquilibriumState, rng?: IGameRNG): void {
         state.activePlayers = [allPlayers[0]];
     } else if (!isTie && winnerId !== '') {
         const winnerRecord = state.playerData[winnerId];
-        state.playerData[winnerId] = { ...winnerRecord, hand: [...winnerRecord.hand] };
+        state.playerData[winnerId] = { ...winnerRecord };
         const winner = state.playerData[winnerId];
         winner.soulPoints -= maxBid;
-        winner.hand.push(...state.auctionPool);
+        const newHand = [...winner.hand.value, ...state.auctionPool];
+        updatePlayerHandSecret(winner, newHand);
         state.activePlayers = [winnerId];
     } else {
         const allPlayers = Object.keys(state.playerData);
@@ -193,14 +203,16 @@ function executeCardEffect(state: EquilibriumState, player: PlayerState, card: C
     } else if (card.name === 'Corruption' && (action as any).targetId) {
         const targetId = (action as any).targetId;
         const targetRecord = state.playerData[targetId];
-        if (targetRecord && targetRecord.hand.length > 0) {
-            state.playerData[targetId] = { ...targetRecord, hand: [...targetRecord.hand] };
+        if (targetRecord && targetRecord.hand.value.length > 0) {
+            state.playerData[targetId] = { ...targetRecord };
             const target = state.playerData[targetId];
-            const discardCount = Math.floor(target.hand.length / 2);
+            const newHand = [...target.hand.value];
+            const discardCount = Math.floor(newHand.length / 2);
             for (let i = 0; i < discardCount; i++) {
-                const idx = rng ? rng.nextInt(0, target.hand.length - 1) : Math.floor(Math.random() * target.hand.length);
-                target.hand.splice(idx, 1);
+                const idx = rng ? rng.nextInt(0, newHand.length - 1) : Math.floor(Math.random() * newHand.length);
+                newHand.splice(idx, 1);
             }
+            updatePlayerHandSecret(target, newHand);
         }
     }
 }
@@ -216,13 +228,15 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
         const initialPlayerData: Record<string, PlayerState> = {};
 
         playerIds.forEach(id => {
+            const initialHand = drawInitialCards(rng);
+            const initialGoal = drawRandomGoal(rng);
             initialPlayerData[id] = {
                 id,
                 hp: 20,
                 soulPoints: 10,
-                hand: drawInitialCards(rng),
+                hand: createSecret(initialHand, [id], initialHand.map(() => ({ id: 'hidden', type: 'TRICK', name: 'Unknown', value: 0, cost: 0 } as Card))),
                 board: [],
-                hiddenGoal: drawRandomGoal(rng),
+                hiddenGoal: createSecret(initialGoal, [id], null),
             };
         });
 
@@ -261,10 +275,10 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                 return state.phase === 'AUCTION' && action.amount <= player.soulPoints;
             case 'PLAY_CARD':
                 // フェーズがMAINであり、手札にそのカードがあり、コストが払えるか？
-                const card = player.hand.find(c => c.id === action.cardId);
+                const card = player.hand.value.find(c => c.id === action.cardId);
                 return state.phase === 'MAIN' && card !== undefined && player.soulPoints >= card.cost;
             case 'ALTER_GOAL':
-                return state.phase === 'MAIN' && player.hand.some(c => c.id === action.newGoalCardId && c.type === 'GOAL');
+                return state.phase === 'MAIN' && player.hand.value.some(c => c.id === action.newGoalCardId && c.type === 'GOAL');
             case 'BLUFF_REVEAL':
                 // いつでも嘘の情報をセットできるがコストがかかる
                 return player.soulPoints >= 1;
@@ -288,14 +302,16 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
 
         if (action.type === 'JOIN') {
             if (!nextState.playerData[action.playerId]) {
+                const initialHand = drawInitialCards(rng);
+                const initialGoal = drawRandomGoal(rng);
                 // Ensure the player record itself is a new object if we modify it
                 nextState.playerData[action.playerId] = {
                     id: action.playerId,
                     hp: 20,
                     soulPoints: 10,
-                    hand: drawInitialCards(rng),
+                    hand: createSecret(initialHand, [action.playerId], initialHand.map(() => ({ id: 'hidden', type: 'TRICK', name: 'Unknown', value: 0, cost: 0 } as Card))),
                     board: [],
-                    hiddenGoal: drawRandomGoal(rng),
+                    hiddenGoal: createSecret(initialGoal, [action.playerId], null),
                 };
 
                 // 人数が揃った時点での初期化処理
@@ -353,16 +369,16 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
 
             case 'PLAY_CARD':
                 if (nextState.phase === 'MAIN') {
-                    const cardIndex = player.hand.findIndex(c => c.id === action.cardId);
+                    const cardIndex = player.hand.value.findIndex(c => c.id === action.cardId);
                     if (cardIndex !== -1) {
-                        const card = player.hand[cardIndex];
+                        const card = player.hand.value[cardIndex];
                         player.soulPoints -= card.cost;
 
-                        // Copy hand and board before mutation
-                        player.hand = [...player.hand];
+                        const newHand = [...player.hand.value];
                         player.board = [...player.board];
 
-                        player.hand.splice(cardIndex, 1);
+                        newHand.splice(cardIndex, 1);
+                        updatePlayerHandSecret(player, newHand);
 
                         if (card.name === 'Echo_Whisper') {
                             if (nextState.lastPlayedCard) {
@@ -382,11 +398,12 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
 
             case 'ALTER_GOAL':
                 if ('newGoalCardId' in action) {
-                    const goalIndex = player.hand.findIndex(c => c.id === action.newGoalCardId && c.type === 'GOAL');
+                    const goalIndex = player.hand.value.findIndex(c => c.id === action.newGoalCardId && c.type === 'GOAL');
                     if (goalIndex !== -1) {
-                        player.hiddenGoal = player.hand[goalIndex];
-                        player.hand = [...player.hand];
-                        player.hand.splice(goalIndex, 1);
+                        player.hiddenGoal = createSecret(player.hand.value[goalIndex], [player.id], null);
+                        const newHand = [...player.hand.value];
+                        newHand.splice(goalIndex, 1);
+                        updatePlayerHandSecret(player, newHand);
                     }
                 }
                 break;
@@ -395,6 +412,7 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                 if ('fakeCard' in action) {
                     player.soulPoints -= 1;
                     player.fakeReveal = action.fakeCard;
+                    updatePlayerHandSecret(player, player.hand.value);
                 }
                 break;
 
@@ -418,9 +436,11 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                     nextState.activePlayers = [...allIds];
                     for (const pId of allIds) {
                         const pRecord = nextState.playerData[pId];
-                        nextState.playerData[pId] = { ...pRecord, hand: [...pRecord.hand] };
-                        nextState.playerData[pId].soulPoints += 1; // Reduced recovery
-                        nextState.playerData[pId].hand.push(drawRandomBasicCard(rng));
+                        nextState.playerData[pId] = { ...pRecord };
+                        const p = nextState.playerData[pId];
+                        p.soulPoints += 1; // Reduced recovery
+                        const newHand = [...p.hand.value, drawRandomBasicCard(rng)];
+                        updatePlayerHandSecret(p, newHand);
                     }
                 } else {
                     nextState.activePlayers = [getNextPlayer(nextState, action.playerId)];
@@ -447,7 +467,7 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
         // 各プレイヤーの秘密の勝利条件（hiddenGoal）を評価
         for (const pId of playerIds) {
             const player = state.playerData[pId];
-            const goal = player.hiddenGoal;
+            const goal = player.hiddenGoal?.value;
 
             if (!goal) continue; // ゴールカードを持っていない場合はスキップ
             switch (goal.name) {
@@ -482,27 +502,7 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
         return { isFinished: false };
     },
 
-    // 隠匿情報の動的マスク (MaskState)
-    maskState(state: EquilibriumState, requestingPlayerId: string): EquilibriumState {
-        const maskedState = JSON.parse(JSON.stringify(state)) as EquilibriumState;
-        for (const pId in maskedState.playerData) {
-            if (pId !== requestingPlayerId) {
-                const opponent = maskedState.playerData[pId];
-                // 相手の手札の内容は見せない（枚数だけにするか、ダミーデータで上書き）
-                opponent.hand = opponent.hand.map(() => ({ id: 'hidden', type: 'TRICK', name: 'Unknown', value: 0, cost: 0 }));
-                // 相手の勝利条件を隠す
-                opponent.hiddenGoal = null;
-                // もし相手が「偽のカード」を仕掛けていたら、それを視界に混ぜる！
-                if (opponent.fakeReveal) {
-                    // 本当は持っていない偽のカードを、まるで相手の手札や目標であるかのようにクライアントへ送る
-                    opponent.hand[0] = opponent.fakeReveal;
-                }
-                // fakeRevealのメタデータ自体はクライアントに送らない（バレないように削除）
-                delete opponent.fakeReveal;
-            }
-        }
-        return maskedState;
-    },
+
 
     getLegalActions(state: EquilibriumState, playerId: string): EquilibriumAction[] {
         const actions: EquilibriumAction[] = [];
@@ -514,7 +514,7 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                 actions.push({ type: 'BID', playerId, amount: i });
             }
         } else if (state.phase === 'MAIN') {
-            player.hand.forEach(card => {
+            player.hand.value.forEach(card => {
                 if (player.soulPoints >= card.cost) {
                     actions.push({ type: 'PLAY_CARD', playerId, cardId: card.id });
                 }
