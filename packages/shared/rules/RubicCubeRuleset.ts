@@ -10,6 +10,10 @@ export interface RubiksState extends BaseGameState {
   moveCount: number;
 }
 
+export interface RubiksOptions {
+  // Add options if needed, currently empty but better than any
+}
+
 export type RubiksAction =
   | { type: "ROTATE"; face: FaceName; direction: 1 | -1; playerId?: string }
   | { type: "RESET"; playerId?: string };
@@ -124,8 +128,8 @@ function setEdge(state: RubiksState, def: EdgeDef, colors: Color[]) {
   }
 }
 
-export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction> = {
-  getInitialState: (_options?: any, _rng?: IGameRNG): RubiksState => ({
+export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction, RubiksOptions> = {
+  getInitialState: (_options: RubiksOptions = {}, _rng?: IGameRNG): RubiksState => ({
     status: "PLAYING",
     faces: createSolvedFaces(),
     moveCount: 0,

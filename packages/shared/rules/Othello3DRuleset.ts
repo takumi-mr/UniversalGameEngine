@@ -19,16 +19,20 @@ export interface GameState extends BaseGameState {
   players: Record<PlayerColor, string | null>;
 }
 
+export interface Othello3DOptions {
+  size?: number;
+}
+
 // 汎用エンジンの BaseGameAction を継承 (type が必須になる)
 export interface MoveAction extends BaseGameAction, Position {
   type: "MOVE";
   color: PlayerColor;
 }
 
-export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
+export const Othello3DRuleset: GameRuleset<GameState, MoveAction, Othello3DOptions> = {
   // 初期状態の生成
-  getInitialState: (options = {}, _rng?: IGameRNG) => {
-    const size = options?.size ?? 4;
+  getInitialState: (options: Othello3DOptions = {}, _rng?: IGameRNG): GameState => {
+    const size = options.size ?? 4;
     const board = Array.from({ length: size }, () =>
       Array.from({ length: size }, () => Array(size).fill(0)),
     );

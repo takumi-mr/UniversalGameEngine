@@ -39,6 +39,8 @@ export default [
       "vue/multi-word-component-names": "off",
       // any型の使用をエラーではなく警告に留める（既存コードにanyがあるため）
       "@typescript-eslint/no-explicit-any": "warn",
+      // 空のインターフェースを許可する
+      "@typescript-eslint/no-empty-object-type": "off",
       // 未使用変数はエラーにする
       "@typescript-eslint/no-unused-vars": [
         "error",
@@ -51,7 +53,7 @@ export default [
       "no-useless-assignment": "off",
       "no-undef": "off",
     },
-    // Prettierと衝突するESLintのルールを無効化
-    eslintConfigPrettier,
   },
+  // Prettierと衝突するESLintのルールを無効化
+  eslintConfigPrettier,
 ];
