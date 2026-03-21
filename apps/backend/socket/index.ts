@@ -117,19 +117,27 @@ export const setupSocketIO = (io: Server) => {
                     // 全スロットが埋まっている（全員AIの場合等）なら即座にPLAYINGへ遷移
                     const filledCount = Object.values(state.players).filter(p => p !== null).length;
                     if (filledCount >= slotKeys.length && filledCount >= def.minPlayers) {
-                        state.status = 'PLAYING';
-                        console.log(`[AI] All slots filled — game ${gameId} auto-started as PLAYING`);
+                        // START アクションがあれば先にそれを試す（Speed, Mahjong 等の初期化のため）
+                        const allPlayerIds = Object.values(state.players || {}).filter(p => p !== null) as string[];
+                        const firstPlayerId = allPlayerIds[0];
+                        const startAction = { type: 'START', playerId: firstPlayerId };
+
+                        if (server.engine.dispatch(startAction)) {
+                            console.log(`[AI] Game ${gameId} auto-started via START action from ${firstPlayerId}`);
+                        } else {
+                            state.status = 'PLAYING';
+                            console.log(`[AI] All slots filled — game ${gameId} auto-started as PLAYING`);
+                        }
                         
                         // 初期のアクティブプレイヤーを設定
                         if (!state.activePlayers || state.activePlayers.length === 0) {
-                            const allPlayerIds = Object.values(state.players || {}).filter(Boolean) as string[];
-                            const firstActiveIds: string[] = [];
+                            const activeIds: string[] = [];
                             for (const pId of allPlayerIds) {
                                 if (server.engine.getLegalActions(pId).length > 0) {
-                                    firstActiveIds.push(pId);
+                                    activeIds.push(pId);
                                 }
                             }
-                            state.activePlayers = firstActiveIds;
+                            state.activePlayers = activeIds;
                         }
 
                         // 全員AIなら即座にAIターンを開始
@@ -212,19 +220,27 @@ export const setupSocketIO = (io: Server) => {
                     const def = gameRegistry.getDefinition(normalizedType);
 
                     if (state.status === 'WAITING' && def && uniquePlayersCount >= def.minPlayers) {
-                        state.status = 'PLAYING';
-                        console.log(`Game ${gameId} transitioned to PLAYING status.`);
+                        // START アクションがあれば先にそれを試す
+                        const allPlayerIds = Object.values(state.players || {}).filter(p => p !== null) as string[];
+                        const firstPlayerId = allPlayerIds[0];
+                        const startAction = { type: 'START', playerId: firstPlayerId };
+
+                        if (session.server.engine.dispatch(startAction)) {
+                            console.log(`Game ${gameId} started via START action from ${firstPlayerId}`);
+                        } else {
+                            state.status = 'PLAYING';
+                            console.log(`Game ${gameId} transitioned to PLAYING status.`);
+                        }
 
                         // 初期のアクティブプレイヤーを設定
                         if (!state.activePlayers || state.activePlayers.length === 0) {
-                            const allPlayerIds = Object.values(state.players || {}).filter(Boolean) as string[];
-                            const firstActiveIds: string[] = [];
+                            const activeIds: string[] = [];
                             for (const pId of allPlayerIds) {
                                 if (session.server.engine.getLegalActions(pId).length > 0) {
-                                    firstActiveIds.push(pId);
+                                    activeIds.push(pId);
                                 }
                             }
-                            state.activePlayers = firstActiveIds;
+                            state.activePlayers = activeIds;
                         }
                     }
                     await repo.save(gameId, session.server.engine.getState(), false);
