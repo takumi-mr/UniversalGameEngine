@@ -1,8 +1,11 @@
 version: "3"
 
+dotenv: [".env"]
+
 vars:
-  REDIS_URL: "redis://localhost:6379"
-  MONGO_URL: "mongodb://localhost:27017/game_engine"
+  # Overridable defaults if not in .env
+  REDIS_URL: "{{.REDIS_URL | default \"redis://localhost:6379\"}}"
+  MONGO_URL: "{{.MONGO_URL | default \"mongodb://localhost:27017/game_engine\"}}"
 
 tasks:
   default:
@@ -33,6 +36,7 @@ tasks:
     env:
       REDIS_URL: "{{.REDIS_URL}}"
       MONGO_URL: "{{.MONGO_URL}}"
+      # Other variables from .env are automatically loaded by Task
 
   clean:
     desc: Stop infrastructure and remove volumes
