@@ -17,7 +17,8 @@ export function sha256(ascii: string): string {
 
     const words: any[] = [];
     const asciiLength = ascii[lengthProperty];
-    const hash = (sha256 as any).h = (sha256 as any).h || [];
+    // 初期ハッシュ定数を保持する専用のキャッシュを作成
+    const h0 = (sha256 as any).h0 = (sha256 as any).h0 || [];
     const k = (sha256 as any).k = (sha256 as any).k || [];
     let primeCounter = k[lengthProperty];
 
@@ -29,12 +30,15 @@ export function sha256(ascii: string): string {
     if (!primeCounter) {
         for (let n = 2; primeCounter < 64; n++) {
             if (isPrime(n)) {
-                if (primeCounter < 8) hash[primeCounter] = (mathPow(n, 1 / 2) * maxWord) | 0;
+                if (primeCounter < 8) h0[primeCounter] = (mathPow(n, 1 / 2) * maxWord) | 0;
                 k[primeCounter] = (mathPow(n, 1 / 3) * maxWord) | 0;
                 primeCounter++;
             }
         }
     }
+
+    // 計算用配列には毎回コピーを渡す
+    const hash = h0.slice(0);
 
     ascii += '\x80'; // Append 1000...nd bit
     while (ascii[lengthProperty] % 64 - 56) ascii += '\x00'; // Append zeros
