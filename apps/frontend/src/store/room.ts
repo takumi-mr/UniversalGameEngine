@@ -10,7 +10,8 @@ export const useRoomStore = defineStore("room", {
     async fetchRooms(gameType: string) {
       this.loading = true;
       try {
-        const res = await fetch(`http://127.0.0.1:3000/rooms/${gameType}`);
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:3000";
+        const res = await fetch(`${API_BASE_URL}/rooms/${gameType}`);
         const data = await res.json();
         this.rooms = data.rooms;
         this.lastFetchedType = gameType;
