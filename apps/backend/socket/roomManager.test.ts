@@ -1,4 +1,4 @@
-import { expect, test, describe, beforeEach, spyOn, afterEach, mock } from "bun:test";
+import { expect, test, describe, beforeEach, spyOn, mock } from "bun:test";
 import { setIoInstance, scheduleRoomCleanup, clearRoomCleanup, updatePresence } from "./roomManager";
 import { sessions, cleanupTimers, repo } from "../store/sessionStore";
 
@@ -6,7 +6,7 @@ describe("RoomManager", () => {
     let mockIo: any;
 
     beforeEach(() => {
-        const emitMock = mock(() => {});
+        const emitMock = mock(() => { });
         mockIo = {
             to: mock(() => ({ emit: emitMock })),
             sockets: {

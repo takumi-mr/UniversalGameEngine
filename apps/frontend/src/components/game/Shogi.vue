@@ -1,11 +1,20 @@
 <template>
-  <div class="shogi-container" v-if="state">
+  <div
+    v-if="state"
+    class="shogi-container"
+  >
     <div class="shogi-ui-overlay">
-      <div v-if="state.message" class="status-msg">
+      <div
+        v-if="state.message"
+        class="status-msg"
+      >
         {{ state.message }}
       </div>
 
-      <div class="turn-indicator" v-if="state.status === 'PLAYING'">
+      <div
+        v-if="state.status === 'PLAYING'"
+        class="turn-indicator"
+      >
         Turn:
         <span :class="state.turn === 1 ? 'color-sente' : 'color-gote'">
           {{ state.turn === 1 ? "Sente (先手)" : "Gote (後手)" }}
@@ -21,16 +30,26 @@
         </div>
       </div>
 
-      <div v-if="showPromoteDialog" class="promote-dialog">
+      <div
+        v-if="showPromoteDialog"
+        class="promote-dialog"
+      >
         <p>成りますか？</p>
         <div class="dialog-buttons">
-          <button @click="confirmMove(true)">成る</button>
-          <button @click="confirmMove(false)">成らない</button>
+          <button @click="confirmMove(true)">
+            成る
+          </button>
+          <button @click="confirmMove(false)">
+            成らない
+          </button>
         </div>
       </div>
     </div>
 
-    <div ref="canvasContainer" class="canvas-layer"></div>
+    <div
+      ref="canvasContainer"
+      class="canvas-layer"
+    />
   </div>
 </template>
 

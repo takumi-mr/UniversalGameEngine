@@ -1,21 +1,38 @@
 <template>
-  <div class="card-inner" :class="{ 'is-red': isRed, 'is-black': isBlack, 'is-joker': isJoker, 'is-back': isBack }">
+  <div
+    class="card-inner"
+    :class="{ 'is-red': isRed, 'is-black': isBlack, 'is-joker': isJoker, 'is-back': isBack }"
+  >
     <template v-if="isBack">
-      <div class="card-back-pattern"></div>
+      <div class="card-back-pattern" />
     </template>
     <template v-else-if="isJoker">
-      <div class="joker-text">JOKER</div>
-      <div class="center-suit">🤡</div>
+      <div class="joker-text">
+        JOKER
+      </div>
+      <div class="center-suit">
+        🤡
+      </div>
     </template>
     <template v-else>
       <div class="top-left">
-        <div class="rank">{{ displayRank }}</div>
-        <div class="suit">{{ suitSymbol }}</div>
+        <div class="rank">
+          {{ displayRank }}
+        </div>
+        <div class="suit">
+          {{ suitSymbol }}
+        </div>
       </div>
-      <div class="center-suit">{{ suitSymbol }}</div>
+      <div class="center-suit">
+        {{ suitSymbol }}
+      </div>
       <div class="bottom-right">
-        <div class="rank">{{ displayRank }}</div>
-        <div class="suit">{{ suitSymbol }}</div>
+        <div class="rank">
+          {{ displayRank }}
+        </div>
+        <div class="suit">
+          {{ suitSymbol }}
+        </div>
       </div>
     </template>
   </div>

@@ -25,10 +25,17 @@
         >
           <div class="pa-4 help-tab-content">
             <div class="d-flex align-center mb-4">
-              <v-avatar :color="getTabIcon(key).color" variant="tonal" class="mr-3" size="40">
-                <v-icon :icon="getTabIcon(key).icon"></v-icon>
+              <v-avatar
+                :color="getTabIcon(key).color"
+                variant="tonal"
+                class="mr-3"
+                size="40"
+              >
+                <v-icon :icon="getTabIcon(key).icon" />
               </v-avatar>
-              <h3 class="text-h6 font-weight-bold">{{ $t(`games.${gameType}.tabs.${key}.title`) }}</h3>
+              <h3 class="text-h6 font-weight-bold">
+                {{ $t(`games.${gameType}.tabs.${key}.title`) }}
+              </h3>
             </div>
             
             <div class="text-body-1 content-text whitespace-pre-wrap">
@@ -39,9 +46,17 @@
       </v-window>
     </div>
 
-    <div v-else class="pa-4">
+    <div
+      v-else
+      class="pa-4"
+    >
       <div class="d-flex align-center mb-3">
-        <v-icon color="primary" class="mr-2">mdi-book-open-variant</v-icon>
+        <v-icon
+          color="primary"
+          class="mr-2"
+        >
+          mdi-book-open-variant
+        </v-icon>
         <span class="text-subtitle-1 font-weight-bold text-primary">{{ $t('help.how_to_play') }}</span>
       </div>
       <p class="text-body-1 mb-0 line-height-relaxed whitespace-pre-wrap">

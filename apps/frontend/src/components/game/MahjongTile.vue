@@ -10,11 +10,15 @@
   >
     <div class="tile-inner">
       <div class="tile-face front">
-        <span v-if="!hidden" class="tile-char" :class="colorClass">
+        <span
+          v-if="!hidden"
+          class="tile-char"
+          :class="colorClass"
+        >
           {{ tileChar }}
         </span>
       </div>
-      <div class="tile-face back"></div>
+      <div class="tile-face back" />
     </div>
   </div>
 </template>

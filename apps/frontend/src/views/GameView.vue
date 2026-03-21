@@ -1,18 +1,27 @@
 <template>
   <v-app>
     <!-- Top App Bar in Game -->
-    <v-app-bar flat border="none" color="surface" density="compact">
-      <v-btn icon="mdi-chevron-left" variant="text" @click="back"></v-btn>
+    <v-app-bar
+      flat
+      border="none"
+      color="surface"
+      density="compact"
+    >
+      <v-btn
+        icon="mdi-chevron-left"
+        variant="text"
+        @click="back"
+      />
       <v-app-bar-title class="text-subtitle-1 font-weight-bold">
         {{ gameInfo?.emoji }} {{ $t(`games.${gameType}.name`) }} — Room: {{ roomId }}
       </v-app-bar-title>
-      <v-spacer></v-spacer>
+      <v-spacer />
       
       <!-- Theme Switcher -->
       <ThemeSwitcher class="mr-2" />
       
       <v-menu>
-        <template v-slot:activator="{ props }">
+        <template #activator="{ props }">
           <v-btn
             v-bind="props"
             variant="text"
@@ -36,13 +45,22 @@
         variant="text"
         class="mr-2"
         @click="showHelp = true"
-      ></v-btn>
+      />
 
       <div class="px-4 text-caption text-medium-emphasis d-none d-sm-flex align-center">
-        <v-icon icon="mdi-account-circle" class="mr-2"></v-icon>
+        <v-icon
+          icon="mdi-account-circle"
+          class="mr-2"
+        />
         <strong>{{ username }}</strong>
       </div>
-      <v-btn icon="mdi-logout" color="error" variant="text" size="small" @click="logout"></v-btn>
+      <v-btn
+        icon="mdi-logout"
+        color="error"
+        variant="text"
+        size="small"
+        @click="logout"
+      />
     </v-app-bar>
 
     <v-main class="fill-height">

@@ -68,7 +68,7 @@ export class MinimaxPlayer<TState extends BaseGameState, TAction extends BaseGam
         let bestAction: TAction | null = null;
         let bestValue = -Infinity;
         let alpha = -Infinity;
-        let beta = Infinity;
+        const beta = Infinity;
 
         // ルートノードで全合法手を評価
         for (const action of legalActions) {

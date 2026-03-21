@@ -114,7 +114,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
         if (state.status !== 'PLAYING') return;
 
         // 手番プレイヤーリストを取得。空の場合は「いずれかのAIに合法手があるか」をチェックして補足する
-        let activePlayerIds = state.activePlayers || [];
+        const activePlayerIds = state.activePlayers || [];
         if (activePlayerIds.length === 0) {
             for (const [playerId] of this.aiPlayers) {
                 if (this.engine.getLegalActions(playerId).length > 0) {

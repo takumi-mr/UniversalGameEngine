@@ -1,5 +1,8 @@
 <template>
-  <div class="mahjong-view" v-if="state">
+  <div
+    v-if="state"
+    class="mahjong-view"
+  >
     <!-- The Table -->
     <div class="mahjong-table-container">
       <div class="mahjong-table">
@@ -24,45 +27,90 @@
 
         <!-- Top: Opponent (Across) -->
         <div class="player-area top">
-          <div class="player-label">{{ pIdAcross || '?' }}</div>
+          <div class="player-label">
+            {{ pIdAcross || '?' }}
+          </div>
           <div class="discards-grid">
-            <MahjongTile v-for="(tile, i) in discardsAcross" :key="'da-'+i" :tile="tile" />
+            <MahjongTile
+              v-for="(tile, i) in discardsAcross"
+              :key="'da-'+i"
+              :tile="tile"
+            />
           </div>
           <div class="hand-row">
-            <MahjongTile v-for="i in handCountAcross" :key="'ha-'+i" tile="?" hidden />
+            <MahjongTile
+              v-for="i in handCountAcross"
+              :key="'ha-'+i"
+              tile="?"
+              hidden
+            />
           </div>
         </div>
 
         <!-- Left: Opponent (Kami-cha) -->
         <div class="player-area left">
-          <div class="player-label">{{ pIdLeft || '?' }}</div>
+          <div class="player-label">
+            {{ pIdLeft || '?' }}
+          </div>
           <div class="discards-grid">
-            <MahjongTile v-for="(tile, i) in discardsLeft" :key="'dl-'+i" :tile="tile" />
+            <MahjongTile
+              v-for="(tile, i) in discardsLeft"
+              :key="'dl-'+i"
+              :tile="tile"
+            />
           </div>
           <div class="hand-row">
-            <MahjongTile v-for="i in handCountLeft" :key="'hl-'+i" tile="?" hidden />
+            <MahjongTile
+              v-for="i in handCountLeft"
+              :key="'hl-'+i"
+              tile="?"
+              hidden
+            />
           </div>
         </div>
 
         <!-- Right: Opponent (Shimo-cha) -->
         <div class="player-area right">
-          <div class="player-label">{{ pIdRight || '?' }}</div>
+          <div class="player-label">
+            {{ pIdRight || '?' }}
+          </div>
           <div class="discards-grid">
-            <MahjongTile v-for="(tile, i) in discardsRight" :key="'dr-'+i" :tile="tile" />
+            <MahjongTile
+              v-for="(tile, i) in discardsRight"
+              :key="'dr-'+i"
+              :tile="tile"
+            />
           </div>
           <div class="hand-row">
-            <MahjongTile v-for="i in handCountRight" :key="'hr-'+i" tile="?" hidden />
+            <MahjongTile
+              v-for="i in handCountRight"
+              :key="'hr-'+i"
+              tile="?"
+              hidden
+            />
           </div>
         </div>
 
         <!-- Bottom: Me (Jibun) -->
-        <div class="player-area bottom" :class="{ 'is-active': isMyTurn }">
-          <div class="player-label">{{ myPlayerId }}</div>
+        <div
+          class="player-area bottom"
+          :class="{ 'is-active': isMyTurn }"
+        >
+          <div class="player-label">
+            {{ myPlayerId }}
+          </div>
           <div class="discards-grid">
-            <MahjongTile v-for="(tile, i) in discardsMe" :key="'dm-'+i" :tile="tile" />
+            <MahjongTile
+              v-for="(tile, i) in discardsMe"
+              :key="'dm-'+i"
+              :tile="tile"
+            />
           </div>
           
-          <div class="actions-bar" v-if="availableActions.length > 0">
+          <div
+            v-if="availableActions.length > 0"
+            class="actions-bar"
+          >
             <v-btn 
               v-for="action in availableActions" 
               :key="action.type + (action.meldType || '')"
@@ -89,14 +137,26 @@
     </div>
 
     <!-- Result Overlay -->
-    <div v-if="state.status === 'FINISHED'" class="result-overlay">
+    <div
+      v-if="state.status === 'FINISHED'"
+      class="result-overlay"
+    >
       <div class="result-card">
         <h2>{{ $t('games.mahjong.finished') }}</h2>
-        <p class="final-message">{{ state.message }}</p>
+        <p class="final-message">
+          {{ state.message }}
+        </p>
         <div class="scores-list">
-          <div v-for="(score, pid) in state.scores" :key="pid" class="score-item">
+          <div
+            v-for="(score, pid) in state.scores"
+            :key="pid"
+            class="score-item"
+          >
             <span class="pid">{{ pid }}{{ pid === myPlayerId ? ` (${$t('common.logged_in_as', { username: '' }).split(':')[0]})` : '' }}</span>
-            <span class="score" :class="{ 'positive': score >= 25000, 'negative': score < 25000 }">
+            <span
+              class="score"
+              :class="{ 'positive': score >= 25000, 'negative': score < 25000 }"
+            >
               {{ score }}
             </span>
           </div>
@@ -105,11 +165,19 @@
     </div>
 
     <!-- Start Game Overlay -->
-    <div v-if="showStartOverlay" class="start-overlay">
+    <div
+      v-if="showStartOverlay"
+      class="start-overlay"
+    >
       <div class="start-card">
         <h2>{{ $t('games.mahjong.waiting_players') }}</h2>
         <div class="player-slots">
-          <div v-for="i in 4" :key="i - 1" class="slot" :class="{ 'filled': playerAtSlot(i - 1) }">
+          <div
+            v-for="i in 4"
+            :key="i - 1"
+            class="slot"
+            :class="{ 'filled': playerAtSlot(i - 1) }"
+          >
             {{ playerAtSlot(i - 1) || $t('games.mahjong.empty_slot') }}
           </div>
         </div>

@@ -1,7 +1,11 @@
 <template>
   <div class="wordle-game">
     <div class="grid">
-      <div v-for="(_, rowIndex) in 6" :key="rowIndex" class="row">
+      <div
+        v-for="(_, rowIndex) in 6"
+        :key="rowIndex"
+        class="row"
+      >
         <div 
           v-for="(__, colIndex) in 5" 
           :key="colIndex" 
@@ -14,7 +18,11 @@
     </div>
 
     <div class="keyboard">
-      <div v-for="(row, rowIndex) in keyboardRows" :key="rowIndex" class="keyboard-row">
+      <div
+        v-for="(row, rowIndex) in keyboardRows"
+        :key="rowIndex"
+        class="keyboard-row"
+      >
         <button 
           v-for="key in row" 
           :key="key" 
@@ -27,10 +35,16 @@
       </div>
     </div>
 
-    <div v-if="state.status === 'FINISHED'" class="result-overlay">
+    <div
+      v-if="state.status === 'FINISHED'"
+      class="result-overlay"
+    >
       <div class="result-content">
         <h2>{{ state.message }}</h2>
-        <v-btn color="primary" @click="$emit('action', { type: 'START', playerId: myPlayerId })">
+        <v-btn
+          color="primary"
+          @click="$emit('action', { type: 'START', playerId: myPlayerId })"
+        >
           {{ $t('games.wordle.play_again') }}
         </v-btn>
       </div>

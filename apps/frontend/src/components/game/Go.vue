@@ -1,7 +1,13 @@
 <template>
-  <div class="go-3d-container" v-if="state">
+  <div
+    v-if="state"
+    class="go-3d-container"
+  >
     <div class="ui-overlay">
-      <div v-if="state.message" class="status-msg">
+      <div
+        v-if="state.message"
+        class="status-msg"
+      >
         {{ state.message }}
       </div>
 
@@ -16,25 +22,31 @@
         <div class="actions">
           <button 
             class="pass-btn" 
-            @click="passTurn"
             :disabled="state.status !== 'PLAYING'"
+            @click="passTurn"
           >
             🏳️ パス
           </button>
         </div>
 
-        <div v-if="state.scores" class="score-board">
+        <div
+          v-if="state.scores"
+          class="score-board"
+        >
           <div class="score-row">
-            <span class="dot black"></span> 黒: <strong>{{ state.scores.black }}</strong>
+            <span class="dot black" /> 黒: <strong>{{ state.scores.black }}</strong>
           </div>
           <div class="score-row">
-            <span class="dot white"></span> 白: <strong>{{ state.scores.white }}</strong>
+            <span class="dot white" /> 白: <strong>{{ state.scores.white }}</strong>
           </div>
         </div>
       </div>
     </div>
 
-    <div ref="canvasContainer" class="canvas-layer"></div>
+    <div
+      ref="canvasContainer"
+      class="canvas-layer"
+    />
   </div>
 </template>
 

@@ -56,7 +56,7 @@ export const PokemonTCGRegistry: Record<string, CardDefinition> = {
         evolvesFrom: 'p_charmander', // ヒトカゲから進化
         hp: 90,
         attacks: [{ name: 'Flamethrower', cost: { FIRE: 2, COLORLESS: 1 }, damage: 80 }],
-        onPlay: (state, playerId, targetInstanceId) => {
+        onPlay: (_state, _playerId, _targetInstanceId) => {
             // 進化時に発動する特性などもここに書ける
         }
     },

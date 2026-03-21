@@ -139,7 +139,7 @@ function getNextPlayer(state: EquilibriumState, currentPlayerId: string): string
     return currentPlayerId;
 }
 
-function resolveAuction(state: EquilibriumState, rng?: IGameRNG): void {
+function resolveAuction(state: EquilibriumState, _rng?: IGameRNG): void {
     let maxBid = -1;
     let winnerId = '';
     let isTie = false;
@@ -273,10 +273,11 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
             case 'BID':
                 // フェーズがAUCTIONであり、自分のSoul Pointの範囲内か？
                 return state.phase === 'AUCTION' && action.amount <= player.soulPoints;
-            case 'PLAY_CARD':
+            case 'PLAY_CARD': {
                 // フェーズがMAINであり、手札にそのカードがあり、コストが払えるか？
                 const card = player.hand.value.find(c => c.id === action.cardId);
                 return state.phase === 'MAIN' && card !== undefined && player.soulPoints >= card.cost;
+            }
             case 'ALTER_GOAL':
                 return state.phase === 'MAIN' && player.hand.value.some(c => c.id === action.newGoalCardId && c.type === 'GOAL');
             case 'BLUFF_REVEAL':
@@ -421,7 +422,7 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                 player.soulPoints += 1;
                 break;
 
-            case 'END_TURN':
+            case 'END_TURN': {
                 if (!nextState.passedPlayers.includes(action.playerId)) {
                     nextState.passedPlayers.push(action.playerId);
                 }
@@ -446,6 +447,7 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
                     nextState.activePlayers = [getNextPlayer(nextState, action.playerId)];
                 }
                 break;
+            }
         }
         return { ...nextState, lastAction: action };
     },

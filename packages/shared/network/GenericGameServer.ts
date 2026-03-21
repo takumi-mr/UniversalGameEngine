@@ -97,7 +97,7 @@ export class GenericGameServer<TState extends BaseGameState, TAction extends Bas
     }
 
     // 観戦者全体にメッセージを送信する処理
-    private sendToSpectators(payload: any) {
+    private sendToSpectators(_payload: any) {
         // 例: broadcast to all non-player connections
         console.log(`[GenericGameServer] 観戦者に状態を送信`);
     }

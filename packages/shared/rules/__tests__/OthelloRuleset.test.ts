@@ -1,4 +1,4 @@
-import { expect, test, describe, beforeEach } from "bun:test";
+import { expect, test, describe } from "bun:test";
 import { OthelloRuleset } from "../OthelloRuleset";
 
 describe("OthelloRuleset", () => {
@@ -13,7 +13,7 @@ describe("OthelloRuleset", () => {
     });
 
     test("isValidAction should check legal othello moves", () => {
-        let state = OthelloRuleset.getInitialState();
+        const state = OthelloRuleset.getInitialState();
         state.status = "PLAYING";
         state.players = { 1: "p1", [-1]: "p2" };
 
@@ -31,7 +31,7 @@ describe("OthelloRuleset", () => {
     });
 
     test("reduce should flip pieces correctly", () => {
-        let state = OthelloRuleset.getInitialState();
+        const state = OthelloRuleset.getInitialState();
         state.status = "PLAYING";
 
         // Black moves to (3, 2)
@@ -44,7 +44,7 @@ describe("OthelloRuleset", () => {
     });
 
     test("getLegalActions should return all valid moves", () => {
-        let state = OthelloRuleset.getInitialState();
+        const state = OthelloRuleset.getInitialState();
         state.status = "PLAYING";
         state.players = { 1: "p1", [-1]: "p2" };
 

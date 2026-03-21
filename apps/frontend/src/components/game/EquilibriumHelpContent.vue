@@ -23,10 +23,17 @@
       >
         <div class="pa-4 help-tab-content">
           <div class="d-flex align-center mb-4">
-            <v-avatar :color="config.color" variant="tonal" class="mr-3" size="40">
-              <v-icon :icon="config.icon"></v-icon>
+            <v-avatar
+              :color="config.color"
+              variant="tonal"
+              class="mr-3"
+              size="40"
+            >
+              <v-icon :icon="config.icon" />
             </v-avatar>
-            <h3 class="text-h6 font-weight-bold">{{ $t(`games.equilibrium.tabs.${key}.title`) }}</h3>
+            <h3 class="text-h6 font-weight-bold">
+              {{ $t(`games.equilibrium.tabs.${key}.title`) }}
+            </h3>
           </div>
           
           <div class="text-body-1 content-text whitespace-pre-wrap">

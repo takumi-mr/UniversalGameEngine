@@ -1,10 +1,11 @@
 <template>
   <div class="rubiks-container">
-
     <!-- HUD -->
     <div class="hud">
       <div class="hud-panel">
-        <div class="logo">🟥 Rubik's Cube</div>
+        <div class="logo">
+          🟥 Rubik's Cube
+        </div>
         <div class="move-counter">
           <span class="label">Moves</span>
           <span class="value">{{ state?.moveCount ?? 0 }}</span>
@@ -13,14 +14,24 @@
           <span class="label">Time</span>
           <span class="value">{{ formattedTime }}</span>
         </div>
-        <div v-if="state?.status === 'FINISHED'" class="solved-badge">
+        <div
+          v-if="state?.status === 'FINISHED'"
+          class="solved-badge"
+        >
           🎉 Solved!
         </div>
         <div class="actions">
-          <button class="btn btn-scramble" @click="scramble" :disabled="isScrambling">
+          <button
+            class="btn btn-scramble"
+            :disabled="isScrambling"
+            @click="scramble"
+          >
             <span>🔀</span> Scramble
           </button>
-          <button class="btn btn-reset" @click="reset">
+          <button
+            class="btn btn-reset"
+            @click="reset"
+          >
             <span>🔄</span> Reset
           </button>
         </div>
@@ -28,13 +39,28 @@
 
       <!-- 操作ガイド: 面のボタン -->
       <div class="hud-panel controls-panel">
-        <div class="controls-title">Face Controls</div>
+        <div class="controls-title">
+          Face Controls
+        </div>
         <div class="face-controls">
-          <template v-for="face in FACES" :key="face">
+          <template
+            v-for="face in FACES"
+            :key="face"
+          >
             <div class="face-row">
               <span class="face-label">{{ face }}</span>
-              <button class="move-btn cw"  @click="sendRotate(face, 1)">CW ↻</button>
-              <button class="move-btn ccw" @click="sendRotate(face, -1)">CCW ↺</button>
+              <button
+                class="move-btn cw"
+                @click="sendRotate(face, 1)"
+              >
+                CW ↻
+              </button>
+              <button
+                class="move-btn ccw"
+                @click="sendRotate(face, -1)"
+              >
+                CCW ↺
+              </button>
             </div>
           </template>
         </div>
@@ -42,7 +68,10 @@
     </div>
 
     <!-- Three.js canvas -->
-    <div ref="canvasContainer" class="canvas-wrap"></div>
+    <div
+      ref="canvasContainer"
+      class="canvas-wrap"
+    />
 
     <!-- Tooltip -->
     <div class="tooltip">

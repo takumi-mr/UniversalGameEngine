@@ -210,7 +210,7 @@ export class Go3DUI {
         this.ghostStone!.visible = false;
     }
 
-    private onClick(event: MouseEvent) {
+    private onClick(_event: MouseEvent) {
         if (!this.currentState || this.currentState.status !== 'PLAYING') return;
 
         this.raycaster.setFromCamera(this.mouse, this.camera);

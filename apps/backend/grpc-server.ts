@@ -4,7 +4,7 @@ import * as protoLoader from '@grpc/proto-loader';
 import path from 'path';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from './config';
-import { sessions, repo, SocketGameServer } from './store/sessionStore';
+import { sessions, SocketGameServer } from './store/sessionStore';
 import { gameRegistry } from '@engine/shared/GameRegistry';
 import { aiTensorRegistry } from '@engine/shared/ai/AITensorAdapterRegistry';
 import { UniversalEngine } from '@engine/shared/UniversalEngine';
@@ -33,7 +33,7 @@ const authenticate = (call: grpc.ServerUnaryCall<any, any> | grpc.ServerWritable
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
         return decoded.userId;
-    } catch (err) {
+    } catch {
         return null;
     }
 };
@@ -279,7 +279,7 @@ const gameServiceHandlers: GameServiceHandlers = {
 
             const state = session.server.engine.getState();
             const action = adapter.decodeAction(state, actionId, playerId);
-            
+
             const success = (aiPlayer as any).submitMove(action);
             if (success) {
                 callback(null, { success: true, message: 'Bot Move Submitted' });

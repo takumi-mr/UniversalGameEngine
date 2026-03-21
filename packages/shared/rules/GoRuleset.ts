@@ -108,7 +108,7 @@ function getCaptures(board: number[], index: number, color: number, size: number
 
 export const GoRuleset: GameRuleset<GoState, GoAction> = {
 
-  getInitialState: (options?: any, rng?: IGameRNG): GoState => {
+  getInitialState: (options?: any, _rng?: IGameRNG): GoState => {
     const size = options?.size ?? 9;
     return {
       status: "WAITING",
@@ -166,7 +166,7 @@ export const GoRuleset: GameRuleset<GoState, GoAction> = {
     return false;
   },
 
-  reduce: (state, action, rng?: IGameRNG) => {
+  reduce: (state, action, _rng?: IGameRNG) => {
     const newState = structuredClone(state);
     const board = newState.board;
 
@@ -280,7 +280,7 @@ export const GoRuleset: GameRuleset<GoState, GoAction> = {
  */
 function calculateTrompTaylor(board: number[], color: number, size: number): number {
   let score = 0;
-  const reach = new Set<number>();
+  const _reach = new Set<number>();
 
   // 指定した色の石の数
   for (let i = 0; i < board.length; i++) {

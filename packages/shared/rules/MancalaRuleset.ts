@@ -14,7 +14,7 @@ export interface MancalaAction extends BaseGameAction {
 }
 
 export const MancalaRuleset: GameRuleset<MancalaState, MancalaAction> = {
-    getInitialState: (options?: any, rng?: IGameRNG): MancalaState => {
+    getInitialState: (_options?: any, _rng?: IGameRNG): MancalaState => {
         // 各ポケットに石を4個ずつ。ストア(6, 13)は0個。
         const board = [
             4, 4, 4, 4, 4, 4, 0,
@@ -53,9 +53,9 @@ export const MancalaRuleset: GameRuleset<MancalaState, MancalaAction> = {
         return true;
     },
 
-    reduce: (state, action, rng?: IGameRNG) => {
+    reduce: (state, action, _rng?: IGameRNG) => {
         const newState = structuredClone(state);
-        let { pitIndex } = action;
+        const { pitIndex } = action;
         const isP1 = newState.turn === 1;
 
         const ownStore = isP1 ? 6 : 13;

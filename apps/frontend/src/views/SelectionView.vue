@@ -1,16 +1,23 @@
 <template>
   <v-app>
     <!-- Sidebar for Game Categories -->
-    <v-navigation-drawer v-model="drawer" permanent border="none">
-      <v-list density="compact" nav>
+    <v-navigation-drawer
+      v-model="drawer"
+      permanent
+      border="none"
+    >
+      <v-list
+        density="compact"
+        nav
+      >
         <v-list-item
           prepend-icon="mdi-view-dashboard"
           :title="$t('categories.All')"
           :active="selectedCategory === 'All'"
           @click="selectedCategory = 'All'"
-        ></v-list-item>
+        />
         
-        <v-divider class="my-2"></v-divider>
+        <v-divider class="my-2" />
         
         <v-list-item
           v-for="cat in categories"
@@ -19,12 +26,18 @@
           prepend-icon="mdi-folder-outline"
           :active="selectedCategory === cat"
           @click="selectedCategory = cat"
-        ></v-list-item>
+        />
       </v-list>
       
-      <template v-slot:append>
+      <template #append>
         <div class="pa-4">
-          <v-btn block color="error" variant="tonal" prepend-icon="mdi-logout" @click="logout">
+          <v-btn
+            block
+            color="error"
+            variant="tonal"
+            prepend-icon="mdi-logout"
+            @click="logout"
+          >
             {{ $t('common.logout') }}
           </v-btn>
         </div>
@@ -32,18 +45,22 @@
     </v-navigation-drawer>
 
     <!-- Top App Bar -->
-    <v-app-bar flat border="none" color="surface">
+    <v-app-bar
+      flat
+      border="none"
+      color="surface"
+    >
       <v-app-bar-title class="text-h5 font-weight-bold">
         <span class="text-primary">Universal</span> {{ $t('common.title').split(' ').slice(1).join(' ') || 'Game Engine' }}
       </v-app-bar-title>
-      <v-spacer></v-spacer>
+      <v-spacer />
       
       <!-- Theme Switcher -->
       <ThemeSwitcher class="mr-2" />
       
       <!-- Language Switcher -->
       <v-menu>
-        <template v-slot:activator="{ props }">
+        <template #activator="{ props }">
           <v-btn
             v-bind="props"
             variant="text"
@@ -69,13 +86,31 @@
 
     <!-- Main Content -->
     <v-main style="height: 100vh; overflow-y: auto;">
-      <v-container class="pa-6" fluid>
+      <v-container
+        class="pa-6"
+        fluid
+      >
         <!-- Active Games Section -->
-        <div v-if="joinedRooms.length > 0" class="mb-10">
+        <div
+          v-if="joinedRooms.length > 0"
+          class="mb-10"
+        >
           <div class="d-flex align-center mb-4">
-            <v-icon icon="mdi-controller-classic" color="primary" class="mr-2"></v-icon>
-            <h2 class="text-h5 font-weight-bold">{{ $t('common.active_games') }}</h2>
-            <v-btn icon="mdi-refresh" variant="text" size="small" class="ml-2" @click="fetchJoinedRooms"></v-btn>
+            <v-icon
+              icon="mdi-controller-classic"
+              color="primary"
+              class="mr-2"
+            />
+            <h2 class="text-h5 font-weight-bold">
+              {{ $t('common.active_games') }}
+            </h2>
+            <v-btn
+              icon="mdi-refresh"
+              variant="text"
+              size="small"
+              class="ml-2"
+              @click="fetchJoinedRooms"
+            />
           </div>
           <v-row>
             <v-col
@@ -86,12 +121,21 @@
               md="4"
               lg="3"
             >
-              <v-card class="active-game-card rounded-xl pa-4" variant="outlined">
+              <v-card
+                class="active-game-card rounded-xl pa-4"
+                variant="outlined"
+              >
                 <div class="d-flex align-center mb-3">
-                  <div class="text-h4 mr-3">{{ getGameEmoji(room.type) }}</div>
+                  <div class="text-h4 mr-3">
+                    {{ getGameEmoji(room.type) }}
+                  </div>
                   <div>
-                    <div class="text-subtitle-1 font-weight-bold">{{ $t('games.' + room.type.toLowerCase() + '.name') }}</div>
-                    <div class="text-caption text-medium-emphasis">ID: {{ room.id.slice(0, 8) }}</div>
+                    <div class="text-subtitle-1 font-weight-bold">
+                      {{ $t('games.' + room.type.toLowerCase() + '.name') }}
+                    </div>
+                    <div class="text-caption text-medium-emphasis">
+                      ID: {{ room.id.slice(0, 8) }}
+                    </div>
                   </div>
                 </div>
                 <div class="d-flex gap-2">
@@ -112,17 +156,21 @@
                     class="rounded-lg"
                     :loading="leavingId === room.id"
                     @click="leaveRoom(room.id)"
-                  ></v-btn>
+                  />
                 </div>
               </v-card>
             </v-col>
           </v-row>
-          <v-divider class="mt-8"></v-divider>
+          <v-divider class="mt-8" />
         </div>
 
         <div class="mb-6">
-          <h2 class="text-h4 font-weight-bold mb-2">{{ $t('categories.' + selectedCategory) }}</h2>
-          <p class="text-body-1 text-medium-emphasis">{{ $t('common.select_game_desc') }}</p>
+          <h2 class="text-h4 font-weight-bold mb-2">
+            {{ $t('categories.' + selectedCategory) }}
+          </h2>
+          <p class="text-body-1 text-medium-emphasis">
+            {{ $t('common.select_game_desc') }}
+          </p>
         </div>
 
         <v-row>
@@ -143,8 +191,12 @@
                 @click="onGameSelected(game.type)"
               >
                 <div class="pa-6 d-flex flex-column align-center text-center fill-height">
-                  <div class="text-h1 mb-4">{{ game.emoji }}</div>
-                  <v-card-title class="text-h5 font-weight-bold pa-0 mb-2">{{ $t('games.' + game.type + '.name') }}</v-card-title>
+                  <div class="text-h1 mb-4">
+                    {{ game.emoji }}
+                  </div>
+                  <v-card-title class="text-h5 font-weight-bold pa-0 mb-2">
+                    {{ $t('games.' + game.type + '.name') }}
+                  </v-card-title>
                   <v-card-text class="text-body-2 text-medium-emphasis pa-0">
                     {{ $t('games.' + game.type + '.description') }}
                   </v-card-text>

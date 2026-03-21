@@ -1,16 +1,37 @@
 <template>
-  <div class="equilibrium-container" ref="containerRef">
-    <canvas ref="canvasRef" class="webgl-canvas"></canvas>
+  <div
+    ref="containerRef"
+    class="equilibrium-container"
+  >
+    <canvas
+      ref="canvasRef"
+      class="webgl-canvas"
+    />
 
-    <div class="hud-overlay" v-if="state && myData">
-      
+    <div
+      v-if="state && myData"
+      class="hud-overlay"
+    >
       <div class="top-bar">
-        <div v-for="(pData, pId) in opponentData" :key="pId" class="player-badge enemy">
-          <div class="name">Player: {{ pId }}</div>
-          <div class="stats">❤️ {{ pData.hp }} | 👻 {{ pData.soulPoints }}</div>
+        <div
+          v-for="(pData, pId) in opponentData"
+          :key="pId"
+          class="player-badge enemy"
+        >
+          <div class="name">
+            Player: {{ pId }}
+          </div>
+          <div class="stats">
+            ❤️ {{ pData.hp }} | 👻 {{ pData.soulPoints }}
+          </div>
           
-          <div class="revealed-info" v-if="getRevealedCard(pData)">
-            <div class="warning-text">⚠️ Exposed Card?</div>
+          <div
+            v-if="getRevealedCard(pData)"
+            class="revealed-info"
+          >
+            <div class="warning-text">
+              ⚠️ Exposed Card?
+            </div>
             <div class="mini-card bluff-card">
               {{ getRevealedCard(pData)?.name }} ({{ getRevealedCard(pData)?.type }})
             </div>
@@ -18,29 +39,64 @@
         </div>
       </div>
 
-      <div class="center-screen" v-if="state.phase === 'AUCTION'">
-        <div class="auction-panel" v-if="isMyTurn">
+      <div
+        v-if="state.phase === 'AUCTION'"
+        class="center-screen"
+      >
+        <div
+          v-if="isMyTurn"
+          class="auction-panel"
+        >
           <h3>Soul Auction</h3>
           <p>Bid your soul points for the center card!</p>
           <div class="bid-controls">
-            <input type="range" v-model.number="bidAmount" min="1" :max="myData.soulPoints" class="slider" />
+            <input
+              v-model.number="bidAmount"
+              type="range"
+              min="1"
+              :max="myData.soulPoints"
+              class="slider"
+            >
             <span class="bid-val">👻 {{ bidAmount }}</span>
           </div>
           <div class="action-buttons">
-            <button class="btn-primary" @click="submitBid" :disabled="myData.soulPoints < 1">Place Bid</button>
-            <button class="btn-secondary" @click="passAuction">Pass</button>
+            <button
+              class="btn-primary"
+              :disabled="myData.soulPoints < 1"
+              @click="submitBid"
+            >
+              Place Bid
+            </button>
+            <button
+              class="btn-secondary"
+              @click="passAuction"
+            >
+              Pass
+            </button>
           </div>
         </div>
-        <div class="waiting-panel" v-else>
+        <div
+          v-else
+          class="waiting-panel"
+        >
           Waiting for other players to bid...
         </div>
       </div>
 
       <div class="bottom-bar">
         <div class="my-status player-badge">
-          <div class="name">You ({{ myPlayerId }})</div>
-          <div class="stats">❤️ {{ myData.hp }} | 👻 {{ myData.soulPoints }}</div>
-          <div class="goal" v-if="myData.hiddenGoal">🎯 Goal: {{ myData.hiddenGoal.name }}</div>
+          <div class="name">
+            You ({{ myPlayerId }})
+          </div>
+          <div class="stats">
+            ❤️ {{ myData.hp }} | 👻 {{ myData.soulPoints }}
+          </div>
+          <div
+            v-if="myData.hiddenGoal"
+            class="goal"
+          >
+            🎯 Goal: {{ myData.hiddenGoal.name }}
+          </div>
         </div>
 
         <div class="hand-container">
@@ -50,14 +106,27 @@
             class="card"
             :class="{ disabled: state.phase !== 'MAIN' || !isMyTurn }"
           >
-            <div class="card-title">{{ card.name }}</div>
-            <div class="card-type">{{ card.type }}</div>
-            <div class="card-cost">Cost: {{ card.cost }}👻</div>
+            <div class="card-title">
+              {{ card.name }}
+            </div>
+            <div class="card-type">
+              {{ card.type }}
+            </div>
+            <div class="card-cost">
+              Cost: {{ card.cost }}👻
+            </div>
             
-            <div class="card-actions" v-if="state.phase === 'MAIN' && isMyTurn">
-              
-              <div v-if="pendingTargetCardId === card.id" class="target-selection">
-                <div class="target-prompt">Select Target:</div>
+            <div
+              v-if="state.phase === 'MAIN' && isMyTurn"
+              class="card-actions"
+            >
+              <div
+                v-if="pendingTargetCardId === card.id"
+                class="target-selection"
+              >
+                <div class="target-prompt">
+                  Select Target:
+                </div>
                 <div class="target-buttons">
                   <button 
                     v-for="opId in Object.keys(opponentData)" 
@@ -68,7 +137,12 @@
                     🎯 {{ opId }}
                   </button>
                 </div>
-                <button class="btn-secondary btn-small cancel-btn" @click="pendingTargetCardId = null">Cancel</button>
+                <button
+                  class="btn-secondary btn-small cancel-btn"
+                  @click="pendingTargetCardId = null"
+                >
+                  Cancel
+                </button>
               </div>
 
               <template v-else>
@@ -92,30 +166,36 @@
                 <button 
                   class="btn-trick" 
                   :disabled="myData.soulPoints < 1"
-                  @click="bluffReveal(card)"
                   title="Cost: 1 Soul Point"
+                  @click="bluffReveal(card)"
                 >
                   👁️ Bluff (1👻)
                 </button>
               </template>
-              
             </div>
           </div>
         </div>
 
-        <div class="turn-controls" v-if="state.phase === 'MAIN' && isMyTurn">
+        <div
+          v-if="state.phase === 'MAIN' && isMyTurn"
+          class="turn-controls"
+        >
           <button 
             class="btn-sacrifice" 
-            @click="sacrifice" 
-            :disabled="myData.hp <= 2"
+            :disabled="myData.hp <= 2" 
             title="Sacrifice 2 HP to gain 1 Soul Point"
+            @click="sacrifice"
           >
             🩸 Sacrifice
           </button>
-          <button class="btn-danger" @click="endTurn">End Turn</button>
+          <button
+            class="btn-danger"
+            @click="endTurn"
+          >
+            End Turn
+          </button>
         </div>
       </div>
-
     </div>
   </div>
 </template>

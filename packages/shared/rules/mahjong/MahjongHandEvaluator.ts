@@ -90,7 +90,7 @@ export class MahjongHandEvaluator {
         melds: any[],
         winTile: Tile,
         isTsumo: boolean,
-        state?: MahjongState // 将来的に場風やドラの計算に使用
+        _state?: MahjongState // 将来的に場風やドラの計算に使用
     ): EvaluatedHand {
 
         // 1. 手牌を riichi が読める形にまとめる (アガリ牌は一旦除外してフォーマット)

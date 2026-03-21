@@ -129,7 +129,7 @@ function generateMoves(state: ShogiState, fromIndex: number): number[] {
 }
 
 export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
-  getInitialState: (options?: any, rng?: IGameRNG): ShogiState => ({
+  getInitialState: (_options?: any, _rng?: IGameRNG): ShogiState => ({
     status: "WAITING",
     turn: 1,
     board: [...initialBoard],
@@ -203,7 +203,7 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
     return false;
   },
 
-  reduce: (state, action, rng?: IGameRNG) => {
+  reduce: (state, action, _rng?: IGameRNG) => {
     const newState: ShogiState = {
       ...state,
       board: [...state.board],

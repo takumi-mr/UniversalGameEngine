@@ -22,7 +22,7 @@ const WIN_LINES = [
 
 export const TicTacToeRuleset: GameRuleset<TicTacToeState, TicTacToeAction> = {
 
-    getInitialState: (options?: any, rng?: IGameRNG): TicTacToeState => ({
+    getInitialState: (_options?: any, _rng?: IGameRNG): TicTacToeState => ({
         status: 'WAITING',
         board: Array(9).fill(0),
         turn: 1,
@@ -55,7 +55,7 @@ export const TicTacToeRuleset: GameRuleset<TicTacToeState, TicTacToeAction> = {
         return true;
     },
 
-    reduce: (state, action, rng?: IGameRNG) => {
+    reduce: (state, action, _rng?: IGameRNG) => {
 
         const newState = structuredClone(state);
 

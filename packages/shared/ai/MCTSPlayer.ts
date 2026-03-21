@@ -100,7 +100,7 @@ export class MCTSPlayer<TState extends BaseGameState, TAction extends BaseGameAc
         const root = new MCTSNode<TState, TAction>(state, this.ruleset);
 
         for (let i = 0; i < this.iterations; i++) {
-            let node = this.select(root);
+            const node = this.select(root);
             const winner = this.simulate(node.state);
             this.backpropagate(node, winner);
         }

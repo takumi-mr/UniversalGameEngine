@@ -1,21 +1,44 @@
 <template>
   <div class="hanafuda-container">
-    
-    <div v-if="isMyTurn && state.phase === 'KOIKOI_OR_STOP'" class="overlay">
+    <div
+      v-if="isMyTurn && state.phase === 'KOIKOI_OR_STOP'"
+      class="overlay"
+    >
       <div class="modal">
-        <div class="modal-title">役ができました！</div>
-        <div class="modal-score">現在の文数: <span>{{ state.yakuScores[myId] }}</span></div>
+        <div class="modal-title">
+          役ができました！
+        </div>
+        <div class="modal-score">
+          現在の文数: <span>{{ state.yakuScores[myId] }}</span>
+        </div>
         <div class="modal-actions">
-          <button class="btn-shobu" @click="callKoiKoi(false)">勝負（あがり）</button>
-          <button class="btn-koikoi" @click="callKoiKoi(true)">こいこい（継続）</button>
+          <button
+            class="btn-shobu"
+            @click="callKoiKoi(false)"
+          >
+            勝負（あがり）
+          </button>
+          <button
+            class="btn-koikoi"
+            @click="callKoiKoi(true)"
+          >
+            こいこい（継続）
+          </button>
         </div>
       </div>
     </div>
 
-    <div v-if="isMyTurn && (state.phase === 'CHOOSE_HAND_MATCH' || state.phase === 'CHOOSE_DECK_MATCH')" class="overlay">
+    <div
+      v-if="isMyTurn && (state.phase === 'CHOOSE_HAND_MATCH' || state.phase === 'CHOOSE_DECK_MATCH')"
+      class="overlay"
+    >
       <div class="modal">
-        <div class="modal-title">取る札を選んでください</div>
-        <div class="modal-subtitle">場に同じ月の札が2枚あります</div>
+        <div class="modal-title">
+          取る札を選んでください
+        </div>
+        <div class="modal-subtitle">
+          場に同じ月の札が2枚あります
+        </div>
         <div class="choose-options">
           <div 
             v-for="card in state.matchingOptions" 
@@ -23,30 +46,49 @@
             class="card selectable"
             @click="chooseMatch(card)"
           >
-            <div class="card-inner">{{ renderCard(card) }}</div>
+            <div class="card-inner">
+              {{ renderCard(card) }}
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <div class="game-wrapper">
-      
       <div class="player-area opponent-area">
-        <div class="area-label">相手の獲得札 ({{ oppCaptured.length }}枚) / スコア: {{ state.yakuScores[oppId] || 0 }}</div>
+        <div class="area-label">
+          相手の獲得札 ({{ oppCaptured.length }}枚) / スコア: {{ state.yakuScores[oppId] || 0 }}
+        </div>
         <div class="captured-area">
-          <div v-for="card in oppCaptured" :key="`opp-cap-${card}`" class="card captured">
-            <div class="card-inner">{{ renderCard(card) }}</div>
+          <div
+            v-for="card in oppCaptured"
+            :key="`opp-cap-${card}`"
+            class="card captured"
+          >
+            <div class="card-inner">
+              {{ renderCard(card) }}
+            </div>
           </div>
         </div>
         <div class="hand-area">
-          <div v-for="(_, i) in oppHand" :key="`opp-hand-${i}`" class="card hidden"></div>
+          <div
+            v-for="(_, i) in oppHand"
+            :key="`opp-hand-${i}`"
+            class="card hidden"
+          />
         </div>
       </div>
 
       <div class="center-area">
         <div class="field-area">
-          <div v-for="card in state.field" :key="`field-${card}`" class="card field">
-            <div class="card-inner">{{ renderCard(card) }}</div>
+          <div
+            v-for="card in state.field"
+            :key="`field-${card}`"
+            class="card field"
+          >
+            <div class="card-inner">
+              {{ renderCard(card) }}
+            </div>
           </div>
         </div>
         
@@ -56,9 +98,16 @@
             :class="{ 'is-active': isMyTurn && state.phase === 'DRAW_DECK' }"
             @click="drawDeck"
           >
-            <div class="deck-text">山札<br>({{ state.deck.length }})</div>
+            <div class="deck-text">
+              山札<br>({{ state.deck.length }})
+            </div>
           </div>
-          <div class="action-prompt" v-if="isMyTurn">{{ turnPromptMessage }}</div>
+          <div
+            v-if="isMyTurn"
+            class="action-prompt"
+          >
+            {{ turnPromptMessage }}
+          </div>
         </div>
       </div>
 
@@ -71,17 +120,26 @@
             :class="{ 'is-playable': isMyTurn && state.phase === 'PLAY_HAND' }"
             @click="playCard(card)"
           >
-            <div class="card-inner">{{ renderCard(card) }}</div>
+            <div class="card-inner">
+              {{ renderCard(card) }}
+            </div>
           </div>
         </div>
         <div class="captured-area">
-          <div v-for="card in myCaptured" :key="`my-cap-${card}`" class="card captured">
-            <div class="card-inner">{{ renderCard(card) }}</div>
+          <div
+            v-for="card in myCaptured"
+            :key="`my-cap-${card}`"
+            class="card captured"
+          >
+            <div class="card-inner">
+              {{ renderCard(card) }}
+            </div>
           </div>
         </div>
-        <div class="area-label">自分の獲得札 ({{ myCaptured.length }}枚) / スコア: {{ state.yakuScores[myId] || 0 }}</div>
+        <div class="area-label">
+          自分の獲得札 ({{ myCaptured.length }}枚) / スコア: {{ state.yakuScores[myId] || 0 }}
+        </div>
       </div>
-
     </div>
   </div>
 </template>

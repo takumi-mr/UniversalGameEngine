@@ -2,18 +2,33 @@
   <div class="tictactoe-container">
     <div class="board-wrapper">
       <div class="status-indicator">
-        <div v-if="state.status === 'PLAYING'" class="turn-box" :class="{ 'active': state.turn === 1 }">
+        <div
+          v-if="state.status === 'PLAYING'"
+          class="turn-box"
+          :class="{ 'active': state.turn === 1 }"
+        >
           <span class="symbol">O</span>
           <span class="label">Player 1</span>
         </div>
-        <div class="vs">VS</div>
-        <div v-if="state.status === 'PLAYING'" class="turn-box" :class="{ 'active': state.turn === -1 }">
+        <div class="vs">
+          VS
+        </div>
+        <div
+          v-if="state.status === 'PLAYING'"
+          class="turn-box"
+          :class="{ 'active': state.turn === -1 }"
+        >
           <span class="symbol">X</span>
           <span class="label">Player 2</span>
         </div>
       </div>
 
-      <div class="game-message" v-if="state.message">{{ state.message }}</div>
+      <div
+        v-if="state.message"
+        class="game-message"
+      >
+        {{ state.message }}
+      </div>
 
       <div class="tictactoe-board">
         <div 
@@ -27,15 +42,26 @@
           @click="placePiece(index)"
         >
           <Transition name="pop">
-            <span v-if="cell === 1" class="piece piece-o">O</span>
-            <span v-else-if="cell === -1" class="piece piece-x">X</span>
+            <span
+              v-if="cell === 1"
+              class="piece piece-o"
+            >O</span>
+            <span
+              v-else-if="cell === -1"
+              class="piece piece-x"
+            >X</span>
           </Transition>
         </div>
       </div>
 
-      <div v-if="state.status === 'FINISHED'" class="result-overlay">
+      <div
+        v-if="state.status === 'FINISHED'"
+        class="result-overlay"
+      >
         <div class="result-content">
-          <div class="winner-text">{{ state.message }}</div>
+          <div class="winner-text">
+            {{ state.message }}
+          </div>
         </div>
       </div>
     </div>

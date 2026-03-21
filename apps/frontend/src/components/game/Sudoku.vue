@@ -1,14 +1,19 @@
 <template>
   <div class="sudoku-container">
     <div class="game-wrapper">
-      
-      <div v-if="state.status === 'FINISHED'" class="victory-banner">
+      <div
+        v-if="state.status === 'FINISHED'"
+        class="victory-banner"
+      >
         🎉 {{ state.message || 'Sudoku Cleared!' }} 🎉
       </div>
 
       <div class="board-wrapper">
         <div class="sudoku-board">
-          <template v-for="(row, rIndex) in state.board" :key="`row-${rIndex}`">
+          <template
+            v-for="(row, rIndex) in state.board"
+            :key="`row-${rIndex}`"
+          >
             <div 
               v-for="(cell, cIndex) in row" 
               :key="`cell-${rIndex}-${cIndex}`"
@@ -46,7 +51,6 @@
           ⌫
         </button>
       </div>
-
     </div>
   </div>
 </template>

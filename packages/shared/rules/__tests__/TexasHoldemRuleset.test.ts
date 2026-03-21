@@ -1,9 +1,9 @@
-import { expect, test, describe, beforeEach } from "bun:test";
+import { expect, test, describe } from "bun:test";
 import { TexasHoldemRuleset } from "../TexasHoldemRuleset";
 
 describe("TexasHoldemRuleset", () => {
     const playerIds = ["p1", "p2", "p3"];
-    
+
     test("getInitialState should set up players and deal cards", () => {
         const state = TexasHoldemRuleset.getInitialState({ playerIds, initialChips: 500 });
         expect(state.playerIds).toEqual(playerIds);
@@ -13,7 +13,7 @@ describe("TexasHoldemRuleset", () => {
     });
 
     test("isValidAction should validate betting logic", () => {
-        let state = TexasHoldemRuleset.getInitialState({ playerIds });
+        const state = TexasHoldemRuleset.getInitialState({ playerIds });
         state.status = "PLAYING";
         state.activePlayers = ["p1"];
         state.currentBet = 100;
@@ -41,7 +41,7 @@ describe("TexasHoldemRuleset", () => {
     });
 
     test("reduce should update chips and pot on RAISE", () => {
-        let state = TexasHoldemRuleset.getInitialState({ playerIds });
+        const state = TexasHoldemRuleset.getInitialState({ playerIds });
         state.status = "PLAYING";
         state.activePlayers = ["p1"];
         state.currentBet = 0;
@@ -49,7 +49,7 @@ describe("TexasHoldemRuleset", () => {
         state.playerChips["p1"] = 1000;
 
         const next = TexasHoldemRuleset.reduce(state, { type: "RAISE", amount: 100, playerId: "p1" });
-        
+
         expect(next.playerChips["p1"]).toBe(900);
         expect(next.playerBets["p1"]).toBe(100);
         expect(next.pot).toBe(100);

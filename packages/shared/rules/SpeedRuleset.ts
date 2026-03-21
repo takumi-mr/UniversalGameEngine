@@ -55,7 +55,7 @@ function createDeck(rng?: IGameRNG): Card[] {
 }
 
 export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
-    getInitialState: (options?: any, rng?: IGameRNG): SpeedState => {
+    getInitialState: (options?: any, _rng?: IGameRNG): SpeedState => {
         const playerIds = options?.playerIds || [];
         return {
             status: 'WAITING',
@@ -116,7 +116,7 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
 
             newState.hands = {};
             newState.personalDecks = {};
-            players.forEach((id, idx) => {
+            players.forEach((id) => {
                 const pDeck = deck.splice(0, 15);
                 newState.personalDecks[id] = createSecret(pDeck, [id], pDeck.map(() => '?'));
                 const hDeck = deck.splice(0, 5);
@@ -138,7 +138,7 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
             // Remove from hand
             const newHand = newState.hands[pId].value.filter(c => c !== card);
             newState.hands[pId] = createSecret(newHand, [pId], newHand.map(() => '?'));
-            
+
             // Update center pile
             newState.centerPiles[pileIndex] = card;
 
@@ -147,7 +147,7 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
                 const pDeck = [...newState.personalDecks[pId].value];
                 const nextCard = pDeck.pop()!;
                 newState.personalDecks[pId] = createSecret(pDeck, [pId], pDeck.map(() => '?'));
-                
+
                 const newHandPostDraw = [...newState.hands[pId].value, nextCard];
                 newState.hands[pId] = createSecret(newHandPostDraw, [pId], newHandPostDraw.map(() => '?'));
             }
@@ -190,7 +190,7 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
                 return { isFinished: true, winnerIds: [pId], message: `${pId} wins!` };
             }
         }
-        
+
         // Stuck condition: no side piles left and both stuck
         const allStuck = state.playerIds.length === 2 && state.playerIds.every(id => state.isStuck[id]);
         const sidePilesEmpty = state.sidePiles.value.every(p => p.length === 0);

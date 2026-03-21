@@ -1,13 +1,19 @@
 <template>
   <div class="poker-view">
     <div class="game-header">
-      <div class="phase-badge">{{ formatPhase(state.phase) }}</div>
-      <div class="status-msg" v-if="state.message">{{ state.message }}</div>
+      <div class="phase-badge">
+        {{ formatPhase(state.phase) }}
+      </div>
+      <div
+        v-if="state.message"
+        class="status-msg"
+      >
+        {{ state.message }}
+      </div>
     </div>
 
     <div class="poker-table-wrapper">
       <div class="poker-table">
-        
         <div class="table-center">
           <div class="pot-display">
             <span class="pot-label">TOTAL POT</span>
@@ -21,7 +27,10 @@
               class="playing-card"
               :class="{ 'is-empty': !state.communityCards[i-1] }"
             >
-              <CardInner v-if="state.communityCards[i-1]" :cardStr="state.communityCards[i-1]" />
+              <CardInner
+                v-if="state.communityCards[i-1]"
+                :card-str="state.communityCards[i-1]"
+              />
             </div>
           </div>
         </div>
@@ -36,67 +45,133 @@
               'is-folded': state.foldedPlayers.includes(opponent.id)
             }"
           >
-            <div class="dealer-button" v-if="state.playerIds[state.dealerIndex] === opponent.id">D</div>
+            <div
+              v-if="state.playerIds[state.dealerIndex] === opponent.id"
+              class="dealer-button"
+            >
+              D
+            </div>
             
             <div class="seat-info">
-              <div class="player-name">{{ opponent.id }}</div>
-              <div class="player-chips">🪙 {{ state.playerChips[opponent.id] }}</div>
-            </div>
-
-            <div class="hole-cards opponent-cards">
-              <div class="playing-card small-card" v-for="c in state.hands[opponent.id]" :key="c">
-                <CardInner :cardStr="c" />
+              <div class="player-name">
+                {{ opponent.id }}
+              </div>
+              <div class="player-chips">
+                🪙 {{ state.playerChips[opponent.id] }}
               </div>
             </div>
 
-            <div class="current-bet" v-if="state.playerBets[opponent.id] > 0">
+            <div class="hole-cards opponent-cards">
+              <div
+                v-for="c in state.hands[opponent.id]"
+                :key="c"
+                class="playing-card small-card"
+              >
+                <CardInner :card-str="c" />
+              </div>
+            </div>
+
+            <div
+              v-if="state.playerBets[opponent.id] > 0"
+              class="current-bet"
+            >
               Bet: {{ state.playerBets[opponent.id] }}
             </div>
-            <div class="action-badge folded" v-if="state.foldedPlayers.includes(opponent.id)">FOLD</div>
+            <div
+              v-if="state.foldedPlayers.includes(opponent.id)"
+              class="action-badge folded"
+            >
+              FOLD
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="my-player-area" :class="{ 'is-my-turn': isMyTurn, 'is-folded': isFolded }">
+    <div
+      class="my-player-area"
+      :class="{ 'is-my-turn': isMyTurn, 'is-folded': isFolded }"
+    >
       <div class="my-seat-info">
-        <div class="dealer-button" v-if="state.playerIds[state.dealerIndex] === myPlayerId">D</div>
+        <div
+          v-if="state.playerIds[state.dealerIndex] === myPlayerId"
+          class="dealer-button"
+        >
+          D
+        </div>
         <div class="my-stats">
-          <div class="my-name">あなた ({{ myPlayerId }})</div>
-          <div class="my-chips">所持チップ: <strong>🪙 {{ state.playerChips[myPlayerId] }}</strong></div>
-          <div class="my-bet">現在のベット: <strong>{{ state.playerBets[myPlayerId] }}</strong> (コール額: {{ callAmount }})</div>
+          <div class="my-name">
+            あなた ({{ myPlayerId }})
+          </div>
+          <div class="my-chips">
+            所持チップ: <strong>🪙 {{ state.playerChips[myPlayerId] }}</strong>
+          </div>
+          <div class="my-bet">
+            現在のベット: <strong>{{ state.playerBets[myPlayerId] }}</strong> (コール額: {{ callAmount }})
+          </div>
         </div>
         
         <div class="hole-cards my-cards">
-          <div class="playing-card" v-for="(c, i) in myHand" :key="'my-card-'+i">
-            <CardInner :cardStr="c" />
+          <div
+            v-for="(c, i) in myHand"
+            :key="'my-card-'+i"
+            class="playing-card"
+          >
+            <CardInner :card-str="c" />
           </div>
         </div>
       </div>
 
       <div class="action-bar">
-        <div v-if="!isMyTurn" class="waiting-overlay">
+        <div
+          v-if="!isMyTurn"
+          class="waiting-overlay"
+        >
           {{ isFolded ? 'フォールドしました。ラウンド終了を待っています...' : '相手のターンを待っています...' }}
         </div>
         
-        <div class="action-buttons" v-else>
-          <button class="btn btn-fold" @click="takeAction('FOLD')">Fold</button>
+        <div
+          v-else
+          class="action-buttons"
+        >
+          <button
+            class="btn btn-fold"
+            @click="takeAction('FOLD')"
+          >
+            Fold
+          </button>
           
-          <button class="btn btn-check" v-if="canCheck" @click="takeAction('CHECK')">Check</button>
-          <button class="btn btn-call" v-if="canCall" @click="takeAction('CALL')">
+          <button
+            v-if="canCheck"
+            class="btn btn-check"
+            @click="takeAction('CHECK')"
+          >
+            Check
+          </button>
+          <button
+            v-if="canCall"
+            class="btn btn-call"
+            @click="takeAction('CALL')"
+          >
             Call ({{ callAmount }})
           </button>
 
-          <div class="raise-container" v-if="canRaise">
+          <div
+            v-if="canRaise"
+            class="raise-container"
+          >
             <input 
+              v-model.number="raiseAmount" 
               type="range" 
               :min="minRaise" 
               :max="state.playerChips[myPlayerId]" 
-              step="10" 
-              v-model.number="raiseAmount"
+              step="10"
               class="raise-slider"
-            />
-            <button class="btn btn-raise" @click="takeAction('RAISE')">
+            >
+            <button
+              class="btn btn-raise"
+              @click="takeAction('RAISE')"
+            >
               Raise ({{ raiseAmount }})
             </button>
           </div>

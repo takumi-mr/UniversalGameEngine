@@ -3,7 +3,10 @@
     <div class="game-header">
       <div class="turn-info">
         <span class="turn-label">Current Turn:</span>
-        <span class="turn-player" :class="{ 'is-me': isMyTurn }">
+        <span
+          class="turn-player"
+          :class="{ 'is-me': isMyTurn }"
+        >
           {{ currentPlayerId }}
         </span>
       </div>
@@ -12,52 +15,118 @@
       </div>
     </div>
 
-    <div v-if="state.status === 'FINISHED'" class="winner-banner">
+    <div
+      v-if="state.status === 'FINISHED'"
+      class="winner-banner"
+    >
       🎉 {{ state.message }} 🎉
     </div>
 
     <div class="play-area">
       <div class="deck-area">
-        <div class="deck-card" @click="drawCard" :class="{ 'can-click': isMyTurn }">
-          <div class="uno-logo-back">UNO</div>
+        <div
+          class="deck-card"
+          :class="{ 'can-click': isMyTurn }"
+          @click="drawCard"
+        >
+          <div class="uno-logo-back">
+            UNO
+          </div>
         </div>
-        <div class="deck-count">{{ state.deck.length }}枚</div>
+        <div class="deck-count">
+          {{ state.deck.length }}枚
+        </div>
       </div>
 
       <div class="discard-area">
-        <div v-if="topCard !== undefined" class="playing-card discard-card" :class="getColorClass(state.currentColor)">
-          <CardFace :cardValue="getCardValue(topCard)" :color="state.currentColor" />
+        <div
+          v-if="topCard !== undefined"
+          class="playing-card discard-card"
+          :class="getColorClass(state.currentColor)"
+        >
+          <CardFace
+            :card-value="getCardValue(topCard)"
+            :color="state.currentColor"
+          />
         </div>
-        <div class="current-color-badge" :class="getColorClass(state.currentColor)">
+        <div
+          class="current-color-badge"
+          :class="getColorClass(state.currentColor)"
+        >
           現在の色: {{ getColorName(state.currentColor) }}
         </div>
       </div>
     </div>
 
     <div class="opponents-area">
-      <div v-for="opId in opponents" :key="opId" class="opponent-panel" :class="{ 'active-op': opId === currentPlayerId }">
-        <div class="op-name">{{ opId }}</div>
-        <div class="op-cards">残り: {{ state.hands[opId]?.length || 0 }}枚</div>
-        <div v-if="state.hands[opId]?.length === 1" class="uno-call-badge">UNO!</div>
+      <div
+        v-for="opId in opponents"
+        :key="opId"
+        class="opponent-panel"
+        :class="{ 'active-op': opId === currentPlayerId }"
+      >
+        <div class="op-name">
+          {{ opId }}
+        </div>
+        <div class="op-cards">
+          残り: {{ state.hands[opId]?.length || 0 }}枚
+        </div>
+        <div
+          v-if="state.hands[opId]?.length === 1"
+          class="uno-call-badge"
+        >
+          UNO!
+        </div>
       </div>
     </div>
 
-    <div class="my-area" :class="{ 'is-my-turn': isMyTurn }">
+    <div
+      class="my-area"
+      :class="{ 'is-my-turn': isMyTurn }"
+    >
       <div class="my-header">
-        <div class="my-name">あなた ({{ myPlayerId }})</div>
-        <button class="pass-btn" v-if="isMyTurn" @click="passTurn">パス (Pass)</button>
+        <div class="my-name">
+          あなた ({{ myPlayerId }})
+        </div>
+        <button
+          v-if="isMyTurn"
+          class="pass-btn"
+          @click="passTurn"
+        >
+          パス (Pass)
+        </button>
       </div>
 
-      <div v-if="showColorPicker" class="color-picker-overlay">
+      <div
+        v-if="showColorPicker"
+        class="color-picker-overlay"
+      >
         <div class="color-picker-modal">
           <h3>色を選んでください</h3>
           <div class="color-options">
-            <button class="color-btn is-red" @click="playWildCard(0)"></button>
-            <button class="color-btn is-yellow" @click="playWildCard(1)"></button>
-            <button class="color-btn is-green" @click="playWildCard(2)"></button>
-            <button class="color-btn is-blue" @click="playWildCard(3)"></button>
+            <button
+              class="color-btn is-red"
+              @click="playWildCard(0)"
+            />
+            <button
+              class="color-btn is-yellow"
+              @click="playWildCard(1)"
+            />
+            <button
+              class="color-btn is-green"
+              @click="playWildCard(2)"
+            />
+            <button
+              class="color-btn is-blue"
+              @click="playWildCard(3)"
+            />
           </div>
-          <button class="cancel-btn" @click="cancelWildCard">キャンセル</button>
+          <button
+            class="cancel-btn"
+            @click="cancelWildCard"
+          >
+            キャンセル
+          </button>
         </div>
       </div>
 
@@ -69,7 +138,10 @@
           :class="[getColorClass(getCardColor(card)), { 'is-playable': isPlayable(card) }]"
           @click="handleCardClick(card)"
         >
-          <CardFace :cardValue="getCardValue(card)" :color="getCardColor(card)" />
+          <CardFace
+            :card-value="getCardValue(card)"
+            :color="getCardColor(card)"
+          />
         </div>
       </div>
     </div>

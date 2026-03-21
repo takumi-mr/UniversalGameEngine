@@ -95,7 +95,7 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
 
   },
 
-  reduce: (state, action, rng?: IGameRNG) => {
+  reduce: (state, action, _rng?: IGameRNG) => {
     const newState = structuredClone(state);
     const player = newState.playerOrder[newState.turnIndex];
 
