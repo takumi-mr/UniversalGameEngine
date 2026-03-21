@@ -1,12 +1,13 @@
 // packages/shared/rules/TexasHoldemRules.ts
+import { createSecret, type Secret } from '../GameRules';
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
 import type { IGameRNG } from '../utils/IGameRNG';
 
 // ポーカー特有の状態定義
 export interface TexasHoldemState extends BaseGameState {
-    deck: string[];           // 山札
+    deck: Secret<string[]>;           // 山札
     communityCards: string[]; // コミュニティカード (フロップ、ターン、リバー)
-    hands: Record<string, string[]>; // 各プレイヤーごとの手札（ユーザーIDがキー）
+    hands: Record<string, Secret<string[]>>; // 各プレイヤーごとの手札（ユーザーIDがキー）
     pot: number;              // 現在の総ポット額
     currentBet: number;       // 現在のラウンドでの最高ベット額
     playerBets: Record<string, number>; // 各プレイヤーがこのラウンドでベットした額
@@ -46,8 +47,8 @@ export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction
         const opts = options || {};
         const playerIds = (opts.playerIds || []).filter((id: any) => !!id);
         const initialChips = opts.initialChips || 1000;
-        const deck = createDeck(rng);
-        const hands: Record<string, string[]> = {};
+        const deckArr = createDeck(rng);
+        const hands: Record<string, Secret<string[]>> = {};
         const playerChips: Record<string, number> = {};
         const playerBets: Record<string, number> = {};
 
@@ -57,7 +58,8 @@ export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction
                 playerChips[pId] = initialChips;
                 playerBets[pId] = 0;
                 // 2枚ずつ配る
-                hands[pId] = [deck.pop()!, deck.pop()!];
+                const handArr = [deckArr.pop()!, deckArr.pop()!];
+                hands[pId] = createSecret(handArr, [pId], ['?', '?']);
             }
         }
 
@@ -68,7 +70,7 @@ export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction
                 : { 1: null, 2: null, 3: null, 4: null, 5: null, 6: null }, // Default 6 slots
             activePlayers: playerIds.length > 0 ? [playerIds[0]] : [],
             playerIds,
-            deck,
+            deck: createSecret(deckArr, [], deckArr.map(() => '?')),
             communityCards: [],
             hands,
             pot: 0,
@@ -184,29 +186,7 @@ export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction
         return { isFinished: false };
     },
 
-    // 隠匿情報（自分以外の他人の手札）をマスクするフック！
-    maskState: (state: TexasHoldemState, targetPlayerId: string): TexasHoldemState => {
-        const maskedHands: Record<string, string[]> = {};
 
-        for (const [pId, hand] of Object.entries(state.hands)) {
-            if (pId === targetPlayerId) {
-                // 自分の手札はそのまま見せる
-                maskedHands[pId] = hand;
-            } else {
-                // 他人の手札は "?" にして裏向きカードとして扱う
-                maskedHands[pId] = hand.map(() => '?');
-            }
-        }
-
-        const maskedState: TexasHoldemState = {
-            ...state,
-            hands: maskedHands,
-            // 山札の中身も絶対に送信してはいけないので全マスクまたは空配列にする
-            deck: state.deck.map(() => '?')
-        };
-
-        return maskedState;
-    },
 
     applyWinResult: (state, winResult) => {
         const newState = structuredClone(state);

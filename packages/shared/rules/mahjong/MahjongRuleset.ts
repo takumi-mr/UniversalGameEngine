@@ -1,4 +1,5 @@
 // packages/shared/rules/MahjongRules.ts
+import { createSecret, type Secret } from '../../GameRules';
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../../GameRules';
 import type { IGameRNG } from '../../utils/IGameRNG';
 import { MahjongHandEvaluator } from './MahjongHandEvaluator';
@@ -9,10 +10,10 @@ export type Tile = string;
 
 export interface MahjongState extends BaseGameState {
     playerIds: string[];         // 参加プレイヤー4人のID順序（起家から順）
-    wall: Tile[];                // 山牌
-    deadWall: Tile[];            // 王牌 (通常14枚だが簡易化のため配列で保持)
+    wall: Secret<Tile[]>;                // 山牌
+    deadWall: Secret<Tile[]>;            // 王牌 (通常14枚だが簡易化のため配列で保持)
     doraIndicators: Tile[];      // ドラ表示牌
-    hands: Record<string, Tile[]>; // 各プレイヤーごとの手牌（IDキー）
+    hands: Record<string, Secret<Tile[]>>; // 各プレイヤーごとの手牌（IDキー）
     discards: Record<string, Tile[]>; // 各プレイヤーの捨て牌、いわゆる「河」（IDキー）
     melds: Record<string, any[]>;     // 鳴き・副露の情報（簡易化のため any[]）
 
@@ -77,8 +78,8 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
             playerIds,
             activePlayers: [],
             turnIndex: 0,
-            wall: [],
-            deadWall: [],
+            wall: createSecret([], [], []),
+            deadWall: createSecret([], [], []),
             doraIndicators: [],
             hands: {},
             discards: {},
@@ -121,14 +122,14 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
         switch (action.type) {
             case 'DRAW':
                 // 山から引くフェーズかチェック
-                const hand = state.hands[pId] || [];
+                const hand = state.hands[pId]?.value || [];
                 return hand.length === 13;
             case 'DISCARD':
                 if (!action.tile) return false;
-                const h = state.hands[pId] || [];
+                const h = state.hands[pId]?.value || [];
                 return h.includes(action.tile) && h.length === 14;
             case 'TSUMO':
-                const tsHand = state.hands[pId] || [];
+                const tsHand = state.hands[pId]?.value || [];
                 return tsHand.length === 14;
             case 'CALL': // 暗槓や加槓
                 return true; 
@@ -140,37 +141,37 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
     reduce: (state: MahjongState, action: MahjongAction, rng?: IGameRNG): MahjongState => {
         if (action.type === 'START') {
             const playerIds = Object.values(state.players || {}).filter(p => p !== null) as string[];
-            const wall = createWall(rng);
-            const deadWall: Tile[] = [];
+            const wallArr = createWall(rng);
+            const deadW: Tile[] = [];
             const doraIndicators: Tile[] = [];
-            const hands: Record<string, Tile[]> = {};
+            const hands: Record<string, Secret<Tile[]>> = {};
             const discards: Record<string, Tile[]> = {};
             const melds: Record<string, any[]> = {};
             const scores: Record<string, number> = {};
 
             // 王牌を14枚分確保
             for (let i = 0; i < 14; i++) {
-                deadWall.push(wall.pop()!);
+                deadW.push(wallArr.pop()!);
             }
-            doraIndicators.push(deadWall.pop()!);
+            doraIndicators.push(deadW.pop()!);
 
             for (const pId of playerIds) {
                 scores[pId] = 25000;
                 discards[pId] = [];
                 melds[pId] = [];
-                const hand: Tile[] = [];
+                const handArr: Tile[] = [];
                 for (let i = 0; i < 13; i++) {
-                    hand.push(wall.pop()!);
+                    handArr.push(wallArr.pop()!);
                 }
-                hands[pId] = hand.sort();
+                hands[pId] = createSecret(handArr.sort(), [pId], handArr.map(() => '?'));
             }
 
             return {
                 ...state,
                 status: 'PLAYING',
                 playerIds,
-                wall,
-                deadWall,
+                wall: createSecret(wallArr, [], wallArr.map(() => '?')),
+                deadWall: createSecret(deadW, [], deadW.map(() => '?')),
                 doraIndicators,
                 hands,
                 discards,
@@ -211,7 +212,7 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
                     let messages: string[] = [];
                     for (const ronAction of rons) {
                         const winnerId = ronAction.playerId;
-                        const handWithWinTile = [...newState.hands[winnerId], tile];
+                        const handWithWinTile = [...newState.hands[winnerId].value, tile];
                         const result = MahjongHandEvaluator.evaluate(handWithWinTile, newState.melds[winnerId], tile, false, newState);
                         if (result.isAgari) {
                             newState.scores[winnerId] += result.ten;
@@ -251,18 +252,23 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
 
         switch (action.type) {
             case 'DRAW':
-                const drawTile = newState.wall.pop();
+                const wallArr = [...newState.wall.value];
+                const drawTile = wallArr.pop();
                 if (!drawTile) {
                     newState.status = 'FINISHED';
                     newState.message = "Game drawn (No tiles left).";
                     return newState;
                 }
-                newState.hands[pId].push(drawTile);
+                newState.wall = createSecret(wallArr, [], wallArr.map(() => '?'));
+                const handArr = [...newState.hands[pId].value, drawTile];
+                newState.hands[pId] = createSecret(handArr, [pId], handArr.map(() => '?'));
                 break;
 
             case 'DISCARD':
-                const idx = newState.hands[pId].indexOf(action.tile!);
-                newState.hands[pId].splice(idx, 1);
+                const dHand = [...newState.hands[pId].value];
+                const idx = dHand.indexOf(action.tile!);
+                dHand.splice(idx, 1);
+                newState.hands[pId] = createSecret(dHand, [pId], dHand.map(() => '?'));
                 newState.discards[pId].push(action.tile!);
                 newState.pendingDiscard = {
                     playerId: pId,
@@ -274,9 +280,10 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
                 break;
 
             case 'TSUMO':
-                const winningTile = newState.hands[pId][newState.hands[pId].length - 1];
+                const tsHandV = newState.hands[pId].value;
+                const winningTile = tsHandV[tsHandV.length - 1];
                 const tsResult = MahjongHandEvaluator.evaluate(
-                    newState.hands[pId],
+                    tsHandV,
                     newState.melds[pId],
                     winningTile,
                     true,
@@ -311,18 +318,7 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
         return { isFinished: false };
     },
 
-    maskState: (state: MahjongState, targetPlayerId: string): MahjongState => {
-        const maskedHands: Record<string, Tile[]> = {};
-        for (const [pId, hand] of Object.entries(state.hands)) {
-            maskedHands[pId] = (pId === targetPlayerId) ? hand : hand.map(() => '?');
-        }
-        return {
-            ...state,
-            hands: maskedHands,
-            wall: state.wall.map(() => '?'),
-            deadWall: state.deadWall.map(() => '?')
-        };
-    },
+
 
     getTimeoutAction: (state: MahjongState): MahjongAction | null => {
         if (!state.pendingDiscard || !state.turnDeadline) return null;
@@ -360,7 +356,7 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
         if (MahjongRuleset.isValidAction(state, drawAction)) actions.push(drawAction);
 
         if (state.hands[playerId]) {
-            const uniqueTiles = Array.from(new Set(state.hands[playerId]));
+            const uniqueTiles = Array.from(new Set(state.hands[playerId].value));
             for (const tile of uniqueTiles) {
                 const discardAction: MahjongAction = { type: 'DISCARD', tile, playerId };
                 if (MahjongRuleset.isValidAction(state, discardAction)) actions.push(discardAction);

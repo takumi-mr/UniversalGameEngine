@@ -1,3 +1,4 @@
+import { createSecret, type Secret } from '../GameRules';
 import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
 import type { IGameRNG } from '../utils/IGameRNG';
 
@@ -5,10 +6,10 @@ export type Card = string; // e.g., 'AS', '2H', 'TD', 'KC'
 
 export interface SpeedState extends BaseGameState {
     playerIds: string[];
-    hands: Record<string, Card[]>;
-    personalDecks: Record<string, Card[]>;
+    hands: Record<string, Secret<Card[]>>;
+    personalDecks: Record<string, Secret<Card[]>>;
     centerPiles: [Card, Card];
-    sidePiles: [Card[], Card[]];
+    sidePiles: Secret<[Card[], Card[]]>;
     isStuck: Record<string, boolean>;
 }
 
@@ -65,7 +66,7 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
             hands: {},
             personalDecks: {},
             centerPiles: ['', ''],
-            sidePiles: [[], []],
+            sidePiles: createSecret([[], []] as [Card[], Card[]], [], [['?'], ['?']]),
             isStuck: {},
         };
     },
@@ -83,7 +84,7 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
             if (!card || pileIndex === undefined || pileIndex < 0 || pileIndex > 1) return false;
 
             // Does player have the card?
-            if (!state.hands[pId].includes(card)) return false;
+            if (!state.hands[pId].value.includes(card)) return false;
 
             // Is it sequential to the top card of the pile?
             const topCard = state.centerPiles[pileIndex];
@@ -116,13 +117,16 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
             newState.hands = {};
             newState.personalDecks = {};
             players.forEach((id, idx) => {
-                newState.personalDecks[id] = deck.splice(0, 15);
-                newState.hands[id] = deck.splice(0, 5);
+                const pDeck = deck.splice(0, 15);
+                newState.personalDecks[id] = createSecret(pDeck, [id], pDeck.map(() => '?'));
+                const hDeck = deck.splice(0, 5);
+                newState.hands[id] = createSecret(hDeck, [id], hDeck.map(() => '?'));
                 newState.isStuck[id] = false;
             });
 
             newState.centerPiles = [deck.pop()!, deck.pop()!];
-            newState.sidePiles = [deck.splice(0, 5), deck.splice(0, 5)];
+            const sPiles = [deck.splice(0, 5), deck.splice(0, 5)] as [Card[], Card[]];
+            newState.sidePiles = createSecret(sPiles, [], sPiles.map(p => p.map(() => '?')) as [Card[], Card[]]);
             newState.status = 'PLAYING';
             return newState;
         }
@@ -132,15 +136,20 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
             if (!card || pileIndex === undefined) return state;
 
             // Remove from hand
-            newState.hands[pId] = newState.hands[pId].filter(c => c !== card);
+            const newHand = newState.hands[pId].value.filter(c => c !== card);
+            newState.hands[pId] = createSecret(newHand, [pId], newHand.map(() => '?'));
             
             // Update center pile
             newState.centerPiles[pileIndex] = card;
 
             // Replenish hand from personal deck
-            if (newState.personalDecks[pId].length > 0) {
-                const nextCard = newState.personalDecks[pId].pop()!;
-                newState.hands[pId].push(nextCard);
+            if (newState.personalDecks[pId].value.length > 0) {
+                const pDeck = [...newState.personalDecks[pId].value];
+                const nextCard = pDeck.pop()!;
+                newState.personalDecks[pId] = createSecret(pDeck, [pId], pDeck.map(() => '?'));
+                
+                const newHandPostDraw = [...newState.hands[pId].value, nextCard];
+                newState.hands[pId] = createSecret(newHandPostDraw, [pId], newHandPostDraw.map(() => '?'));
             }
 
             // Once someone plays, nobody is stuck anymore
@@ -153,9 +162,13 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
 
             if (allStuck) {
                 // If both stuck, flip from side piles
-                if (newState.sidePiles[0].length > 0 || newState.sidePiles[1].length > 0) {
-                    if (newState.sidePiles[0].length > 0) newState.centerPiles[0] = newState.sidePiles[0].pop()!;
-                    if (newState.sidePiles[1].length > 0) newState.centerPiles[1] = newState.sidePiles[1].pop()!;
+                const sPiles0 = newState.sidePiles.value[0];
+                const sPiles1 = newState.sidePiles.value[1];
+                if (sPiles0.length > 0 || sPiles1.length > 0) {
+                    const newSPiles = [[...sPiles0], [...sPiles1]] as [Card[], Card[]];
+                    if (newSPiles[0].length > 0) newState.centerPiles[0] = newSPiles[0].pop()!;
+                    if (newSPiles[1].length > 0) newState.centerPiles[1] = newSPiles[1].pop()!;
+                    newState.sidePiles = createSecret(newSPiles, [], newSPiles.map(p => p.map(() => '?')) as [Card[], Card[]]);
                 } else {
                     // Side piles empty? Reshuffle center piles back into side piles?
                     // In real speed, you might reshuffle or end in a draw.
@@ -172,14 +185,14 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
 
     checkWinCondition: (state) => {
         for (const pId of state.playerIds) {
-            if (state.hands[pId].length === 0 && state.personalDecks[pId].length === 0) {
+            if (state.hands[pId].value.length === 0 && state.personalDecks[pId].value.length === 0) {
                 return { isFinished: true, winnerIds: [pId], message: `${pId} wins!` };
             }
         }
         
         // Stuck condition: no side piles left and both stuck
         const allStuck = state.playerIds.length === 2 && state.playerIds.every(id => state.isStuck[id]);
-        const sidePilesEmpty = state.sidePiles.every(p => p.length === 0);
+        const sidePilesEmpty = state.sidePiles.value.every(p => p.length === 0);
         if (allStuck && sidePilesEmpty) {
             return { isFinished: true, winnerIds: [], message: "It's a draw! (No more cards to flip)" };
         }
@@ -191,7 +204,7 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
         if (state.status !== 'PLAYING') return [];
         const actions: SpeedAction[] = [];
 
-        const hand = state.hands[playerId];
+        const hand = state.hands[playerId]?.value;
         if (!hand) return [];
 
         for (const card of hand) {
@@ -205,19 +218,5 @@ export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
 
         actions.push({ type: 'FLIP', playerId });
         return actions;
-    },
-
-    maskState: (state, playerId) => {
-        const masked = structuredClone(state);
-        for (const id of state.playerIds) {
-            if (id !== playerId) {
-                // Hide opponent's hand and personal deck cards (but keep counts)
-                masked.hands[id] = state.hands[id].map(() => '?');
-                masked.personalDecks[id] = state.personalDecks[id].map(() => '?');
-            }
-        }
-        // Hide side piles
-        masked.sidePiles = state.sidePiles.map(p => p.map(() => '?')) as [Card[], Card[]];
-        return masked;
     }
 };

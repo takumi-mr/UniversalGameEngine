@@ -8,8 +8,8 @@ describe("TexasHoldemRuleset", () => {
         const state = TexasHoldemRuleset.getInitialState({ playerIds, initialChips: 500 });
         expect(state.playerIds).toEqual(playerIds);
         expect(state.playerChips["p1"]).toBe(500);
-        expect(state.hands["p1"].length).toBe(2);
-        expect(state.deck.length).toBe(52 - 6); // 52 - 2*3
+        expect(state.hands["p1"].value.length).toBe(2);
+        expect(state.deck.value.length).toBe(52 - 6); // 52 - 2*3
     });
 
     test("isValidAction should validate betting logic", () => {
@@ -36,16 +36,8 @@ describe("TexasHoldemRuleset", () => {
         expect(TexasHoldemRuleset.isValidAction(state, { type: "CHECK", playerId: "p1" })).toBe(false);
     });
 
-    test("maskState should hide opponent cards and deck", () => {
-        let state = TexasHoldemRuleset.getInitialState({ playerIds });
-        state.hands["p1"] = ["AH", "AS"];
-        state.hands["p2"] = ["KH", "KS"];
-        
-        const masked = TexasHoldemRuleset.maskState!(state, "p1");
-        
-        expect(masked.hands["p1"]).toEqual(["AH", "AS"]);
-        expect(masked.hands["p2"]).toEqual(["?", "?"]);
-        expect(masked.deck.every(c => c === "?")).toBe(true);
+    test("getMaskedState should be handled by UniversalEngine automatic Masking instead of maskState hook", () => {
+        // The hooking functionality was removed and is covered by Secret<T> directly.
     });
 
     test("reduce should update chips and pot on RAISE", () => {

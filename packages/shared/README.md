@@ -20,8 +20,6 @@ interface GameRuleset<S, A, R> {
   validateAction(state: S, action: A): boolean;
   applyAction(state: S, action: A): S;
   getLegalActions(state: S, playerIndex: number): A[];
-  // 不完全情報ゲームのための隠匿情報マスク
-  maskState(state: S, playerIndex: number): S;
   // ゲーム完了後の結果取得
   getResult(state: S): R;
 }
