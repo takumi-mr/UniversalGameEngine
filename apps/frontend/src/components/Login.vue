@@ -3,11 +3,19 @@
     <v-main class="bg-grey-darken-4 d-flex align-center justify-center">
       <v-container>
         <v-row justify="center">
-          <v-col cols="12" sm="8" md="6" lg="4">
-            <v-card class="rounded-xl pa-8 elevation-24 bg-surface" border="none">
+          <v-col
+            cols="12"
+            sm="8"
+            md="6"
+            lg="4"
+          >
+            <v-card
+              class="rounded-xl pa-8 elevation-24 bg-surface"
+              border="none"
+            >
               <div class="d-flex justify-end mb-4">
                 <v-menu>
-                  <template v-slot:activator="{ props }">
+                  <template #activator="{ props }">
                     <v-btn
                       v-bind="props"
                       variant="text"
@@ -29,9 +37,15 @@
               </div>
 
               <div class="text-center mb-8">
-                <div class="text-h2 mb-4">🎮</div>
-                <h1 class="text-h4 font-weight-bold mb-2">{{ $t('common.title') }}</h1>
-                <p class="text-body-1 text-medium-emphasis">{{ $t('common.login_desc') }}</p>
+                <div class="text-h2 mb-4">
+                  🎮
+                </div>
+                <h1 class="text-h4 font-weight-bold mb-2">
+                  {{ $t('common.title') }}
+                </h1>
+                <p class="text-body-1 text-medium-emphasis">
+                  {{ $t('common.login_desc') }}
+                </p>
               </div>
 
               <v-form @submit.prevent="handleLogin">
@@ -45,7 +59,7 @@
                   prepend-inner-icon="mdi-account"
                   class="mb-4"
                   color="primary"
-                ></v-text-field>
+                />
 
                 <v-btn
                   block

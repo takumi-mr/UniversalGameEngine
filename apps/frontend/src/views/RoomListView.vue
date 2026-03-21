@@ -1,19 +1,27 @@
 <template>
   <v-app>
     <!-- Top App Bar -->
-    <v-app-bar flat border="none" color="surface">
-      <v-btn icon="mdi-arrow-left" variant="text" @click="back"></v-btn>
+    <v-app-bar
+      flat
+      border="none"
+      color="surface"
+    >
+      <v-btn
+        icon="mdi-arrow-left"
+        variant="text"
+        @click="back"
+      />
       <v-app-bar-title class="font-weight-bold">
         {{ gameEmoji }} {{ translatedGameName }} {{ $t('common.rooms') }}
       </v-app-bar-title>
-      <v-spacer></v-spacer>
+      <v-spacer />
       
       <!-- Theme Switcher -->
       <ThemeSwitcher class="mr-2" />
 
       <!-- Language Switcher -->
       <v-menu>
-        <template v-slot:activator="{ props }">
+        <template #activator="{ props }">
           <v-btn
             v-bind="props"
             variant="text"
@@ -37,7 +45,7 @@
         variant="text"
         class="mr-2"
         @click="showHelp = true"
-      ></v-btn>
+      />
 
       <div class="px-4 text-body-2 text-medium-emphasis">
         {{ $t('common.logged_in_as', { username: authStore.username }) }}
@@ -45,18 +53,29 @@
     </v-app-bar>
 
     <v-main>
-      <v-container class="pa-6" fluid>
+      <v-container
+        class="pa-6"
+        fluid
+      >
         <v-row justify="center">
-          <v-col cols="12" md="10" lg="8">
+          <v-col
+            cols="12"
+            md="10"
+            lg="8"
+          >
             <div class="d-flex align-center mb-8">
               <div>
-                <h1 class="text-h3 font-weight-bold mb-2">{{ translatedGameName }}</h1>
-                <p class="text-body-1 text-medium-emphasis">{{ translatedGameDescription }}</p>
+                <h1 class="text-h3 font-weight-bold mb-2">
+                  {{ translatedGameName }}
+                </h1>
+                <p class="text-body-1 text-medium-emphasis">
+                  {{ translatedGameDescription }}
+                </p>
               </div>
-              <v-spacer></v-spacer>
+              <v-spacer />
               <div class="d-flex gap-2">
                 <v-menu>
-                  <template v-slot:activator="{ props }">
+                  <template #activator="{ props }">
                     <v-btn
                       v-bind="props"
                       color="primary"
@@ -71,21 +90,30 @@
                   </template>
                   <v-list>
                     <v-list-item @click="createNewRoom()">
-                      <template v-slot:prepend>
-                        <v-icon icon="mdi-account-multiple" class="mr-2"></v-icon>
+                      <template #prepend>
+                        <v-icon
+                          icon="mdi-account-multiple"
+                          class="mr-2"
+                        />
                       </template>
                       <v-list-item-title>Play with Human</v-list-item-title>
                     </v-list-item>
                     <v-list-item @click="createNewRoom('random')">
-                      <template v-slot:prepend>
-                        <v-icon icon="mdi-robot-outline" class="mr-2"></v-icon>
+                      <template #prepend>
+                        <v-icon
+                          icon="mdi-robot-outline"
+                          class="mr-2"
+                        />
                       </template>
                       <v-list-item-title>Quick AI Match (Random)</v-list-item-title>
                     </v-list-item>
-                    <v-divider class="my-1"></v-divider>
+                    <v-divider class="my-1" />
                     <v-list-item @click="openCustomSetup()">
-                      <template v-slot:prepend>
-                        <v-icon icon="mdi-cog" class="mr-2"></v-icon>
+                      <template #prepend>
+                        <v-icon
+                          icon="mdi-cog"
+                          class="mr-2"
+                        />
                       </template>
                       <v-list-item-title>Custom Match Setup...</v-list-item-title>
                     </v-list-item>
@@ -97,25 +125,49 @@
                   icon="mdi-refresh"
                   class="rounded-lg ml-2"
                   @click="fetchRooms"
-                ></v-btn>
+                />
               </div>
             </div>
 
-            <v-divider class="mb-8"></v-divider>
+            <v-divider class="mb-8" />
 
-            <div v-if="loading" class="text-center pa-12">
-              <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
-              <div class="mt-4 text-body-1 text-medium-emphasis">{{ $t('common.finding_rooms') }}</div>
+            <div
+              v-if="loading"
+              class="text-center pa-12"
+            >
+              <v-progress-circular
+                indeterminate
+                color="primary"
+                size="64"
+              />
+              <div class="mt-4 text-body-1 text-medium-emphasis">
+                {{ $t('common.finding_rooms') }}
+              </div>
             </div>
 
             <v-row v-else-if="rooms.length > 0">
-              <v-col v-for="room in rooms" :key="room.id" cols="12" sm="6" md="4">
-                <v-card class="room-card rounded-xl pa-4" border="none">
+              <v-col
+                v-for="room in rooms"
+                :key="room.id"
+                cols="12"
+                sm="6"
+                md="4"
+              >
+                <v-card
+                  class="room-card rounded-xl pa-4"
+                  border="none"
+                >
                   <v-card-item>
-                    <template v-slot:prepend>
-                      <v-icon icon="mdi-door-open" color="primary" size="32"></v-icon>
+                    <template #prepend>
+                      <v-icon
+                        icon="mdi-door-open"
+                        color="primary"
+                        size="32"
+                      />
                     </template>
-                    <v-card-title class="text-h6 font-weight-bold mb-1">{{ $t('common.room_no', { id: room.id.slice(0, 4) }) }}</v-card-title>
+                    <v-card-title class="text-h6 font-weight-bold mb-1">
+                      {{ $t('common.room_no', { id: room.id.slice(0, 4) }) }}
+                    </v-card-title>
                     <v-card-subtitle>ID: {{ room.id }}</v-card-subtitle>
                   </v-card-item>
 
@@ -154,10 +206,25 @@
               border="none"
               color="transparent"
             >
-              <v-icon icon="mdi-ghost-off" size="64" color="medium-emphasis" class="mb-4"></v-icon>
-              <h2 class="text-h5 font-weight-bold mb-2">{{ $t('common.no_active_rooms') }}</h2>
-              <p class="text-body-1 text-medium-emphasis mb-6">{{ $t('common.be_the_first') }}</p>
-              <v-btn color="primary" variant="flat" @click="createNewRoom">{{ $t('common.create_first_room') }}</v-btn>
+              <v-icon
+                icon="mdi-ghost-off"
+                size="64"
+                color="medium-emphasis"
+                class="mb-4"
+              />
+              <h2 class="text-h5 font-weight-bold mb-2">
+                {{ $t('common.no_active_rooms') }}
+              </h2>
+              <p class="text-body-1 text-medium-emphasis mb-6">
+                {{ $t('common.be_the_first') }}
+              </p>
+              <v-btn
+                color="primary"
+                variant="flat"
+                @click="createNewRoom"
+              >
+                {{ $t('common.create_first_room') }}
+              </v-btn>
             </v-sheet>
           </v-col>
         </v-row>
@@ -174,7 +241,10 @@
     />
 
     <!-- Join Mode Dialog -->
-    <v-dialog v-model="showJoinDialog" max-width="400">
+    <v-dialog
+      v-model="showJoinDialog"
+      max-width="400"
+    >
       <v-card class="rounded-xl pa-4">
         <v-card-title class="text-h5 font-weight-bold text-center">
           {{ $t('common.join_room') }}
@@ -218,7 +288,11 @@
     </v-dialog>
 
     <!-- Custom Match Setup Dialog -->
-    <v-dialog v-model="showCustomSetup" max-width="560" persistent>
+    <v-dialog
+      v-model="showCustomSetup"
+      max-width="560"
+      persistent
+    >
       <v-card class="rounded-xl pa-4">
         <v-card-title class="text-h5 font-weight-bold text-center">
           ⚙️ Custom Match Setup
@@ -236,26 +310,37 @@
                 variant="tonal"
                 size="small"
                 :disabled="customSlots.length <= customMinPlayers"
-                @click="removeSlot"
                 class="mr-1"
-              ></v-btn>
+                @click="removeSlot"
+              />
               <v-btn
                 icon="mdi-plus"
                 variant="tonal"
                 size="small"
                 :disabled="customSlots.length >= customMaxPlayers"
                 @click="addSlot"
-              ></v-btn>
+              />
             </div>
           </div>
 
-          <v-row v-for="(slot, idx) in customSlots" :key="idx" class="mb-2" align="center">
-            <v-col cols="4" class="py-1">
+          <v-row
+            v-for="(slot, idx) in customSlots"
+            :key="idx"
+            class="mb-2"
+            align="center"
+          >
+            <v-col
+              cols="4"
+              class="py-1"
+            >
               <span class="text-body-2 font-weight-medium">
                 {{ slotTypeIcon(slot) }} Player {{ idx + 1 }}
               </span>
             </v-col>
-            <v-col cols="8" class="py-1">
+            <v-col
+              cols="8"
+              class="py-1"
+            >
               <v-select
                 v-model="customSlots[idx]"
                 :items="playerTypeOptions"
@@ -265,7 +350,7 @@
                 variant="outlined"
                 hide-details
                 class="rounded-lg"
-              ></v-select>
+              />
             </v-col>
           </v-row>
         </v-card-text>

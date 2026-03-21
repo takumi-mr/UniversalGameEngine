@@ -3,26 +3,48 @@
     <!-- Main Game Area -->
     <div class="panel">
       <div class="panel-header">
-        <div class="game-title">{{ gameEmoji }} {{ $t(`games.${gameType}.name`) }}</div>
-        <div class="room-id">🔑 Room: <span>{{ roomId }}</span></div>
-        <div class="status-pill" :class="statusClass">{{ connectionStatus }}</div>
+        <div class="game-title">
+          {{ gameEmoji }} {{ $t(`games.${gameType}.name`) }}
+        </div>
+        <div class="room-id">
+          🔑 Room: <span>{{ roomId }}</span>
+        </div>
+        <div
+          class="status-pill"
+          :class="statusClass"
+        >
+          {{ connectionStatus }}
+        </div>
       </div>
 
-      <div v-if="errorMsg" class="error-banner">⚠️ {{ errorMsg }}</div>
+      <div
+        v-if="errorMsg"
+        class="error-banner"
+      >
+        ⚠️ {{ errorMsg }}
+      </div>
 
       <!-- Specialized Game Component -->
-      <div v-if="gameState" class="game-container">
+      <div
+        v-if="gameState"
+        class="game-container"
+      >
         <!-- Waiting Overlay -->
-        <div v-if="gameState.status === 'WAITING'" class="waiting-overlay">
+        <div
+          v-if="gameState.status === 'WAITING'"
+          class="waiting-overlay"
+        >
           <div class="waiting-content">
-            <div class="loader-ring"></div>
+            <div class="loader-ring" />
             <h3>{{ $t('common.waiting_for_players') }}</h3>
             <p v-if="gameMinPlayers">
               {{ $t('common.min_players_required', { min: gameMinPlayers }) }}
               <br>
               <span class="player-count">{{ currentPlayerCount }} / {{ gameMinPlayers }}</span>
             </p>
-            <div class="waiting-subtext">Game will start automatically when enough players join.</div>
+            <div class="waiting-subtext">
+              Game will start automatically when enough players join.
+            </div>
           </div>
         </div>
 
@@ -36,31 +58,54 @@
         />
         
         <!-- Fallback if no specialized component -->
-        <div v-else-if="!gameComponent && gameState.status !== 'WAITING'" class="state-block">
+        <div
+          v-else-if="!gameComponent && gameState.status !== 'WAITING'"
+          class="state-block"
+        >
           <div class="state-header">
             <span class="tag">Raw Game State</span>
-            <span class="status-badge" :class="gameState.status">{{ gameState.status }}</span>
+            <span
+              class="status-badge"
+              :class="gameState.status"
+            >{{ gameState.status }}</span>
           </div>
-          <div v-if="gameState.activePlayers" class="current-player">
+          <div
+            v-if="gameState.activePlayers"
+            class="current-player"
+          >
             🎯 Active: {{ gameState.activePlayers.join(', ') || '—' }}
           </div>
-          <div v-if="gameState.message" class="game-message">{{ gameState.message }}</div>
+          <div
+            v-if="gameState.message"
+            class="game-message"
+          >
+            {{ gameState.message }}
+          </div>
           <pre class="json-view">{{ prettyState }}</pre>
         </div>
 
         <!-- Your Turn Notification -->
         <Transition name="slide-fade">
-          <div v-if="isMyTurn && gameState.status === 'PLAYING'" class="turn-notification">
+          <div
+            v-if="isMyTurn && gameState.status === 'PLAYING'"
+            class="turn-notification"
+          >
             <div class="turn-content">
-              <v-icon icon="mdi-star" class="turn-icon"></v-icon>
+              <v-icon
+                icon="mdi-star"
+                class="turn-icon"
+              />
               <span>{{ $t('common.your_turn') }}</span>
             </div>
           </div>
         </Transition>
       </div>
 
-      <div v-else class="connecting">
-        <div class="spinner"></div>
+      <div
+        v-else
+        class="connecting"
+      >
+        <div class="spinner" />
         <div>Connecting to game...</div>
       </div>
     </div>
@@ -68,15 +113,36 @@
     <!-- Sidebar -->
     <div class="sidebar">
       <div class="sidebar-panel">
-        <div class="sidebar-title">Controls</div>
-        <button class="back-btn" @click="goBack">← {{ $t('common.back') }}</button>
-        <button class="new-game-btn" @click="createNewGame">🆕 New Game</button>
+        <div class="sidebar-title">
+          Controls
+        </div>
+        <button
+          class="back-btn"
+          @click="goBack"
+        >
+          ← {{ $t('common.back') }}
+        </button>
+        <button
+          class="new-game-btn"
+          @click="createNewGame"
+        >
+          🆕 New Game
+        </button>
       </div>
 
       <!-- プレイヤーリスト -->
-      <div v-if="gameState?.players" class="sidebar-panel">
-        <div class="sidebar-title">Players</div>
-        <div v-for="[role, id] in playerEntries" :key="role" class="player-row">
+      <div
+        v-if="gameState?.players"
+        class="sidebar-panel"
+      >
+        <div class="sidebar-title">
+          Players
+        </div>
+        <div
+          v-for="[role, id] in playerEntries"
+          :key="role"
+          class="player-row"
+        >
           <span class="player-role">{{ role }}</span>
           <span class="player-id">{{ id ?? 'waiting...' }}</span>
         </div>
@@ -84,7 +150,9 @@
 
       <!-- デバッグ情報 -->
       <div class="sidebar-panel debug-panel">
-        <div class="sidebar-title">Debug</div>
+        <div class="sidebar-title">
+          Debug
+        </div>
         <details class="json-details">
           <summary>📋 Raw State</summary>
           <pre class="json-view-mini">{{ prettyState }}</pre>
@@ -111,7 +179,7 @@
       class="rounded-lg"
     >
       {{ snackbarMsg }}
-      <template v-slot:actions>
+      <template #actions>
         <v-btn
           variant="text"
           @click="showSnackbar = false"
@@ -280,7 +348,7 @@ async function createNewGame() {
     connectionStatus.value = 'Creating...';
     const id = await client.createGame({ type: props.gameType.toUpperCase().replace('-', '_') });
     router.push(`/game/${props.gameType}/${id}`);
-  } catch (e) {
+  } catch {
     errorMsg.value = 'Failed to create game';
     connectionStatus.value = 'Error';
   }

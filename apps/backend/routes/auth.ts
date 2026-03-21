@@ -7,7 +7,7 @@ const router = Router();
 // モックユーザーのログインエンドポイント
 // 実際のシステムではDBから検証する
 router.post('/login', (req, res) => {
-    const { username, password } = req.body;
+    const { username, _password } = req.body;
 
     // 簡易的な検証: パスワードは問わず、適当なユーザーIDとしてトークンを発行
     if (username) {

@@ -11,19 +11,38 @@
           'has-won': state.ranks.includes(opponent.id)
         }"
       >
-        <div class="op-avatar">👤</div>
-        <div class="op-info">
-          <div class="op-name">{{ opponent.id }}</div>
-          <div class="op-cards">残り: {{ opponent.cardCount }}枚</div>
+        <div class="op-avatar">
+          👤
         </div>
-        <div v-if="state.passedPlayers.includes(opponent.id)" class="badge pass">PASS</div>
-        <div v-if="state.ranks.includes(opponent.id)" class="badge won">あがり</div>
+        <div class="op-info">
+          <div class="op-name">
+            {{ opponent.id }}
+          </div>
+          <div class="op-cards">
+            残り: {{ opponent.cardCount }}枚
+          </div>
+        </div>
+        <div
+          v-if="state.passedPlayers.includes(opponent.id)"
+          class="badge pass"
+        >
+          PASS
+        </div>
+        <div
+          v-if="state.ranks.includes(opponent.id)"
+          class="badge won"
+        >
+          あがり
+        </div>
       </div>
     </div>
 
     <div class="table-area">
       <div class="table-center">
-        <div v-if="state.tableCards.length === 0" class="empty-table-msg">
+        <div
+          v-if="state.tableCards.length === 0"
+          class="empty-table-msg"
+        >
           カードを出してください<br>(あなたが親です)
         </div>
         
@@ -34,26 +53,50 @@
             class="playing-card table-card"
             :style="getCardStyle(card, index, state.tableCards.length)"
           >
-            <CardFace :cardStr="card" />
+            <CardFace :card-str="card" />
           </div>
         </div>
 
-        <div v-if="state.lastPlayedPlayerId" class="last-played-by">
+        <div
+          v-if="state.lastPlayedPlayerId"
+          class="last-played-by"
+        >
           👉 出した人: {{ state.lastPlayedPlayerId }}
         </div>
       </div>
     </div>
 
-    <div class="my-area" :class="{ 'is-my-turn': isMyTurn }">
+    <div
+      class="my-area"
+      :class="{ 'is-my-turn': isMyTurn }"
+    >
       <div class="action-bar">
-        <div class="turn-indicator" v-if="isMyTurn">🌟 あなたのターンです！</div>
-        <div class="turn-indicator waiting" v-else>相手のターンを待っています...</div>
+        <div
+          v-if="isMyTurn"
+          class="turn-indicator"
+        >
+          🌟 あなたのターンです！
+        </div>
+        <div
+          v-else
+          class="turn-indicator waiting"
+        >
+          相手のターンを待っています...
+        </div>
 
         <div class="buttons">
-          <button class="btn btn-pass" @click="passTurn" :disabled="!isMyTurn">
+          <button
+            class="btn btn-pass"
+            :disabled="!isMyTurn"
+            @click="passTurn"
+          >
             パス
           </button>
-          <button class="btn btn-play" @click="playCards" :disabled="!canPlay">
+          <button
+            class="btn btn-play"
+            :disabled="!canPlay"
+            @click="playCards"
+          >
             出す ({{ selectedCards.size }}枚)
           </button>
         </div>
@@ -67,16 +110,23 @@
           :class="{ 'is-selected': selectedCards.has(card) }"
           @click="toggleCard(card)"
         >
-          <CardFace :cardStr="card" />
+          <CardFace :card-str="card" />
         </div>
       </div>
     </div>
 
-    <div v-if="state.status === 'FINISHED'" class="result-overlay">
+    <div
+      v-if="state.status === 'FINISHED'"
+      class="result-overlay"
+    >
       <div class="result-modal">
         <h2>🎉 ゲーム終了 🎉</h2>
         <div class="rank-list">
-          <div v-for="(pid, index) in state.ranks" :key="pid" class="rank-item">
+          <div
+            v-for="(pid, index) in state.ranks"
+            :key="pid"
+            class="rank-item"
+          >
             <span class="rank-medal">{{ getMedal(index) }}</span>
             <span class="rank-role">{{ getRoleName(index, state.playerIds.length) }}</span>
             <span class="rank-name">{{ pid }}</span>

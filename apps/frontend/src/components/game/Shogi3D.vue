@@ -1,11 +1,20 @@
 <template>
-  <div class="shogi-3d-container" v-if="state">
+  <div
+    v-if="state"
+    class="shogi-3d-container"
+  >
     <div class="shogi-ui-overlay">
-      <div v-if="state.message" class="status-msg">
+      <div
+        v-if="state.message"
+        class="status-msg"
+      >
         {{ state.message }}
       </div>
 
-      <div class="turn-indicator" v-if="state.status === 'PLAYING'">
+      <div
+        v-if="state.status === 'PLAYING'"
+        class="turn-indicator"
+      >
         Turn:
         <span :class="state.turn === 1 ? 'color-sente' : 'color-gote'">
           {{ state.turn === 1 ? "Sente (先手)" : "Gote (後手)" }}
@@ -14,44 +23,75 @@
 
       <div class="hands-board">
         <div class="hand-section gote">
-          <div class="hand-label">Gote (後手)</div>
+          <div class="hand-label">
+            Gote (後手)
+          </div>
           <div class="hand-pieces">
-            <template v-for="(count, piece) in state.hands['-1']" :key="piece">
-              <div v-if="count > 0" 
-                   class="hand-piece-item" 
-                   :class="{ selected: selectedHandPiece?.piece === parseInt(piece) && selectedHandPiece?.owner === -1 }"
-                   @click="selectHandPiece(parseInt(piece), -1)">
-                {{ PIECE_NAMES[parseInt(piece)] }}<span class="count" v-if="count > 1">{{ count }}</span>
+            <template
+              v-for="(count, piece) in state.hands['-1']"
+              :key="piece"
+            >
+              <div
+                v-if="count > 0" 
+                class="hand-piece-item" 
+                :class="{ selected: selectedHandPiece?.piece === parseInt(piece) && selectedHandPiece?.owner === -1 }"
+                @click="selectHandPiece(parseInt(piece), -1)"
+              >
+                {{ PIECE_NAMES[parseInt(piece)] }}<span
+                  v-if="count > 1"
+                  class="count"
+                >{{ count }}</span>
               </div>
             </template>
           </div>
         </div>
 
         <div class="hand-section sente">
-          <div class="hand-label">Sente (先手)</div>
+          <div class="hand-label">
+            Sente (先手)
+          </div>
           <div class="hand-pieces">
-            <template v-for="(count, piece) in state.hands['1']" :key="piece">
-              <div v-if="count > 0" 
-                   class="hand-piece-item" 
-                   :class="{ selected: selectedHandPiece?.piece === parseInt(piece) && selectedHandPiece?.owner === 1 }"
-                   @click="selectHandPiece(parseInt(piece), 1)">
-                {{ PIECE_NAMES[parseInt(piece)] }}<span class="count" v-if="count > 1">{{ count }}</span>
+            <template
+              v-for="(count, piece) in state.hands['1']"
+              :key="piece"
+            >
+              <div
+                v-if="count > 0" 
+                class="hand-piece-item" 
+                :class="{ selected: selectedHandPiece?.piece === parseInt(piece) && selectedHandPiece?.owner === 1 }"
+                @click="selectHandPiece(parseInt(piece), 1)"
+              >
+                {{ PIECE_NAMES[parseInt(piece)] }}<span
+                  v-if="count > 1"
+                  class="count"
+                >{{ count }}</span>
               </div>
             </template>
           </div>
         </div>
       </div>
 
-      <div v-if="showPromoteDialog" class="promote-dialog">
+      <div
+        v-if="showPromoteDialog"
+        class="promote-dialog"
+      >
         <p>成りますか？</p>
         <div class="dialog-buttons">
-          <button @click="confirmMove(true)">成る</button>
-          <button @click="confirmMove(false)">成らない</button>
+          <button @click="confirmMove(true)">
+            成る
+          </button>
+          <button @click="confirmMove(false)">
+            成らない
+          </button>
         </div>
       </div>
     </div>
 
-    <div ref="canvasContainer" class="canvas-layer" @click="handleCanvasClick"></div>
+    <div
+      ref="canvasContainer"
+      class="canvas-layer"
+      @click="handleCanvasClick"
+    />
   </div>
 </template>
 
@@ -139,7 +179,7 @@ const selectHandPiece = (piece: number, owner: number) => {
   }
 };
 
-const handleCanvasClick = (event: MouseEvent) => {
+const handleCanvasClick = (_event: MouseEvent) => {
   // If a hand piece is selected, we might want to "drop" it on the board.
   // Shogi3DUI currently handles board-to-board moves.
   // To handle drops:

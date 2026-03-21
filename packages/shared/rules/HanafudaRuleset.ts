@@ -194,7 +194,7 @@ export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
         return actions;
     },
 
-    reduce: (state, action, rng?: IGameRNG) => {
+    reduce: (state, action, _rng?: IGameRNG) => {
         const newState = structuredClone(state);
         const pId = action.playerId!;
 
@@ -223,22 +223,24 @@ export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
         };
 
         switch (newState.phase) {
-            case 'PLAY_HAND':
+            case 'PLAY_HAND': {
                 const newHand = newState.hands[pId].value.filter(c => c !== action.card);
                 newState.hands[pId] = createSecret(newHand, [pId], newHand.map(() => '?'));
                 // 変更点: 戻り値を受け取って明示的に代入する
                 newState.phase = handleCardMatch(action.card!, 'DRAW_DECK', 'CHOOSE_HAND_MATCH');
                 break;
+            }
 
-            case 'CHOOSE_HAND_MATCH':
+            case 'CHOOSE_HAND_MATCH': {
                 newState.captured[pId].push(newState.pendingCard!, action.card!);
                 newState.field = newState.field.filter(c => c !== action.card);
                 newState.pendingCard = undefined;
                 newState.matchingOptions = undefined;
                 newState.phase = 'DRAW_DECK';
                 break;
+            }
 
-            case 'DRAW_DECK':
+            case 'DRAW_DECK': {
                 if (newState.deck.value.length === 0) {
                     return proceedToNextTurnOrYakuCheck(newState, pId);
                 }
@@ -253,15 +255,17 @@ export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
                     return proceedToNextTurnOrYakuCheck(newState, pId);
                 }
                 break;
+            }
 
-            case 'CHOOSE_DECK_MATCH':
+            case 'CHOOSE_DECK_MATCH': {
                 newState.captured[pId].push(newState.pendingCard!, action.card!);
                 newState.field = newState.field.filter(c => c !== action.card);
                 newState.pendingCard = undefined;
                 newState.matchingOptions = undefined;
                 return proceedToNextTurnOrYakuCheck(newState, pId);
+            }
 
-            case 'KOIKOI_OR_STOP':
+            case 'KOIKOI_OR_STOP': {
                 if (action.type === 'STOP') {
                     newState.status = 'FINISHED';
                     const score = newState.yakuScores[pId];
@@ -274,6 +278,7 @@ export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
                     newState.activePlayers = [newState.playerIds[newState.turnIndex]];
                 }
                 break;
+            }
         }
 
         return newState;
@@ -293,4 +298,4 @@ export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
         return { isFinished: false };
     }
 };
-
+

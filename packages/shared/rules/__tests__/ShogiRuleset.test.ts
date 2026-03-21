@@ -1,4 +1,4 @@
-import { expect, test, describe, beforeEach } from "bun:test";
+import { expect, test, describe } from "bun:test";
 import { ShogiRuleset } from "../ShogiRuleset";
 
 describe("ShogiRuleset", () => {
@@ -12,7 +12,7 @@ describe("ShogiRuleset", () => {
     });
 
     test("isValidAction should validate basic moves", () => {
-        let state = ShogiRuleset.getInitialState();
+        const state = ShogiRuleset.getInitialState();
         state.status = "PLAYING";
         state.players = { 1: "p1", "-1": "p2" };
 
@@ -28,9 +28,9 @@ describe("ShogiRuleset", () => {
     });
 
     test("reduce should handle captures and turns", () => {
-        let state = ShogiRuleset.getInitialState();
+        const state = ShogiRuleset.getInitialState();
         state.status = "PLAYING";
-        
+
         // Move FU (6,6) to (6,5)
         let nextState = ShogiRuleset.reduce(state, { type: "MOVE", from: 60, to: 51 });
         expect(nextState.board[60]).toBe(0);
@@ -41,7 +41,7 @@ describe("ShogiRuleset", () => {
         state.turn = -1; // Gote's turn
         state.board[19] = -1; // Gote FU at (1,2)
         state.board[20] = 1; // Sente FU at (2,2)
-        
+
         // Gote FU at index 19 takes Sente FU at index 20
         nextState = ShogiRuleset.reduce(state, { type: "MOVE", from: 19, to: 20 });
         expect(nextState.hands[-1][1]).toBe(1); // Gote has 1 FU in hand
@@ -50,7 +50,7 @@ describe("ShogiRuleset", () => {
     });
 
     test("DROP should work correctly", () => {
-        let state = ShogiRuleset.getInitialState();
+        const state = ShogiRuleset.getInitialState();
         state.status = "PLAYING";
         state.hands[1][1] = 1; // Sente has 1 FU
 
@@ -61,7 +61,7 @@ describe("ShogiRuleset", () => {
     });
 
     test("Nifu (Double Pawn) should be invalid", () => {
-        let state = ShogiRuleset.getInitialState();
+        const state = ShogiRuleset.getInitialState();
         state.status = "PLAYING";
         state.hands[1][1] = 1;
         // There's already a FU at (0,6) -> index 54. Let's try to drop at (0,4) -> index 36

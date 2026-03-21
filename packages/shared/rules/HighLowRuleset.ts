@@ -1,5 +1,5 @@
 // packages/shared/rules/HighLowRuleset.ts
-import type { GameRuleset, BaseGameState, BaseGameAction } from '../GameRules';
+import type { GameRuleset, BaseGameState } from '../GameRules';
 import type { IGameRNG } from '../utils/IGameRNG';
 
 // --- 1. ドメイン（トランプ特有）の型定義 ---
@@ -22,7 +22,7 @@ export interface HighLowState extends BaseGameState {
     round: number;                        // 現在のラウンド数
 }
 
-export type HighLowAction = 
+export type HighLowAction =
     | { type: 'GUESS', choice: 'HIGH' | 'LOW', playerId?: string }
     | { type: 'START', playerId?: string };
 
@@ -53,7 +53,7 @@ const getRankLabel = (rank: number) => {
 
 // --- 4. ルールセット本体 ---
 export const HighLowRuleset: GameRuleset<HighLowState, HighLowAction> = {
-    getInitialState: (options?: any, rng?: IGameRNG) => {
+    getInitialState: (_options?: any, _rng?: IGameRNG) => {
         return {
             status: 'WAITING',
             message: 'Waiting for players...',
@@ -75,7 +75,7 @@ export const HighLowRuleset: GameRuleset<HighLowState, HighLowAction> = {
 
         if (state.status !== 'PLAYING') return false;
         if (action.type !== 'GUESS') return false;
-        
+
         // ターンプレイヤーチェック
         const turn = state.currentTurn;
         if (state.players && state.players[turn] && state.players[turn] !== action.playerId) {
@@ -110,7 +110,7 @@ export const HighLowRuleset: GameRuleset<HighLowState, HighLowAction> = {
 
         const resultCard = newState.deck.pop()!;
         const baseCard = state.baseCard!;
-        
+
         newState.lastGuess = action.choice;
         newState.lastResultCard = resultCard;
 
@@ -135,7 +135,7 @@ export const HighLowRuleset: GameRuleset<HighLowState, HighLowAction> = {
         newState.round++;
         const nextTurn = (state.currentTurn === 1 ? 2 : 1) as PlayerId;
         newState.currentTurn = nextTurn;
-        
+
         // 手番プレイヤーのIDを設定（AIの自動実行に必要）
         const nextPlayerId = newState.players ? (newState.players[nextTurn] || newState.players[nextTurn.toString() as any]) : null;
         newState.activePlayers = nextPlayerId ? [nextPlayerId] : [];

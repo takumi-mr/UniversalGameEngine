@@ -50,12 +50,12 @@ export const WordleRuleset: GameRuleset<WordleState, WordleAction> = {
 
     isValidAction: (state, action) => {
         if (action.type === 'START') return true;
-        
+
         if (state.status !== 'PLAYING') return false;
         if (action.type !== 'GUESS') return false;
 
         if (!action.word || action.word.length !== 5) return false;
-        
+
         // 手番プレイヤーチェック
         if (state.players) {
             const currentPlayerId = state.players[1];
@@ -69,7 +69,7 @@ export const WordleRuleset: GameRuleset<WordleState, WordleAction> = {
         return true;
     },
 
-    reduce: (state, action, rng?: IGameRNG) => {
+    reduce: (state, action, _rng?: IGameRNG) => {
         if (action.type === 'START') {
             const newState = WordleRuleset.getInitialState();
             newState.status = 'PLAYING';
@@ -84,14 +84,15 @@ export const WordleRuleset: GameRuleset<WordleState, WordleAction> = {
         const newState = structuredClone(state);
 
         switch (action.type) {
-            case 'GUESS':
+            case 'GUESS': {
                 if (!action.word) break;
-                
+
                 const guess = action.word.toUpperCase();
                 newState.guesses.push(guess);
                 newState.currentRow++;
 
                 break;
+            }
         }
 
         return newState;

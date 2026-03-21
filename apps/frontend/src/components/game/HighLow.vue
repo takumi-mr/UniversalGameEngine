@@ -1,30 +1,58 @@
 <template>
   <div class="highlow-view">
     <div class="header-board">
-      <div class="round-badge">Round {{ state.round }}</div>
-      <div class="status-msg" :class="{ 'is-finished': state.status === 'FINISHED' }">
+      <div class="round-badge">
+        Round {{ state.round }}
+      </div>
+      <div
+        class="status-msg"
+        :class="{ 'is-finished': state.status === 'FINISHED' }"
+      >
         {{ state.message }}
       </div>
     </div>
 
     <div class="table-area">
       <!-- Player 2 (Top) -->
-      <div class="player-zone player2-zone" :class="{ 'active-turn': state.currentTurn === 2 }">
+      <div
+        class="player-zone player2-zone"
+        :class="{ 'active-turn': state.currentTurn === 2 }"
+      >
         <div class="player-info">
-          <div class="avatar">👤</div>
-          <div class="name">Player 2 {{ state.players?.['2'] ? `(${state.players['2']})` : '' }}</div>
-          <div class="score">Score: <span>{{ state.scores[2] }}</span></div>
+          <div class="avatar">
+            👤
+          </div>
+          <div class="name">
+            Player 2 {{ state.players?.['2'] ? `(${state.players['2']})` : '' }}
+          </div>
+          <div class="score">
+            Score: <span>{{ state.scores[2] }}</span>
+          </div>
         </div>
         
-        <div v-if="state.status === 'PLAYING' && state.currentTurn === 2" class="guess-controls">
-          <button class="guess-btn high" :disabled="!isMyTurn(2)" @click="makeGuess('HIGH')">
+        <div
+          v-if="state.status === 'PLAYING' && state.currentTurn === 2"
+          class="guess-controls"
+        >
+          <button
+            class="guess-btn high"
+            :disabled="!isMyTurn(2)"
+            @click="makeGuess('HIGH')"
+          >
             <span class="icon">▲</span> HIGH
           </button>
-          <button class="guess-btn low" :disabled="!isMyTurn(2)" @click="makeGuess('LOW')">
+          <button
+            class="guess-btn low"
+            :disabled="!isMyTurn(2)"
+            @click="makeGuess('LOW')"
+          >
             <span class="icon">▼</span> LOW
           </button>
         </div>
-        <div v-else class="status-placeholder">
+        <div
+          v-else
+          class="status-placeholder"
+        >
           {{ state.currentTurn === 2 ? 'Thinking...' : 'Waiting...' }}
         </div>
       </div>
@@ -32,62 +60,122 @@
       <!-- Center Board -->
       <div class="center-zone">
         <div class="card-display">
-          <div class="card-label">BASE CARD</div>
+          <div class="card-label">
+            BASE CARD
+          </div>
           <div class="card-slot">
-            <div v-if="state.baseCard" class="playing-card face-up">
-              <div class="card-inner" :class="{ 'is-red': state.baseCard.suit === '♥' || state.baseCard.suit === '♦' }">
+            <div
+              v-if="state.baseCard"
+              class="playing-card face-up"
+            >
+              <div
+                class="card-inner"
+                :class="{ 'is-red': state.baseCard.suit === '♥' || state.baseCard.suit === '♦' }"
+              >
                 <div class="top-left">
-                  <div class="rank">{{ getRankLabel(state.baseCard.rank) }}</div>
-                  <div class="suit">{{ state.baseCard.suit }}</div>
+                  <div class="rank">
+                    {{ getRankLabel(state.baseCard.rank) }}
+                  </div>
+                  <div class="suit">
+                    {{ state.baseCard.suit }}
+                  </div>
                 </div>
-                <div class="center-suit">{{ state.baseCard.suit }}</div>
+                <div class="center-suit">
+                  {{ state.baseCard.suit }}
+                </div>
               </div>
             </div>
-            <div v-else class="playing-card empty-slot"></div>
+            <div
+              v-else
+              class="playing-card empty-slot"
+            />
           </div>
         </div>
 
         <div class="vs-divider">
           <div class="deck-container">
-            <div class="deck-count">{{ state.deck.length }}</div>
-            <div class="deck-visual" :class="{ 'is-empty': state.deck.length === 0 }"></div>
+            <div class="deck-count">
+              {{ state.deck.length }}
+            </div>
+            <div
+              class="deck-visual"
+              :class="{ 'is-empty': state.deck.length === 0 }"
+            />
           </div>
         </div>
 
         <div class="card-display result">
-          <div class="card-label">RESULT</div>
+          <div class="card-label">
+            RESULT
+          </div>
           <div class="card-slot">
-            <div v-if="state.lastResultCard" class="playing-card face-up result-anim">
-              <div class="card-inner" :class="{ 'is-red': state.lastResultCard.suit === '♥' || state.lastResultCard.suit === '♦' }">
+            <div
+              v-if="state.lastResultCard"
+              class="playing-card face-up result-anim"
+            >
+              <div
+                class="card-inner"
+                :class="{ 'is-red': state.lastResultCard.suit === '♥' || state.lastResultCard.suit === '♦' }"
+              >
                 <div class="top-left">
-                  <div class="rank">{{ getRankLabel(state.lastResultCard.rank) }}</div>
-                  <div class="suit">{{ state.lastResultCard.suit }}</div>
+                  <div class="rank">
+                    {{ getRankLabel(state.lastResultCard.rank) }}
+                  </div>
+                  <div class="suit">
+                    {{ state.lastResultCard.suit }}
+                  </div>
                 </div>
-                <div class="center-suit">{{ state.lastResultCard.suit }}</div>
+                <div class="center-suit">
+                  {{ state.lastResultCard.suit }}
+                </div>
               </div>
             </div>
-            <div v-else class="playing-card empty-slot"></div>
+            <div
+              v-else
+              class="playing-card empty-slot"
+            />
           </div>
         </div>
       </div>
 
       <!-- Player 1 (Bottom) -->
-      <div class="player-zone player1-zone" :class="{ 'active-turn': state.currentTurn === 1 }">
-        <div v-if="state.status === 'PLAYING' && state.currentTurn === 1" class="guess-controls">
-          <button class="guess-btn high" :disabled="!isMyTurn(1)" @click="makeGuess('HIGH')">
+      <div
+        class="player-zone player1-zone"
+        :class="{ 'active-turn': state.currentTurn === 1 }"
+      >
+        <div
+          v-if="state.status === 'PLAYING' && state.currentTurn === 1"
+          class="guess-controls"
+        >
+          <button
+            class="guess-btn high"
+            :disabled="!isMyTurn(1)"
+            @click="makeGuess('HIGH')"
+          >
             <span class="icon">▲</span> HIGH
           </button>
-          <button class="guess-btn low" :disabled="!isMyTurn(1)" @click="makeGuess('LOW')">
+          <button
+            class="guess-btn low"
+            :disabled="!isMyTurn(1)"
+            @click="makeGuess('LOW')"
+          >
             <span class="icon">▼</span> LOW
           </button>
         </div>
-        <div v-else class="status-placeholder">
+        <div
+          v-else
+          class="status-placeholder"
+        >
           {{ state.currentTurn === 1 ? 'Thinking...' : 'Waiting...' }}
         </div>
 
         <div class="player-info">
-          <div class="name">Player 1 {{ state.players?.['1'] ? `(${state.players['1']})` : '' }}</div>
-          <div class="score">Score: <span>{{ state.scores[1] }}</span></div>
+          <div class="name">
+            Player 1 {{ state.players?.['1'] ? `(${state.players['1']})` : '' }}
+          </div>
+          <div class="score">
+            Score: <span>{{ state.scores[1] }}</span>
+          </div>
         </div>
       </div>
     </div>

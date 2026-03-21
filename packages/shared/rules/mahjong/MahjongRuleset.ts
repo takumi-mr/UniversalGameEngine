@@ -66,7 +66,7 @@ function createWall(rng?: IGameRNG): Tile[] {
 }
 
 export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
-    getInitialState: (options: any, rng?: IGameRNG): MahjongState => {
+    getInitialState: (options: any, _rng?: IGameRNG): MahjongState => {
         const opts = options || {};
         const playerIds = (opts.playerIds || []).filter((id: any) => !!id);
 
@@ -120,21 +120,26 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
         if (!state.activePlayers || !state.activePlayers.includes(pId)) return false;
 
         switch (action.type) {
-            case 'DRAW':
+            case 'DRAW': {
                 // 山から引くフェーズかチェック
                 const hand = state.hands[pId]?.value || [];
                 return hand.length === 13;
-            case 'DISCARD':
+            }
+            case 'DISCARD': {
                 if (!action.tile) return false;
                 const h = state.hands[pId]?.value || [];
                 return h.includes(action.tile) && h.length === 14;
-            case 'TSUMO':
+            }
+            case 'TSUMO': {
                 const tsHand = state.hands[pId]?.value || [];
                 return tsHand.length === 14;
-            case 'CALL': // 暗槓や加槓
-                return true; 
-            default:
+            }
+            case 'CALL': {
+                return true;
+            }
+            default: {
                 return false;
+            }
         }
     },
 
@@ -209,7 +214,7 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
 
                 if (rons.length > 0) {
                     newState.status = 'FINISHED';
-                    let messages: string[] = [];
+                    const messages: string[] = [];
                     for (const ronAction of rons) {
                         const winnerId = ronAction.playerId;
                         const handWithWinTile = [...newState.hands[winnerId].value, tile];
@@ -251,7 +256,7 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
         }
 
         switch (action.type) {
-            case 'DRAW':
+            case 'DRAW': {
                 const wallArr = [...newState.wall.value];
                 const drawTile = wallArr.pop();
                 if (!drawTile) {
@@ -263,8 +268,8 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
                 const handArr = [...newState.hands[pId].value, drawTile];
                 newState.hands[pId] = createSecret(handArr, [pId], handArr.map(() => '?'));
                 break;
-
-            case 'DISCARD':
+            }
+            case 'DISCARD': {
                 const dHand = [...newState.hands[pId].value];
                 const idx = dHand.indexOf(action.tile!);
                 dHand.splice(idx, 1);
@@ -276,10 +281,10 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
                     pendingActions: []
                 };
                 newState.activePlayers = newState.playerIds.filter(id => id !== pId);
-                newState.turnDeadline = Date.now() + 10000; 
+                newState.turnDeadline = Date.now() + 10000;
                 break;
-
-            case 'TSUMO':
+            }
+            case 'TSUMO': {
                 const tsHandV = newState.hands[pId].value;
                 const winningTile = tsHandV[tsHandV.length - 1];
                 const tsResult = MahjongHandEvaluator.evaluate(
@@ -301,6 +306,7 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
                     newState.message = `Player ${pId} claimed TSUMO, but hand is invalid.`;
                 }
                 break;
+            }
         }
         return newState;
     },

@@ -105,10 +105,12 @@ export class OthelloUI {
         // 3. グリッド線
         const gridHelper = new THREE.GridHelper(8, 8, 0x000000, 0x000000);
         gridHelper.position.y = 0.01;
-        // @ts-ignore (透明度の設定)
-        gridHelper.material.transparent = true;
-        // @ts-ignore
-        gridHelper.material.opacity = 0.3;
+
+        // 型を明示してあげることで ts-ignore 自体を消し去る
+        const material = gridHelper.material as THREE.Material;
+        material.transparent = true;
+        material.opacity = 0.3;
+
         this.scene.add(gridHelper);
 
         // 4. 当たり判定（レイキャスト用）とハイライト用の見えないマス

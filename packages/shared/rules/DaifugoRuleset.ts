@@ -53,7 +53,7 @@ function evaluatePlay(cards: Card[]): { size: number, strength: number } | null 
     // 複数枚出し（ペア、スリーカード等）。ローカルルールなしなので、階段（シークエンス）は非対応とする。
     // ジョーカーをワイルドカードとして扱う判定
     const nonJokers = strengths.filter(s => s !== 16);
-    const jokersCount = strengths.length - nonJokers.length;
+    const _jokersCount = strengths.length - nonJokers.length;
 
     // ジョーカー以外がすべて同じランク（強さ）であれば有効
     const isSameRank = nonJokers.every(s => s === nonJokers[0]);
@@ -164,7 +164,7 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
         return false;
     },
 
-    reduce: (state, action, rng?: IGameRNG) => {
+    reduce: (state, action, _rng?: IGameRNG) => {
         const newState = structuredClone(state); // イミュータブルな更新
         const pId = action.playerId!;
 
@@ -264,7 +264,7 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
         return { isFinished: false };
     },
 
-    applyWinResult: (state, winResult) => {
+    applyWinResult: (state, _winResult) => {
         const newState = structuredClone(state);
         newState.status = 'FINISHED';
         newState.activePlayers = [];

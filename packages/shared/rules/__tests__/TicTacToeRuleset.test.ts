@@ -1,4 +1,4 @@
-import { expect, test, describe, beforeEach } from "bun:test";
+import { expect, test, describe } from "bun:test";
 import { TicTacToeRuleset } from "../TicTacToeRuleset";
 
 describe("TicTacToeRuleset", () => {
@@ -10,7 +10,7 @@ describe("TicTacToeRuleset", () => {
     });
 
     test("isValidAction should validate correctly", () => {
-        let state = TicTacToeRuleset.getInitialState();
+        const state = TicTacToeRuleset.getInitialState();
         state.status = "PLAYING";
         state.players = { 1: "p1", "-1": "p2" };
 
@@ -29,7 +29,7 @@ describe("TicTacToeRuleset", () => {
     });
 
     test("reduce should update board and turn", () => {
-        let state = TicTacToeRuleset.getInitialState();
+        const state = TicTacToeRuleset.getInitialState();
         state.status = "PLAYING";
         state.players = { 1: "p1", "-1": "p2" };
 
@@ -41,7 +41,7 @@ describe("TicTacToeRuleset", () => {
 
     test("checkWinCondition should detect wins and draws", () => {
         // Horizontal win
-        let state = TicTacToeRuleset.getInitialState();
+        const state = TicTacToeRuleset.getInitialState();
         state.board = [1, 1, 1, 0, 0, 0, 0, 0, 0];
         expect(TicTacToeRuleset.checkWinCondition(state)).toEqual({ isFinished: true, message: "O Wins", winnerIds: ["1"] });
 
@@ -67,7 +67,7 @@ describe("TicTacToeRuleset", () => {
     });
 
     test("getLegalActions should return all empty spots", () => {
-        let state = TicTacToeRuleset.getInitialState();
+        const state = TicTacToeRuleset.getInitialState();
         state.status = "PLAYING";
         state.players = { 1: "p1", "-1": "p2" };
         state.board = [1, -1, 1, 0, 0, 0, 0, 0, 0];

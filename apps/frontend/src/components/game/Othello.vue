@@ -2,28 +2,51 @@
   <div class="othello-container">
     <div class="game-wrapper">
       <div class="side-info">
-        <div class="score-card black" :class="{ active: state.currentTurn === 1 }">
-          <div class="avatar">⚫</div>
+        <div
+          class="score-card black"
+          :class="{ active: state.currentTurn === 1 }"
+        >
+          <div class="avatar">
+            ⚫
+          </div>
           <div class="details">
-            <div class="label">Black</div>
-            <div class="score">{{ state.scores[1] }}</div>
+            <div class="label">
+              Black
+            </div>
+            <div class="score">
+              {{ state.scores[1] }}
+            </div>
           </div>
         </div>
         
         <div class="status-center">
-          <div class="turn-msg">{{ state.message }}</div>
+          <div class="turn-msg">
+            {{ state.message }}
+          </div>
         </div>
 
-        <div class="score-card white" :class="{ active: state.currentTurn === -1 }">
-          <div class="avatar">⚪</div>
+        <div
+          class="score-card white"
+          :class="{ active: state.currentTurn === -1 }"
+        >
+          <div class="avatar">
+            ⚪
+          </div>
           <div class="details">
-            <div class="label">White</div>
-            <div class="score">{{ state.scores[-1] }}</div>
+            <div class="label">
+              White
+            </div>
+            <div class="score">
+              {{ state.scores[-1] }}
+            </div>
           </div>
         </div>
       </div>
 
-      <div ref="canvasContainer" class="board-3d-wrap"></div>
+      <div
+        ref="canvasContainer"
+        class="board-3d-wrap"
+      />
     </div>
   </div>
 </template>

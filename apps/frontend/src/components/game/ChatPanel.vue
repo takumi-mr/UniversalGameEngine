@@ -1,9 +1,13 @@
 <template>
   <div class="chat-panel">
     <div class="chat-header">
-      <v-icon icon="mdi-chat" size="small" class="mr-2"></v-icon>
+      <v-icon
+        icon="mdi-chat"
+        size="small"
+        class="mr-2"
+      />
       <span class="header-title">Room Chat</span>
-      <v-spacer></v-spacer>
+      <v-spacer />
       <v-btn-toggle
         v-model="channel"
         density="compact"
@@ -11,13 +15,27 @@
         variant="tonal"
         class="channel-toggle"
       >
-        <v-btn value="public" size="x-small">Public</v-btn>
-        <v-btn value="private" size="x-small" :disabled="!isPlayer">Private</v-btn>
+        <v-btn
+          value="public"
+          size="x-small"
+        >
+          Public
+        </v-btn>
+        <v-btn
+          value="private"
+          size="x-small"
+          :disabled="!isPlayer"
+        >
+          Private
+        </v-btn>
       </v-btn-toggle>
     </div>
 
     <!-- 宛先選択 (Privateの場合のみ表示) -->
-    <div v-if="channel === 'private'" class="recipient-selector">
+    <div
+      v-if="channel === 'private'"
+      class="recipient-selector"
+    >
       <span class="text-caption mr-2">To:</span>
       <v-select
         v-model="recipientId"
@@ -28,10 +46,13 @@
         class="inline-select"
         item-title="name"
         item-value="id"
-      ></v-select>
+      />
     </div>
 
-    <div class="chat-messages" ref="messageContainer">
+    <div
+      ref="messageContainer"
+      class="chat-messages"
+    >
       <div
         v-for="(msg, index) in messages"
         :key="index"
@@ -39,15 +60,23 @@
       >
         <div class="message-meta">
           <span class="message-user">{{ msg.userId }}</span>
-          <span v-if="msg.recipientId && msg.recipientId !== 'all'" class="message-to">
+          <span
+            v-if="msg.recipientId && msg.recipientId !== 'all'"
+            class="message-to"
+          >
             ➔ {{ msg.recipientId }}
           </span>
-          <v-spacer></v-spacer>
+          <v-spacer />
           <span class="message-time">{{ formatTime(msg.timestamp) }}</span>
         </div>
-        <div class="message-content">{{ msg.message }}</div>
+        <div class="message-content">
+          {{ msg.message }}
+        </div>
       </div>
-      <div v-if="messages.length === 0" class="empty-chat">
+      <div
+        v-if="messages.length === 0"
+        class="empty-chat"
+      >
         No messages yet.
       </div>
     </div>
@@ -63,7 +92,7 @@
         class="msg-input"
         @keyup.enter="send"
       >
-        <template v-slot:append-inner>
+        <template #append-inner>
           <v-btn
             icon="mdi-send"
             variant="text"
@@ -71,7 +100,7 @@
             color="primary"
             :disabled="!inputText.trim()"
             @click="send"
-          ></v-btn>
+          />
         </template>
       </v-text-field>
     </div>

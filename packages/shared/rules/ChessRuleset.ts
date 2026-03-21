@@ -190,7 +190,7 @@ function isStrictlyLegal(state: ChessState, from: number, to: number): boolean {
 // --- ルールセット本体 ---
 
 export const ChessRuleset: GameRuleset<ChessState, ChessAction> = {
-    getInitialState: (options?: any, rng?: IGameRNG): ChessState => ({
+    getInitialState: (_options?: any, _rng?: IGameRNG): ChessState => ({
         status: 'WAITING',
         board: [...INITIAL_BOARD],
         turn: 1,
@@ -229,7 +229,7 @@ export const ChessRuleset: GameRuleset<ChessState, ChessAction> = {
         return true;
     },
 
-    reduce: (state, action, rng?: IGameRNG) => {
+    reduce: (state, action, _rng?: IGameRNG) => {
         const newState = JSON.parse(JSON.stringify(state));
         const piece = newState.board[action.from];
         const target = newState.board[action.to];

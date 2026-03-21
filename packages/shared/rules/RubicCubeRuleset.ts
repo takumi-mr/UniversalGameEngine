@@ -1,5 +1,5 @@
 // packages/shared/rules/RubiksRuleset.ts
-import type { BaseGameState, BaseGameAction, GameRuleset } from '../GameRules';
+import type { BaseGameState, GameRuleset } from '../GameRules';
 import type { IGameRNG } from '../utils/IGameRNG';
 
 export type FaceName = 'U' | 'D' | 'F' | 'B' | 'L' | 'R'; // Up, Down, Front, Back, Left, Right
@@ -10,7 +10,7 @@ export interface RubiksState extends BaseGameState {
     moveCount: number;
 }
 
-export type RubiksAction = 
+export type RubiksAction =
     | { type: 'ROTATE'; face: FaceName; direction: 1 | -1; playerId?: string }
     | { type: 'RESET'; playerId?: string };
 
@@ -115,7 +115,7 @@ function setEdge(state: RubiksState, def: EdgeDef, colors: Color[]) {
 }
 
 export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction> = {
-    getInitialState: (options?: any, rng?: IGameRNG): RubiksState => ({
+    getInitialState: (_options?: any, _rng?: IGameRNG): RubiksState => ({
         status: 'PLAYING',
         faces: createSolvedFaces(),
         moveCount: 0,
@@ -125,7 +125,7 @@ export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction> = {
 
     isValidAction: (state, action) => {
         if (action.type === 'RESET') return true; // RESETはいつでも可能
-        
+
         if (state.status !== 'PLAYING') return false;
         if (action.type !== 'ROTATE') return false;
         if (!['U', 'D', 'F', 'B', 'L', 'R'].includes(action.face)) return false;
@@ -133,7 +133,7 @@ export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction> = {
         return true;
     },
 
-    reduce: (state, action, rng?: IGameRNG) => {
+    reduce: (state, action, _rng?: IGameRNG) => {
         if (action.type === 'RESET') {
             return {
                 ...RubiksRuleset.getInitialState(),
@@ -156,7 +156,7 @@ export const RubiksRuleset: GameRuleset<RubiksState, RubiksAction> = {
             // 時計回りなら配列を右にシフト、反時計なら左にシフト
             for (let i = 0; i < 4; i++) {
                 const targetDef = edgesDef[i];
-                let sourceIndex = action.direction === 1
+                const sourceIndex = action.direction === 1
                     ? (i + 3) % 4 // CW: 3->0, 0->1, 1->2, 2->3
                     : (i + 1) % 4; // CCW: 1->0, 2->1, 3->2, 0->3
 

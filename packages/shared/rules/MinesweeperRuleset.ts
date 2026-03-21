@@ -1,4 +1,4 @@
-import type { BaseGameState, BaseGameAction, GameRuleset, GameResult, Secret } from '../GameRules';
+import type { BaseGameState, BaseGameAction, GameRuleset, Secret } from '../GameRules';
 import { createSecret } from '../GameRules';
 import type { IGameRNG } from '../utils/IGameRNG';
 
@@ -33,7 +33,7 @@ export interface MinesweeperAction extends BaseGameAction {
 
 export const MinesweeperRuleset: GameRuleset<MinesweeperState, MinesweeperAction> = {
 
-    getInitialState: (options?: { rows?: number, cols?: number, mineCount?: number }, rng?: IGameRNG): MinesweeperState => {
+    getInitialState: (options?: { rows?: number, cols?: number, mineCount?: number }, _rng?: IGameRNG): MinesweeperState => {
         const rows = options?.rows ?? 10;
         const cols = options?.cols ?? 10;
         const mineCount = options?.mineCount ?? 10;

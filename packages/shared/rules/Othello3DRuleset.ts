@@ -28,7 +28,7 @@ export interface MoveAction extends BaseGameAction, Position {
 export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
 
     // 初期状態の生成
-    getInitialState: (options = {}, rng?: IGameRNG) => {
+    getInitialState: (options = {}, _rng?: IGameRNG) => {
         const size = options?.size ?? 4;
         const board = Array.from({ length: size }, () =>
             Array.from({ length: size }, () => Array(size).fill(0))
@@ -76,7 +76,7 @@ export const Othello3DRuleset: GameRuleset<GameState, MoveAction> = {
     },
 
     // 状態の更新 (Reducer)
-    reduce: (state, action, rng?: IGameRNG) => {
+    reduce: (state, action, _rng?: IGameRNG) => {
         const size = state.board.length;
         const nextBoard = JSON.parse(JSON.stringify(state.board));
         const color = action.color;

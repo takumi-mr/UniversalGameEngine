@@ -1,7 +1,11 @@
 <template>
   <v-menu offset-y>
-    <template v-slot:activator="{ props }">
-      <v-btn icon v-bind="props" :color="currentThemeColor">
+    <template #activator="{ props }">
+      <v-btn
+        icon
+        v-bind="props"
+        :color="currentThemeColor"
+      >
         <v-icon>{{ currentThemeIcon }}</v-icon>
       </v-btn>
     </template>
@@ -9,12 +13,11 @@
       <v-list-item
         v-for="theme in themes"
         :key="theme.id"
-        @click="setTheme(theme.id)"
         :prepend-icon="theme.icon"
         :title="theme.name"
         :active="currentTheme === theme.id"
-      >
-      </v-list-item>
+        @click="setTheme(theme.id)"
+      />
     </v-list>
   </v-menu>
 </template>

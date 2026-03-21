@@ -1,25 +1,51 @@
 <template>
   <div class="mancala-3d-container">
     <div class="game-wrapper">
-
       <div class="header-info">
-        <div class="score-card p2" :class="{ active: state.turn === -1 && state.status === 'PLAYING' }">
-          <div class="label">P2 (Top)</div>
-          <div class="score">{{ state.scores[-1] }}</div>
+        <div
+          class="score-card p2"
+          :class="{ active: state.turn === -1 && state.status === 'PLAYING' }"
+        >
+          <div class="label">
+            P2 (Top)
+          </div>
+          <div class="score">
+            {{ state.scores[-1] }}
+          </div>
         </div>
         
         <div class="status-center">
-          <div v-if="state.status === 'FINISHED'" class="finished-msg">GAME OVER</div>
-          <div v-else class="turn-msg">{{ state.message || (state.turn === 1 ? "Player 1's Turn" : "Player 2's Turn") }}</div>
+          <div
+            v-if="state.status === 'FINISHED'"
+            class="finished-msg"
+          >
+            GAME OVER
+          </div>
+          <div
+            v-else
+            class="turn-msg"
+          >
+            {{ state.message || (state.turn === 1 ? "Player 1's Turn" : "Player 2's Turn") }}
+          </div>
         </div>
 
-        <div class="score-card p1" :class="{ active: state.turn === 1 && state.status === 'PLAYING' }">
-          <div class="label">P1 (Bottom)</div>
-          <div class="score">{{ state.scores[1] }}</div>
+        <div
+          class="score-card p1"
+          :class="{ active: state.turn === 1 && state.status === 'PLAYING' }"
+        >
+          <div class="label">
+            P1 (Bottom)
+          </div>
+          <div class="score">
+            {{ state.scores[1] }}
+          </div>
         </div>
       </div>
 
-      <div ref="canvasContainer" class="board-3d-wrap"></div>
+      <div
+        ref="canvasContainer"
+        class="board-3d-wrap"
+      />
     </div>
   </div>
 </template>

@@ -1,36 +1,83 @@
 <template>
   <div class="chess-3d-container">
-    <div ref="container" class="three-container"></div>
+    <div
+      ref="container"
+      class="three-container"
+    />
     
     <!-- Promotion Dialog (Reused from Chess.vue logic) -->
-    <v-dialog v-model="showPromotionDialog" persistent max-width="400">
+    <v-dialog
+      v-model="showPromotionDialog"
+      persistent
+      max-width="400"
+    >
       <v-card class="rounded-xl">
-        <v-card-title class="text-center pt-4">昇格する駒を選択</v-card-title>
+        <v-card-title class="text-center pt-4">
+          昇格する駒を選択
+        </v-card-title>
         <v-card-text>
           <div class="promotion-options d-flex justify-center gap-4 py-4">
-            <v-btn icon size="x-large" @click="confirmPromotion(5)" variant="tonal" color="primary">
+            <v-btn
+              icon
+              size="x-large"
+              variant="tonal"
+              color="primary"
+              @click="confirmPromotion(5)"
+            >
               <span class="piece-icon">{{ state.turn === 1 ? '♕' : '♛' }}</span>
             </v-btn>
-            <v-btn icon size="x-large" @click="confirmPromotion(4)" variant="tonal" color="primary">
+            <v-btn
+              icon
+              size="x-large"
+              variant="tonal"
+              color="primary"
+              @click="confirmPromotion(4)"
+            >
               <span class="piece-icon">{{ state.turn === 1 ? '♖' : '♜' }}</span>
             </v-btn>
-            <v-btn icon size="x-large" @click="confirmPromotion(3)" variant="tonal" color="primary">
+            <v-btn
+              icon
+              size="x-large"
+              variant="tonal"
+              color="primary"
+              @click="confirmPromotion(3)"
+            >
               <span class="piece-icon">{{ state.turn === 1 ? '♗' : '♝' }}</span>
             </v-btn>
-            <v-btn icon size="x-large" @click="confirmPromotion(2)" variant="tonal" color="primary">
+            <v-btn
+              icon
+              size="x-large"
+              variant="tonal"
+              color="primary"
+              @click="confirmPromotion(2)"
+            >
               <span class="piece-icon">{{ state.turn === 1 ? '♘' : '♞' }}</span>
             </v-btn>
           </div>
         </v-card-text>
         <v-card-actions class="justify-center pb-4">
-          <v-btn @click="cancelPromotion" color="error" variant="text">キャンセル</v-btn>
+          <v-btn
+            color="error"
+            variant="text"
+            @click="cancelPromotion"
+          >
+            キャンセル
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
     <div class="controls-overlay">
-      <v-chip size="small" variant="tonal" color="info" class="mb-2">
-        <v-icon start icon="mdi-camera-control"></v-icon>
+      <v-chip
+        size="small"
+        variant="tonal"
+        color="info"
+        class="mb-2"
+      >
+        <v-icon
+          start
+          icon="mdi-camera-control"
+        />
         右ドラッグで回転 / スクロールでズーム
       </v-chip>
     </div>

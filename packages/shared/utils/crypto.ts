@@ -157,12 +157,13 @@ export function generateRandomSeed(length: number = 32): string {
         try {
             // Node.js環境でWebCryptoがない場合の最終手段を試みる
             // ただしViteの静的解析を避けるために型安全な方法でアクセス
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
             const nodeCrypto = typeof require !== 'undefined' ? require('crypto') : null;
             if (nodeCrypto && nodeCrypto.randomBytes) {
                 const buffer = nodeCrypto.randomBytes(length);
                 return buffer.toString('hex');
             }
-        } catch (e) {
+        } catch {
             // ignore
         }
         for (let i = 0; i < length; i++) {

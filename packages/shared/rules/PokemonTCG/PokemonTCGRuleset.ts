@@ -1,6 +1,6 @@
-import { BaseGameState, BaseGameAction, GameRuleset } from '../../GameRules';
+import { BaseGameState, GameRuleset } from '../../GameRules';
 import type { IGameRNG } from '../../utils/IGameRNG';
-import { CardCategory, EnergyType, CardDefinition, PokemonTCGRegistry } from './PokemonTCGRegistry';
+import { EnergyType, PokemonTCGRegistry } from './PokemonTCGRegistry';
 // ==========================================
 // 1. データ定義 (The Card Registry)
 // ==========================================
@@ -59,7 +59,7 @@ export type PokemonTCGAction =
 export class PokemonTCGRuleset implements GameRuleset<PokemonTCGState, PokemonTCGAction> {
 
     // (初期化処理は簡略化: お互いにバトル場にポケモンが1体いて、サイドが3枚ある状態からスタートとします)
-    public getInitialState(options?: { playerIds?: string[] }, rng?: IGameRNG): PokemonTCGState {
+    public getInitialState(options?: { playerIds?: string[] }, _rng?: IGameRNG): PokemonTCGState {
         const playerData: Record<string, PTCGPlayer> = {};
         const playerIds = options?.playerIds || [];
         playerIds.forEach((id, idx) => {
@@ -138,7 +138,7 @@ export class PokemonTCGRuleset implements GameRuleset<PokemonTCGState, PokemonTC
             const handIdx = player.hand.indexOf(action.cardDefId);
             if (handIdx > -1) {
                 player.hand.splice(handIdx, 1);
-                const def = PokemonTCGRegistry[action.cardDefId];
+                const _def = PokemonTCGRegistry[action.cardDefId];
 
                 const newPokemon: PokemonInstance = {
                     instanceId: rng ? Math.floor(rng.nextFloat() * 1000000).toString() : Math.random().toString(),
@@ -284,7 +284,7 @@ export class PokemonTCGRuleset implements GameRuleset<PokemonTCGState, PokemonTC
             return acc;
         }, {} as Record<EnergyType, number>);
 
-        let colorlessNeeded = cost['COLORLESS'] || 0;
+        const colorlessNeeded = cost['COLORLESS'] || 0;
 
         for (const [type, requiredAmount] of Object.entries(cost)) {
             if (type === 'COLORLESS') continue; // 無色は後回し
@@ -329,7 +329,7 @@ export class PokemonTCGRuleset implements GameRuleset<PokemonTCGState, PokemonTC
         return { isFinished: false };
     }
 
-    public getLegalActions(state: PokemonTCGState): PokemonTCGAction[] {
+    public getLegalActions(_state: PokemonTCGState): PokemonTCGAction[] {
         return [];
     }
 }

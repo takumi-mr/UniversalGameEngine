@@ -1,6 +1,6 @@
-import { BaseGameState, BaseGameAction, GameRuleset } from '../../GameRules';
+import { BaseGameState, GameRuleset } from '../../GameRules';
 import type { IGameRNG } from '../../utils/IGameRNG';
-import { CardCategory, EnergyType, CardDefinition, PokemonPocketRegistry } from './PokemonPocketRegistry';
+import { EnergyType, PokemonPocketRegistry } from './PokemonPocketRegistry';
 
 // ==========================================
 // 1. 状態とアクションの定義
@@ -36,7 +36,7 @@ export type PokemonPocketAction =
     | { type: 'ATTACH_ENERGY'; playerId: string; energyType: EnergyType; targetInstanceId: string }
     | { type: 'PLAY_TRAINER'; playerId: string; cardDefId: string; targetInstanceId?: string }
     | { type: 'EVOLVE'; playerId: string; cardDefId: string; targetInstanceId: string }
-    | { type: 'ATTACK'; playerId: string; attackIndex: number } 
+    | { type: 'ATTACK'; playerId: string; attackIndex: number }
     | { type: 'END_TURN'; playerId: string };
 
 // ==========================================
@@ -45,19 +45,19 @@ export type PokemonPocketAction =
 
 export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, PokemonPocketAction> {
 
-    public getInitialState(options?: { playerIds?: string[] }, rng?: IGameRNG): PokemonPocketState {
+    public getInitialState(options?: { playerIds?: string[] }, _rng?: IGameRNG): PokemonPocketState {
         const playerData: Record<string, PocketPlayer> = {};
         const playerIds = options?.playerIds || [];
-        
+
         // 簡易的な初期化: お互いにバトル場にポケモンが1体いて、手札5枚、デッキ14枚
         // 後攻プレイヤーは1ターン目から攻撃可能。先攻は不可。エネルギー添付は先攻1ターン目は不可にする。
         playerIds.forEach((id, idx) => {
             const isP1 = idx === 0;
             const initialCardId = isP1 ? 'p_pikachu' : 'p_charmander';
-            const deck = isP1 
-                ? Array(14).fill('p_pikachu').concat(['t_potion', 't_pokeball']) 
+            const deck = isP1
+                ? Array(14).fill('p_pikachu').concat(['t_potion', 't_pokeball'])
                 : Array(14).fill('p_charmander').concat(['t_potion', 't_pokeball']);
-            
+
             playerData[id] = {
                 id,
                 deck,
@@ -272,15 +272,15 @@ export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, Pok
 
     private endTurn(state: PokemonPocketState, currentPlayerId: string) {
         const p = state.playerData[currentPlayerId];
-        p.hasAttachedEnergyThisTurn = false; 
+        p.hasAttachedEnergyThisTurn = false;
 
         const allIds = Object.keys(state.playerData);
         const nextIdx = (allIds.indexOf(currentPlayerId) + 1) % allIds.length;
         const nextPlayerId = allIds[nextIdx];
-        
+
         state.activePlayers = [nextPlayerId];
         state.turnCount += 1;
-        
+
         // ターン開始時にワンドロー
         const nextPlayer = state.playerData[nextPlayerId];
         if (nextPlayer.deck.length > 0) {
@@ -294,7 +294,7 @@ export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, Pok
             return acc;
         }, {} as Record<EnergyType, number>);
 
-        let colorlessNeeded = cost['COLORLESS'] || 0;
+        const colorlessNeeded = cost['COLORLESS'] || 0;
 
         for (const [type, requiredAmount] of Object.entries(cost)) {
             if (type === 'COLORLESS') continue;
@@ -331,14 +331,14 @@ export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, Pok
                     message: `Player ${playerId} has no Pokémon left. Player ${opponentId} won!`
                 };
             }
-            
+
             // 3. 山札切れの場合 (Pocketでは山札が引けないターンが来ると負けだが、ここではシンプルにするか省略)
         }
 
         return { isFinished: false };
     }
 
-    public getLegalActions(state: PokemonPocketState, playerId: string): PokemonPocketAction[] {
+    public getLegalActions(_state: PokemonPocketState, _playerId: string): PokemonPocketAction[] {
         // AI等のための合法手生成ロジックは省略
         return [];
     }

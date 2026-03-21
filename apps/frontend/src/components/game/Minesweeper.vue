@@ -1,7 +1,10 @@
 <template>
   <div class="minesweeper-container">
     <div class="board-wrapper">
-      <div class="game-message" v-if="state.message">
+      <div
+        v-if="state.message"
+        class="game-message"
+      >
         {{ state.message }}
       </div>
 
@@ -10,7 +13,10 @@
           class="minesweeper-board" 
           :style="gridStyle"
         >
-          <template v-for="(row, r) in state.board" :key="`row-${r}`">
+          <template
+            v-for="(row, r) in state.board"
+            :key="`row-${r}`"
+          >
             <div 
               v-for="(cell, c) in row" 
               :key="`cell-${r}-${c}`"
@@ -26,17 +32,35 @@
               @click.left="handleLeftClick(r, c)"
               @contextmenu.prevent="handleRightClick(r, c)"
             >
-              <Transition name="fade" mode="out-in">
+              <Transition
+                name="fade"
+                mode="out-in"
+              >
                 <!-- Revealed content -->
-                <div v-if="cell.isRevealed" class="cell-content revealed-content">
-                  <span v-if="cell.secret.value.isMine" class="bomb-icon">💣</span>
-                  <span v-else-if="cell.secret.value.neighborMines && cell.secret.value.neighborMines > 0" class="number">
+                <div
+                  v-if="cell.isRevealed"
+                  class="cell-content revealed-content"
+                >
+                  <span
+                    v-if="cell.secret.value.isMine"
+                    class="bomb-icon"
+                  >💣</span>
+                  <span
+                    v-else-if="cell.secret.value.neighborMines && cell.secret.value.neighborMines > 0"
+                    class="number"
+                  >
                     {{ cell.secret.value.neighborMines }}
                   </span>
                 </div>
                 <!-- Hidden content -->
-                <div v-else class="cell-content hidden-content">
-                  <span v-if="cell.isFlagged" class="flag-icon">🚩</span>
+                <div
+                  v-else
+                  class="cell-content hidden-content"
+                >
+                  <span
+                    v-if="cell.isFlagged"
+                    class="flag-icon"
+                  >🚩</span>
                 </div>
               </Transition>
             </div>
@@ -55,9 +79,14 @@
         </div>
       </div>
 
-      <div v-if="state.status === 'FINISHED'" class="result-overlay">
+      <div
+        v-if="state.status === 'FINISHED'"
+        class="result-overlay"
+      >
         <div class="result-content">
-          <div class="winner-text">{{ state.message }}</div>
+          <div class="winner-text">
+            {{ state.message }}
+          </div>
         </div>
       </div>
     </div>

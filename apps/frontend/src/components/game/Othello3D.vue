@@ -1,7 +1,13 @@
 <template>
-  <div class="othello-3d-container" v-if="state">
+  <div
+    v-if="state"
+    class="othello-3d-container"
+  >
     <div class="ui-overlay">
-      <div v-if="state.message" class="status-msg">
+      <div
+        v-if="state.message"
+        class="status-msg"
+      >
         {{ state.message }}
       </div>
 
@@ -15,16 +21,19 @@
 
         <div class="score-board">
           <div class="score-row">
-            <span class="dot black"></span> Black: <strong>{{ state.scores[1] }}</strong>
+            <span class="dot black" /> Black: <strong>{{ state.scores[1] }}</strong>
           </div>
           <div class="score-row">
-            <span class="dot white"></span> White: <strong>{{ state.scores[-1] }}</strong>
+            <span class="dot white" /> White: <strong>{{ state.scores[-1] }}</strong>
           </div>
         </div>
       </div>
     </div>
 
-    <div ref="canvasContainer" class="canvas-layer"></div>
+    <div
+      ref="canvasContainer"
+      class="canvas-layer"
+    />
   </div>
 </template>
 

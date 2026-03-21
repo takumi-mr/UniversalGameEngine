@@ -37,20 +37,20 @@ router.post('/:gameId/leave', async (req, res) => {
             if (found) {
                 // 通知メッセージをセット
                 state.message = `${userId} has left the game`;
-                
+
                 await repo.save(gameId, state, false);
                 session.server.broadcastState();
-                
+
                 // 全員にエラー/通知として送信（フロントエンドのトースト用）
                 const io = getIoInstance();
                 io.to(gameId).emit('error-message', `${userId} has left the game`);
-                
+
                 updatePresence(gameId);
                 return res.json({ success: true });
             }
         }
         res.status(400).json({ error: 'User not in game' });
-    } catch (err) {
+    } catch {
         res.status(401).json({ error: 'Invalid token' });
     }
 });
@@ -87,7 +87,7 @@ router.get('/:gameId/state', async (req, res) => {
 
         const state = session!.server.getPollingState(userId);
         res.json({ state });
-    } catch (err) {
+    } catch {
         res.status(401).json({ error: 'Invalid token computation' });
     }
 });
@@ -115,7 +115,7 @@ router.post('/:gameId/action', async (req, res) => {
         } else {
             res.status(400).json({ error: 'Invalid action or not your turn' });
         }
-    } catch (err) {
+    } catch {
         res.status(401).json({ error: 'Invalid token' });
     }
 });

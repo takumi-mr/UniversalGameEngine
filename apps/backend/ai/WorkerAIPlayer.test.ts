@@ -32,8 +32,10 @@ class MockWorker extends EventEmitter {
     }
 }
 
-let workerInstances: MockWorker[] = [];
-const MockWorkerConstructor = mock((path: string) => {
+let workerInstances: MockWorker[] = [
+
+];
+const MockWorkerConstructor = mock((_path: string) => {
     const w = new MockWorker();
     workerInstances.push(w);
     return w;

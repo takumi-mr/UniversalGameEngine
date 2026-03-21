@@ -34,10 +34,9 @@ export class Chess3DUI {
     private matLightSquare = new THREE.MeshLambertMaterial({ color: 0xf0d9b5 });
     private matDarkSquare = new THREE.MeshLambertMaterial({ color: 0xb58863 });
     private matSelected = new THREE.MeshBasicMaterial({ color: 0xffff33, transparent: true, opacity: 0.5 });
-    private matValidMove = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.3 });
 
     constructor(
-        container: HTMLElement, 
+        container: HTMLElement,
         onActionCallback: (action: ChessAction) => void,
         onRequirePromotion: (from: number, to: number) => void
     ) {
@@ -65,7 +64,7 @@ export class Chess3DUI {
 
         // Lights
         this.scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-        
+
         // Hemisphere light for natural top/bottom lighting
         const hemiLight = new THREE.HemisphereLight(0xffffff, 0x000000, 0.8);
         this.scene.add(hemiLight);
@@ -109,7 +108,7 @@ export class Chess3DUI {
             const isLight = (x + y) % 2 === 0;
             const geom = new THREE.BoxGeometry(squareSize, 0.2, squareSize);
             const mat = isLight ? this.matLightSquare : this.matDarkSquare;
-            
+
             const square = new THREE.Mesh(geom, mat);
             square.position.set(x - offset, -0.1, y - offset);
             square.receiveShadow = true;
@@ -123,7 +122,7 @@ export class Chess3DUI {
     private initEnvironment() {
         // Floor
         const floorGeom = new THREE.PlaneGeometry(100, 100);
-        const floorMat = new THREE.MeshStandardMaterial({ 
+        const floorMat = new THREE.MeshStandardMaterial({
             color: 0x1a1a1a,
             roughness: 0.8,
             metalness: 0.2
@@ -215,7 +214,7 @@ export class Chess3DUI {
             });
 
             const group = new THREE.Group();
-            
+
             // Calculate center and box once for the loaded scene
             const box = new THREE.Box3().setFromObject(scene);
             const center = box.getCenter(new THREE.Vector3());
@@ -262,7 +261,7 @@ export class Chess3DUI {
                     node.material.map = null;
                     node.material.vertexColors = false;
                     node.material.needsUpdate = true;
-                    
+
                     node.castShadow = true;
                     node.receiveShadow = true;
                 }
@@ -303,7 +302,6 @@ export class Chess3DUI {
 
     private createPlaceholderPiece(type: number, color: number): THREE.Object3D {
         let geom: THREE.BufferGeometry;
-        const squareSize = 0.8;
 
         switch (type) {
             case 1: geom = new THREE.CylinderGeometry(0.3, 0.35, 0.8); break; // Pawn
@@ -323,7 +321,7 @@ export class Chess3DUI {
         const mesh = new THREE.Mesh(geom, mat);
         mesh.translateY(geom.type === 'BoxGeometry' ? 0.5 : 0.4);
         mesh.castShadow = true;
-        
+
         const group = new THREE.Group();
         group.add(mesh);
         return group;
@@ -339,16 +337,13 @@ export class Chess3DUI {
         // Highlight valid moves
         // Note: In ChessRuleset, promotion is handled separately. 
         // For simplicity, we just highlight the 'to' squares.
-        const pieces = this.currentState.board;
-        const color = Math.sign(pieces[this.selectedIndex]);
-        
+
         // This is a bit inefficient (recalculating legal actions on every click)
         // But for Chess it's fine.
         // We'd ideally take validMoves as a param.
     }
 
     private addHighlight(index: number, mat: THREE.Material) {
-        const squareSize = 1;
         const offset = 3.5;
         const x = (index % 8) - offset;
         const z = Math.floor(index / 8) - offset;
@@ -379,7 +374,7 @@ export class Chess3DUI {
             }
 
             if (!hit) return;
-            
+
             const index = hit.userData.index;
 
             if (this.selectedIndex === null) {
@@ -414,18 +409,18 @@ export class Chess3DUI {
 
     private handleMoveAttempt(from: number, to: number) {
         if (!this.currentState) return;
-        
+
         const piece = this.currentState.board[from];
         const isPawn = Math.abs(piece) === 1;
-        const isPromotionRank = (this.currentState.turn === 1 && Math.floor(to / 8) === 0) || 
-                                (this.currentState.turn === -1 && Math.floor(to / 8) === 7);
+        const isPromotionRank = (this.currentState.turn === 1 && Math.floor(to / 8) === 0) ||
+            (this.currentState.turn === -1 && Math.floor(to / 8) === 7);
 
         if (isPawn && isPromotionRank) {
             this.onRequirePromotion(from, to);
         } else {
             this.onAction({ type: 'MOVE', from, to });
         }
-        
+
         this.selectedIndex = null;
         this.updateHighlights();
     }

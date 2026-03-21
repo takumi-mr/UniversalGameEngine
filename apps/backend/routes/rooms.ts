@@ -29,7 +29,7 @@ router.get('/my', (req, res) => {
         const userId = decoded.userId;
         const io = getIoInstance();
         const myRooms = Array.from(sessions.entries())
-            .filter(([id, session]) => {
+            .filter(([_id, session]) => {
                 const state = session.server.engine.getState();
                 const players = state.players ? Object.values(state.players) : [];
                 // Case-insensitive comparison

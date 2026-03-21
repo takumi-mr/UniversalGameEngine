@@ -6,8 +6,8 @@ export class RestPollingClient<TState extends BaseGameState, TAction> implements
     public gameId: string | null = null;
     private pollInterval: ReturnType<typeof setInterval> | null = null;
 
-    public onStateUpdate: (state: TState) => void = () => {};
-    public onError: (message: string) => void = () => {};
+    public onStateUpdate: (state: TState) => void = () => { };
+    public onError: (message: string) => void = () => { };
 
     constructor(baseUrl: string) {
         this.baseUrl = baseUrl;
@@ -54,7 +54,7 @@ export class RestPollingClient<TState extends BaseGameState, TAction> implements
             if (data.success) {
                 this.onStateUpdate(data.state);
             }
-        } catch (err) {
+        } catch {
             this.onError("Failed to send action");
         }
     }
@@ -66,7 +66,7 @@ export class RestPollingClient<TState extends BaseGameState, TAction> implements
             if (!response.ok) throw new Error('Game not found');
             const state: TState = await response.json();
             this.onStateUpdate(state);
-        } catch (err) {
+        } catch {
             this.stopPolling();
             this.onError("Game not found or disconnected");
         }

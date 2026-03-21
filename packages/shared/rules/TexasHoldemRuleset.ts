@@ -117,26 +117,29 @@ export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction
         }
     },
 
-    reduce: (state: TexasHoldemState, action: TexasHoldemAction, rng?: IGameRNG): TexasHoldemState => {
+    reduce: (state: TexasHoldemState, action: TexasHoldemAction, _rng?: IGameRNG): TexasHoldemState => {
         const newState = { ...state };
         const pId = action.playerId!;
-        const playerChips = newState.playerChips[pId];
+        const _playerChips = newState.playerChips[pId];
         const playerCurrentBet = newState.playerBets[pId];
         const callAmount = newState.currentBet - playerCurrentBet;
 
         switch (action.type) {
-            case 'FOLD':
+            case 'FOLD': {
                 newState.foldedPlayers.push(pId);
                 break;
-            case 'CHECK':
+            }
+            case 'CHECK': {
                 // 何もしない
                 break;
-            case 'CALL':
+            }
+            case 'CALL': {
                 newState.playerChips[pId] -= callAmount;
                 newState.playerBets[pId] += callAmount;
                 newState.pot += callAmount;
                 break;
-            case 'RAISE':
+            }
+            case 'RAISE': {
                 const raiseAmount = action.amount!;
                 const totalAmount = callAmount + raiseAmount;
                 newState.playerChips[pId] -= totalAmount;
@@ -144,6 +147,7 @@ export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction
                 newState.pot += totalAmount;
                 newState.currentBet += raiseAmount;
                 break;
+            }
         }
 
         // 次のプレイヤーを探すロジック（簡略化：全員が現在ベット額に追いつくかフォールドするまで回る）

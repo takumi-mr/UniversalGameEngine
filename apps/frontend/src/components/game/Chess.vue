@@ -1,15 +1,34 @@
 <template>
-  <div class="chess-container" v-if="state">
-    <div v-if="showPromotionDialog" class="promotion-overlay">
+  <div
+    v-if="state"
+    class="chess-container"
+  >
+    <div
+      v-if="showPromotionDialog"
+      class="promotion-overlay"
+    >
       <div class="promotion-modal">
         <h3>プロモーションする駒を選択</h3>
         <div class="promotion-options">
-          <button @click="confirmPromotion(5)">{{ state.turn === 1 ? '♕' : '♛' }} Queen</button>
-          <button @click="confirmPromotion(4)">{{ state.turn === 1 ? '♖' : '♜' }} Rook</button>
-          <button @click="confirmPromotion(3)">{{ state.turn === 1 ? '♗' : '♝' }} Bishop</button>
-          <button @click="confirmPromotion(2)">{{ state.turn === 1 ? '♘' : '♞' }} Knight</button>
+          <button @click="confirmPromotion(5)">
+            {{ state.turn === 1 ? '♕' : '♛' }} Queen
+          </button>
+          <button @click="confirmPromotion(4)">
+            {{ state.turn === 1 ? '♖' : '♜' }} Rook
+          </button>
+          <button @click="confirmPromotion(3)">
+            {{ state.turn === 1 ? '♗' : '♝' }} Bishop
+          </button>
+          <button @click="confirmPromotion(2)">
+            {{ state.turn === 1 ? '♘' : '♞' }} Knight
+          </button>
         </div>
-        <button class="cancel-btn" @click="cancelPromotion">キャンセル</button>
+        <button
+          class="cancel-btn"
+          @click="cancelPromotion"
+        >
+          キャンセル
+        </button>
       </div>
     </div>
 
@@ -34,7 +53,10 @@
           >
             {{ getPieceChar(state.board[index]) }}
           </span>
-          <div v-if="isValidMove(index)" class="hint-dot"></div>
+          <div
+            v-if="isValidMove(index)"
+            class="hint-dot"
+          />
         </div>
       </div>
     </div>

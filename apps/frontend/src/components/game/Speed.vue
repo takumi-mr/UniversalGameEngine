@@ -1,10 +1,18 @@
 <template>
   <div class="speed-view">
     <!-- Game Status / Results -->
-    <div v-if="state.status === 'FINISHED'" class="game-overlay">
+    <div
+      v-if="state.status === 'FINISHED'"
+      class="game-overlay"
+    >
       <div class="result-box">
         <h2>{{ state.message }}</h2>
-        <button @click="startNewGame" class="restart-btn">New Game</button>
+        <button
+          class="restart-btn"
+          @click="startNewGame"
+        >
+          New Game
+        </button>
       </div>
     </div>
 
@@ -15,7 +23,11 @@
         <span class="deck-count">Deck: {{ opponentDeckCount }}</span>
       </div>
       <div class="cards-display">
-        <div v-for="i in opponentHandCount" :key="'op-hand-'+i" class="card back mini"></div>
+        <div
+          v-for="i in opponentHandCount"
+          :key="'op-hand-'+i"
+          class="card back mini"
+        />
       </div>
     </div>
 
@@ -23,18 +35,27 @@
     <div class="center-area">
       <!-- Side Piles (Used when stuck) -->
       <div class="side-pile-group">
-        <div class="card back mini pile-shadow" v-if="state.sidePiles[0]?.length > 0">
+        <div
+          v-if="state.sidePiles[0]?.length > 0"
+          class="card back mini pile-shadow"
+        >
           <span class="count">{{ state.sidePiles[0].length }}</span>
         </div>
-        <div class="empty-slot mini" v-else></div>
+        <div
+          v-else
+          class="empty-slot mini"
+        />
       </div>
 
       <!-- Active Piles -->
       <div class="active-piles">
-        <div v-for="(card, idx) in state.centerPiles" :key="'pile-'+idx" 
-             class="card active-pile" 
-             :class="getCardColorClass(card)"
-             @click="playCardToPile(idx)">
+        <div
+          v-for="(card, idx) in state.centerPiles"
+          :key="'pile-'+idx" 
+          class="card active-pile" 
+          :class="getCardColorClass(card)"
+          @click="playCardToPile(idx)"
+        >
           <div class="card-content">
             <span class="rank">{{ getRank(card) }}</span>
             <span class="suit">{{ getSuitEmoji(card) }}</span>
@@ -43,33 +64,51 @@
       </div>
 
       <div class="side-pile-group">
-        <div class="card back mini pile-shadow" v-if="state.sidePiles[1]?.length > 0">
+        <div
+          v-if="state.sidePiles[1]?.length > 0"
+          class="card back mini pile-shadow"
+        >
           <span class="count">{{ state.sidePiles[1].length }}</span>
         </div>
-        <div class="empty-slot mini" v-else></div>
+        <div
+          v-else
+          class="empty-slot mini"
+        />
       </div>
     </div>
 
     <!-- Actions Area -->
     <div class="actions-area">
-      <button v-if="state.status === 'WAITING' && isHost" @click="startGame" class="action-btn start">
+      <button
+        v-if="state.status === 'WAITING' && isHost"
+        class="action-btn start"
+        @click="startGame"
+      >
         Start Game
       </button>
-      <button v-if="state.status === 'PLAYING'" 
-              @click="toggleStuck" 
-              class="action-btn flip" 
-              :class="{ 'is-stuck': isStuck }">
+      <button
+        v-if="state.status === 'PLAYING'" 
+        class="action-btn flip" 
+        :class="{ 'is-stuck': isStuck }" 
+        @click="toggleStuck"
+      >
         {{ isStuck ? 'Stuck (Waiting...)' : 'I am Stuck' }}
       </button>
     </div>
 
     <!-- Player Area -->
-    <div class="player-area self" :class="{ 'my-turn': true }">
+    <div
+      class="player-area self"
+      :class="{ 'my-turn': true }"
+    >
       <div class="cards-display">
-        <div v-for="(card, index) in myHand" :key="'my-hand-'+index" 
-             class="card playable" 
-             :class="[getCardColorClass(card), { 'selected': selectedHandIndex === index }]"
-             @click="selectCard(index)">
+        <div
+          v-for="(card, index) in myHand"
+          :key="'my-hand-'+index" 
+          class="card playable" 
+          :class="[getCardColorClass(card), { 'selected': selectedHandIndex === index }]"
+          @click="selectCard(index)"
+        >
           <div class="card-content">
             <span class="rank">{{ getRank(card) }}</span>
             <span class="suit">{{ getSuitEmoji(card) }}</span>
@@ -78,7 +117,10 @@
       </div>
       <div class="player-info">
         <div class="deck-display">
-          <div class="card back mini" v-if="myDeckCount > 0"></div>
+          <div
+            v-if="myDeckCount > 0"
+            class="card back mini"
+          />
           <span class="deck-count">Your Deck: {{ myDeckCount }}</span>
         </div>
         <span class="name">You ({{ myPlayerId }})</span>
@@ -104,7 +146,7 @@ const selectedHandIndex = ref<number | null>(null);
 
 // --- State Helpers ---
 const myPlayerId = computed(() => props.myPlayerId || '');
-const isPlayer = computed(() => props.state.playerIds.includes(myPlayerId.value));
+const _isPlayer = computed(() => props.state.playerIds.includes(myPlayerId.value));
 const isHost = computed(() => props.state.playerIds[0] === myPlayerId.value);
 
 const opponentId = computed(() => props.state.playerIds.find(id => id !== myPlayerId.value));

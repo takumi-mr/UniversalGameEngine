@@ -27,15 +27,6 @@ const FACE_NORMALS: Record<FaceName, THREE.Vector3> = {
     L: new THREE.Vector3(-1, 0, 0),
 };
 
-// ステッカーの面位置 (面の向き別)
-const FACE_AXIS_MAP: Record<FaceName, { axis: 'x' | 'y' | 'z'; level: number }> = {
-    U: { axis: 'y', level: 1 },
-    D: { axis: 'y', level: -1 },
-    F: { axis: 'z', level: 1 },
-    B: { axis: 'z', level: -1 },
-    R: { axis: 'x', level: 1 },
-    L: { axis: 'x', level: -1 },
-};
 
 // ステッカーの3x3グリッドマッピング (行=row, 列=col -> position)
 // FaceNameとgridの対応は3x3 state.faces[face][row][col]
@@ -66,8 +57,6 @@ export class RubiksCubeUI {
     private mouse = new THREE.Vector2();
     private hoveredPanel: THREE.Mesh | null = null;
 
-    private animating = false;
-    private animQueue: Array<() => void> = [];
 
     private animationId: number | null = null;
     private isDisposed = false;
@@ -75,12 +64,12 @@ export class RubiksCubeUI {
     constructor(container: HTMLElement, onActionCallback: (action: RubiksAction) => void) {
         this.container = container;
         this.onAction = onActionCallback;
-        
+
         this.onPointerDown = this.onPointerDown.bind(this);
         this.onPointerUp = this.onPointerUp.bind(this);
         this.onMouseMove = this.onMouseMove.bind(this);
         this.onResize = this.onResize.bind(this);
-        
+
         this.initThreeJS(container);
         this.buildCube();
         this.buildFacePanels();
@@ -180,7 +169,6 @@ export class RubiksCubeUI {
         for (const face of faces) {
             const grid = state.faces[face];
             if (!grid) continue;
-            const normal = FACE_NORMALS[face];
 
             for (let r = 0; r < 3; r++) {
                 for (let c = 0; c < 3; c++) {
@@ -289,7 +277,7 @@ export class RubiksCubeUI {
         this.renderer.domElement.removeEventListener('pointerup', this.onPointerUp);
         this.renderer.domElement.removeEventListener('pointermove', this.onMouseMove);
         window.removeEventListener('resize', this.onResize);
-        
+
         this.renderer.dispose();
         this.scene.traverse((object) => {
             if (object instanceof THREE.Mesh) {
