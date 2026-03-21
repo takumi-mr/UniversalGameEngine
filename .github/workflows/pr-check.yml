@@ -11,28 +11,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. リポジトリのコードを取得
+      # リポジトリのコードを取得
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Bun環境のセットアップ（公式アクションを使用）
+      # Bun環境のセットアップ（公式アクションを使用）
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      # 3. 依存関係のインストール
+      # フォーマッターのチェック
+      - name: Run Prettier Check
+        run: bun x prettier --check .
+
+      # 依存関係のインストール
       - name: Install Dependencies
         run: bun install
 
-      # 4. Linterの実行
+      # Linterの実行
       - name: Run Linter
         run: bun run lint
 
-      # いずれ型チェックを入れる
-      # - name: Run Type Check
-      #   run: bun run type-check
+      # 型チェック
+      - name: Run Type Check
+        run: bun run type-check
 
-      # 5. テストの実行
+      # テストの実行
       - name: Run Tests
         run: bun test

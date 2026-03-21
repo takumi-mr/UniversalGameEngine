@@ -120,10 +120,14 @@ const proceedToNextTurnOrYakuCheck = (state: HanafudaState, playerId: string): H
   return state;
 };
 
+export interface HanafudaOptions {
+  playerIds: string[];
+}
+
 // --- 3. ルールセット本体 ---
 
-export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction> = {
-  getInitialState: (options: { playerIds: string[] }, rng?: IGameRNG): HanafudaState => {
+export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction, HanafudaOptions> = {
+  getInitialState: (options?: HanafudaOptions, rng?: IGameRNG): HanafudaState => {
     // [TODO] 実運用時はoptions.playerIdsが存在するかチェックする
     const playerIds = options?.playerIds || ["player1", "player2"];
     const deckArr = createDeck(rng);

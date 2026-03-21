@@ -6,7 +6,7 @@ import type { BaseGameState } from "../GameRules";
  * 注意: 完全に厳密である必要はないが、クライアントとサーバで同じ結果になる必要がある。
  * キーの順序が異なるとハッシュが変わるため、JSON.stringify + シンプルなハッシュ関数を使用する。
  */
-export function calculateStateHash<T extends BaseGameState>(state: T): string {
+export function calculateStateHash(state: unknown): string {
   // オブジェクトのキーを再帰的にソートして順序を一定にする
   const sortKeys = (obj: unknown): unknown => {
     // プリミティブ値または null の場合はそのまま返す
