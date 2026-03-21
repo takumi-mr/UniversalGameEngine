@@ -1,5 +1,4 @@
 // packages/shared/utils/crypto.ts
-import { randomBytes } from 'crypto';
 
 /**
  * 同期的かつ環境（Node/Browser）に依存しないSHA-256の実装
@@ -142,10 +141,19 @@ export function generateRandomSeed(length: number = 32): string {
     const array = new Uint8Array(length);
     if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.getRandomValues) {
         globalThis.crypto.getRandomValues(array);
-    } else if (typeof randomBytes === 'function') {
-        return randomBytes(length).toString('hex');
     } else {
-        // 非推奨のフォールバック (実行環境にWebCryptoもNode cryptoもない場合)
+        // 非推奨のフォールバック (実行環境にWebCryptoもない場合)
+        try {
+            // Node.js環境でWebCryptoがない場合の最終手段を試みる
+            // ただしViteの静的解析を避けるために型安全な方法でアクセス
+            const nodeCrypto = typeof require !== 'undefined' ? require('crypto') : null;
+            if (nodeCrypto && nodeCrypto.randomBytes) {
+                const buffer = nodeCrypto.randomBytes(length);
+                return buffer.toString('hex');
+            }
+        } catch (e) {
+            // ignore
+        }
         for (let i = 0; i < length; i++) {
             array[i] = Math.floor(Math.random() * 256);
         }

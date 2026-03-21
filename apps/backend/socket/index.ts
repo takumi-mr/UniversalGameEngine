@@ -56,43 +56,71 @@ export const setupSocketIO = (io: Server) => {
                 const server = new SocketGameServer(gameId, engine, io);
                 sessions.set(gameId, { server, type: normalizedType });
 
-                // AI追加のリクエストがあれば初期化する
-                if (options?.addAi) {
-                    const state = engine.getState();
-                    if (state.players) {
-                        const slotKeys = Object.keys(state.players);
-                        if (slotKeys.length > 0) {
-                            const aiSlotKey = slotKeys[slotKeys.length - 1] as string; // 人間が先に入れるように後方のスロットをAIにする
-                            const botId = 'bot_' + Math.random().toString(36).substring(7);
-                            state.players[aiSlotKey] = botId;
-
-                            let botPlayer: any = null;
-                            const aiType = options.addAi;
-
-                            if (aiType === 'grpc_bot') {
-                                botPlayer = new GrpcBotPlayer(botId, "gRPC External Bot", (turnState, legalActions) => {
-                                    const adapter = aiTensorRegistry.getAdapter(normalizedType);
-                                    if (adapter) {
-                                        const stateTensor = adapter.encodeState(turnState, botId);
-                                        const legalActionIds = turnState.activePlayers?.includes(botId) 
-                                            ? adapter.encodeLegalActions(turnState, botId) 
-                                            : [];
-                                        streamManager.notifyBotTurn(gameId, botId, stateTensor, legalActionIds);
-                                    }
-                                });
-                            } else if (aiType === 'random') {
-                                botPlayer = new RandomPlayer(botId, "Random AI");
-                            } else if (aiType === 'minimax') {
-                                botPlayer = new MinimaxPlayer(botId, "Minimax AI", 3); // Depth 3
-                            } else if (aiType === 'mcts') {
-                                botPlayer = new MCTSPlayer(botId, "MCTS AI", 1000); // 1000 iterations
+                // AIボットを生成するヘルパー関数
+                const createBotPlayer = (botId: string, aiType: string, idx: number) => {
+                    if (aiType === 'grpc_bot') {
+                        return new GrpcBotPlayer(botId, `gRPC Bot ${idx}`, (turnState, _legalActions) => {
+                            const adapter = aiTensorRegistry.getAdapter(normalizedType);
+                            if (adapter) {
+                                const stateTensor = adapter.encodeState(turnState, botId);
+                                const legalActionIds = turnState.activePlayers?.includes(botId)
+                                    ? adapter.encodeLegalActions(turnState, botId) : [];
+                                streamManager.notifyBotTurn(gameId, botId, stateTensor, legalActionIds);
                             }
+                        });
+                    } else if (aiType === 'random') {
+                        return new RandomPlayer(botId, `Random AI ${idx}`);
+                    } else if (aiType === 'minimax') {
+                        return new MinimaxPlayer(botId, def.ruleset, { maxDepth: 3 }, `Minimax AI ${idx}`);
+                    } else if (aiType === 'mcts') {
+                        return new MCTSPlayer(botId, def.ruleset, { iterations: 1000 }, `MCTS AI ${idx}`);
+                    }
+                    return null;
+                };
 
-                            if (botPlayer) {
-                                server.aiPlayers.set(botId, botPlayer);
-                                console.log(`[AI] Spawned ${aiType} ${botId} in game ${gameId}`);
+                // プレイヤー構成に基づいてスロットを割り当てる
+                const state = engine.getState();
+                if (state.players) {
+                    const slotKeys = Object.keys(state.players);
+                    // playersConfig: スロットごとの種別配列 (例: ['human', 'random', 'minimax'])
+                    const playersConfig: string[] | undefined = options?.playersConfig;
+
+                    if (playersConfig && playersConfig.length > 0) {
+                        // カスタム構成: 各スロットに個別のタイプを割り当てる
+                        for (let i = 0; i < Math.min(playersConfig.length, slotKeys.length); i++) {
+                            const slotType = playersConfig[i];
+                            const slotKey = slotKeys[i] as string;
+                            if (slotType && slotType !== 'human') {
+                                const botId = `bot_${i}_` + Math.random().toString(36).substring(7);
+                                state.players[slotKey] = botId;
+                                const botPlayer = createBotPlayer(botId, slotType, i);
+                                if (botPlayer) {
+                                    server.aiPlayers.set(botId, botPlayer);
+                                    console.log(`[AI] Spawned ${slotType} ${botId} in slot ${slotKey} for game ${gameId}`);
+                                }
                             }
                         }
+                    } else if (options?.addAi) {
+                        // レガシー互換: 最初のスロットを人間用に残し、残りを同じAIで埋める
+                        for (let i = 1; i < slotKeys.length; i++) {
+                            const slotKey = slotKeys[i] as string;
+                            const botId = `bot_${i}_` + Math.random().toString(36).substring(7);
+                            state.players[slotKey] = botId;
+                            const botPlayer = createBotPlayer(botId, options.addAi, i);
+                            if (botPlayer) {
+                                server.aiPlayers.set(botId, botPlayer);
+                                console.log(`[AI] Spawned ${options.addAi} ${botId} in game ${gameId}`);
+                            }
+                        }
+                    }
+
+                    // 全スロットが埋まっている（全員AIの場合等）なら即座にPLAYINGへ遷移
+                    const filledCount = Object.values(state.players).filter(p => p !== null).length;
+                    if (filledCount >= slotKeys.length && filledCount >= def.minPlayers) {
+                        state.status = 'PLAYING';
+                        console.log(`[AI] All slots filled — game ${gameId} auto-started as PLAYING`);
+                        // 全員AIなら即座にAIターンを開始
+                        setTimeout(() => server.broadcastState(), 100);
                     }
                 }
 

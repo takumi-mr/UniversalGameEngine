@@ -80,25 +80,14 @@
                       <template v-slot:prepend>
                         <v-icon icon="mdi-robot-outline" class="mr-2"></v-icon>
                       </template>
-                      <v-list-item-title>Play with AI (Random)</v-list-item-title>
+                      <v-list-item-title>Quick AI Match (Random)</v-list-item-title>
                     </v-list-item>
-                    <v-list-item @click="createNewRoom('minimax')">
+                    <v-divider class="my-1"></v-divider>
+                    <v-list-item @click="openCustomSetup()">
                       <template v-slot:prepend>
-                        <v-icon icon="mdi-robot" class="mr-2"></v-icon>
+                        <v-icon icon="mdi-cog" class="mr-2"></v-icon>
                       </template>
-                      <v-list-item-title>Play with AI (Minimax)</v-list-item-title>
-                    </v-list-item>
-                    <v-list-item @click="createNewRoom('mcts')">
-                      <template v-slot:prepend>
-                        <v-icon icon="mdi-head-cog" class="mr-2"></v-icon>
-                      </template>
-                      <v-list-item-title>Play with AI (MCTS)</v-list-item-title>
-                    </v-list-item>
-                    <v-list-item @click="createNewRoom('grpc_bot')">
-                      <template v-slot:prepend>
-                        <v-icon icon="mdi-cloud-outline" class="mr-2"></v-icon>
-                      </template>
-                      <v-list-item-title>Play with AI (gRPC External)</v-list-item-title>
+                      <v-list-item-title>Custom Match Setup...</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
@@ -227,6 +216,84 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Custom Match Setup Dialog -->
+    <v-dialog v-model="showCustomSetup" max-width="560" persistent>
+      <v-card class="rounded-xl pa-4">
+        <v-card-title class="text-h5 font-weight-bold text-center">
+          ⚙️ Custom Match Setup
+        </v-card-title>
+        <v-card-subtitle class="text-center text-medium-emphasis">
+          {{ translatedGameName }} — Choose a type for each player slot
+        </v-card-subtitle>
+
+        <v-card-text class="mt-4">
+          <div class="d-flex align-center justify-space-between mb-4">
+            <span class="text-body-1 font-weight-medium">Players ({{ customSlots.length }})</span>
+            <div>
+              <v-btn
+                icon="mdi-minus"
+                variant="tonal"
+                size="small"
+                :disabled="customSlots.length <= customMinPlayers"
+                @click="removeSlot"
+                class="mr-1"
+              ></v-btn>
+              <v-btn
+                icon="mdi-plus"
+                variant="tonal"
+                size="small"
+                :disabled="customSlots.length >= customMaxPlayers"
+                @click="addSlot"
+              ></v-btn>
+            </div>
+          </div>
+
+          <v-row v-for="(slot, idx) in customSlots" :key="idx" class="mb-2" align="center">
+            <v-col cols="4" class="py-1">
+              <span class="text-body-2 font-weight-medium">
+                {{ slotTypeIcon(slot) }} Player {{ idx + 1 }}
+              </span>
+            </v-col>
+            <v-col cols="8" class="py-1">
+              <v-select
+                v-model="customSlots[idx]"
+                :items="playerTypeOptions"
+                item-title="label"
+                item-value="value"
+                density="compact"
+                variant="outlined"
+                hide-details
+                class="rounded-lg"
+              ></v-select>
+            </v-col>
+          </v-row>
+        </v-card-text>
+
+        <v-card-actions class="flex-column gap-2 mt-2">
+          <v-btn
+            block
+            color="primary"
+            variant="flat"
+            size="large"
+            class="rounded-lg font-weight-bold"
+            prepend-icon="mdi-play"
+            :loading="creating"
+            @click="startCustomMatch"
+          >
+            Start Match
+          </v-btn>
+          <v-btn
+            block
+            variant="text"
+            class="mt-1"
+            @click="showCustomSetup = false"
+          >
+            Cancel
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-app>
 </template>
 
@@ -268,8 +335,45 @@ const showHelp = ref(false);
 const showJoinDialog = ref(false);
 const selectedRoomId = ref<string | null>(null);
 
+// カスタムマッチ用の状態
+const showCustomSetup = ref(false);
+const customSlots = ref<string[]>([]);
+const playerTypeOptions = [
+  { label: '👤 Human', value: 'human' },
+  { label: '🎲 Random AI', value: 'random' },
+  { label: '🤖 Minimax AI', value: 'minimax' },
+  { label: '🧠 MCTS AI', value: 'mcts' },
+  { label: '☁️ gRPC External', value: 'grpc_bot' },
+];
+
 const gameInfo = computed(() => availableGames.find(g => g.type === gameType.value));
 const gameEmoji = computed(() => gameInfo.value?.emoji || '🎮');
+const customMinPlayers = computed(() => gameInfo.value?.minPlayers ?? 2);
+const customMaxPlayers = computed(() => gameInfo.value?.maxPlayers ?? 2);
+
+const slotTypeIcon = (slotType: string) => {
+  const map: Record<string, string> = { human: '👤', random: '🎲', minimax: '🤖', mcts: '🧠', grpc_bot: '☁️' };
+  return map[slotType] || '❓';
+};
+
+const openCustomSetup = () => {
+  // ゲームの最小プレイヤー数でスロットを初期化 (デフォルトは全て human)
+  const min = customMinPlayers.value;
+  customSlots.value = Array.from({ length: min }, () => 'human');
+  showCustomSetup.value = true;
+};
+
+const addSlot = () => {
+  if (customSlots.value.length < customMaxPlayers.value) {
+    customSlots.value.push('human');
+  }
+};
+
+const removeSlot = () => {
+  if (customSlots.value.length > customMinPlayers.value) {
+    customSlots.value.pop();
+  }
+};
 
 import { useI18n } from 'vue-i18n';
 const { t } = useI18n();
@@ -281,10 +385,10 @@ const fetchRooms = () => roomStore.fetchRooms(gameType.value);
 
 onMounted(fetchRooms);
 
+// ゲームルーム作成（レガシー互換: addAi で全スロットを同じAIで埋める）
 const createNewRoom = async (aiType?: string) => {
   creating.value = true;
   try {
-    // ゲーム固有の起動前フックを実行（数独の場合は問題生成など）
     const hookFn = gameHooks[gameType.value];
     let gameOptions: any = hookFn ? await hookFn() : {};
     
@@ -300,10 +404,42 @@ const createNewRoom = async (aiType?: string) => {
       type: gameType.value.toUpperCase().replace(/-/g, '_'),
       gameOptions,
     });
-      client.disconnect(); // 別のビューへ遷移するため、一時的な接続は解除する
-      router.push(`/game/${gameType.value}/${id}`);
+    client.disconnect();
+    router.push(`/game/${gameType.value}/${id}`);
   } catch (err) {
     console.error('Failed to create room:', err);
+  } finally {
+    creating.value = false;
+  }
+};
+
+// カスタムマッチ: playersConfig を渡してゲーム作成
+const startCustomMatch = async () => {
+  creating.value = true;
+  try {
+    const hookFn = gameHooks[gameType.value];
+    let gameOptions: any = hookFn ? await hookFn() : {};
+    if (!gameOptions) gameOptions = {};
+    gameOptions.playersConfig = customSlots.value;
+
+    const token = authStore.token || '';
+    const API_BASE = 'http://127.0.0.1:3000';
+    const client = new SocketIoClient(API_BASE, token);
+    const id = await client.createGame({
+      type: gameType.value.toUpperCase().replace(/-/g, '_'),
+      gameOptions,
+    });
+    client.disconnect();
+    showCustomSetup.value = false;
+    
+    // 全員AIなら観戦モードとして遷移
+    const hasHuman = customSlots.value.includes('human');
+    router.push({
+      path: `/game/${gameType.value}/${id}`,
+      query: hasHuman ? {} : { spectate: 'true' }
+    });
+  } catch (err) {
+    console.error('Failed to create custom match:', err);
   } finally {
     creating.value = false;
   }
