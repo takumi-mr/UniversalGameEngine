@@ -4,60 +4,69 @@ import type { BaseGameState, BaseGameAction, GameRuleset } from "../../GameRules
 import type { IGameRNG } from "../../utils/IGameRNG";
 import { MahjongHandEvaluator } from "./MahjongHandEvaluator";
 
-// 麻雀の牌表現 (例: 萬子=m, 筒子=p, 索子=s, 字牌=z)
-// '1m' ~ '9m', '1p' ~ '9p', '1s' ~ '9s', '1z' ~ '7z'
+// --- Types & Interfaces ---
+
+/** 麻雀の牌表現 (例: 萬子=m, 筒子=p, 索子=s, 字牌=z) */
 export type Tile = string;
 
+/** 副露（鳴き）の情報 */
+export interface Meld {
+  type: "CHI" | "PON" | "KAN";
+  tile: Tile;
+  consumed: Tile[]; // 鳴きに使用した自分の牌
+}
+
+/** 麻雀のゲーム状態 */
 export interface MahjongState extends BaseGameState {
+  phase: "WAITING" | "PLAYING" | "INTERRUPTING" | "FINISHED";
   playerIds: string[]; // 参加プレイヤー4人のID順序（起家から順）
   wall: Secret<Tile[]>; // 山牌
-  deadWall: Secret<Tile[]>; // 王牌 (通常14枚だが簡易化のため配列で保持)
+  deadWall: Secret<Tile[]>; // 王牌
   doraIndicators: Tile[]; // ドラ表示牌
-  hands: Record<string, Secret<Tile[]>>; // 各プレイヤーごとの手牌（IDキー）
-  discards: Record<string, Tile[]>; // 各プレイヤーの捨て牌、いわゆる「河」（IDキー）
-  melds: Record<string, any[]>; // 鳴き・副露の情報（簡易化のため any[]）
+  hands: Record<string, Secret<Tile[]>>; // 各プレイヤーごとの手牌
+  discards: Record<string, Tile[]>; // 各プレイヤーの捨て牌（河）
+  melds: Record<string, Meld[]>; // 鳴き・副露の情報
 
-  // 局の進行状態
   wind: "EAST" | "SOUTH" | "WEST" | "NORTH"; // 場風
-  round: number; // 局（1局目=1, 2局目=2...）
+  round: number; // 局（1局目=1...）
   turnIndex: number; // 現在のターンプレイヤーのインデックス(0~3)
 
-  // 点数
-  scores: Record<string, number>;
+  scores: Record<string, number>; // 点数
 
-  // 【重要】割り込みアクション（鳴き、ロン）待ちの状態
+  /** 割り込みアクション（鳴き、ロン）待ちの状態 */
   pendingDiscard?: {
     playerId: string; // 牌を捨てた人のID
     tile: Tile; // 捨てられた牌
-    // すべてのプレイヤーからの返答（パス、鳴き、ロン）をバッファリングする
     pendingActions: { playerId: string; action: MahjongAction }[];
   };
 }
 
+/** 麻雀のコマンドアクション */
 export interface MahjongAction extends BaseGameAction {
   type: "DRAW" | "DISCARD" | "CALL" | "RON" | "TSUMO" | "PASS" | "START";
-  tile?: Tile; // 打牌(DISCARD)や鳴き(CALL)の対象となる特定の牌
+  tile?: Tile; // 対象の牌
   meldType?: "CHI" | "PON" | "KAN"; // 鳴きの種類
 }
 
-// 簡易的な山牌生成関数
+// --- Constants & Helpers ---
+
+const INITIAL_SCORE = 25000;
+const _WALL_SIZE = 136;
+const DEAD_WALL_SIZE = 14;
+
+/** 山牌の生成 */
 function createWall(rng?: IGameRNG): Tile[] {
   const wall: Tile[] = [];
   const suits = ["m", "p", "s"];
-  const numbers = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
-  const honors = ["1", "2", "3", "4", "5", "6", "7"]; // 東南西北白發中 = 1z~7z
+  const honors = ["1z", "2z", "3z", "4z", "5z", "6z", "7z"];
 
   for (let i = 0; i < 4; i++) {
     for (const s of suits) {
-      for (const n of numbers) {
-        wall.push(`${n}${s}`);
-      }
+      for (let n = 1; n <= 9; n++) wall.push(`${n}${s}`);
     }
-    for (const h of honors) {
-      wall.push(`${h}z`);
-    }
+    for (const h of honors) wall.push(h);
   }
-  // Fisher-Yates shuffle
+
   for (let i = wall.length - 1; i > 0; i--) {
     const j = rng ? rng.nextInt(0, i) : Math.floor(Math.random() * (i + 1));
     [wall[i], wall[j]] = [wall[j], wall[i]];
@@ -65,17 +74,270 @@ function createWall(rng?: IGameRNG): Tile[] {
   return wall;
 }
 
-export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
-  getInitialState: (options: any, _rng?: IGameRNG): MahjongState => {
-    const opts = options || {};
-    const playerIds = (opts.playerIds || []).filter((id: any) => !!id);
+/** ターンの更新 */
+function advanceTurn(state: MahjongState, nextIndex?: number): Partial<MahjongState> {
+  const turnIndex = nextIndex ?? (state.turnIndex + 1) % 4;
+  return {
+    turnIndex,
+    activePlayers: [state.playerIds[turnIndex]],
+    phase: "PLAYING",
+    pendingDiscard: undefined,
+  };
+}
+
+// --- Action Validators ---
+
+const ACTION_VALIDATORS: Record<
+  MahjongAction["type"],
+  (state: MahjongState, action: MahjongAction) => boolean
+> = {
+  START: (state) => {
+    const joinedPlayers = Object.values(state.players || {}).filter((p) => p !== null);
+    return state.status === "WAITING" && joinedPlayers.length === 4;
+  },
+  DRAW: (state, action) => {
+    if (state.phase !== "PLAYING" || !state.activePlayers?.includes(action.playerId!)) return false;
+    const hand = state.hands[action.playerId!]?.value || [];
+    return hand.length === 13;
+  },
+  DISCARD: (state, action) => {
+    if (state.phase !== "PLAYING" || !state.activePlayers?.includes(action.playerId!)) return false;
+    if (!action.tile) return false;
+    const hand = state.hands[action.playerId!]?.value || [];
+    return hand.includes(action.tile) && hand.length === 14;
+  },
+  TSUMO: (state, action) => {
+    if (state.phase !== "PLAYING" || !state.activePlayers?.includes(action.playerId!)) return false;
+    const hand = state.hands[action.playerId!]?.value || [];
+    return hand.length === 14;
+  },
+  CALL: (state, action) => {
+    if (state.phase === "INTERRUPTING") {
+      if (action.playerId === state.pendingDiscard?.playerId) return false;
+      return !state.pendingDiscard?.pendingActions.some((a) => a.playerId === action.playerId);
+    }
+    return false;
+  },
+  RON: (state, action) => {
+    if (state.phase !== "INTERRUPTING") return false;
+    if (action.playerId === state.pendingDiscard?.playerId) return false;
+    return !state.pendingDiscard?.pendingActions.some((a) => a.playerId === action.playerId);
+  },
+  PASS: (state, action) => {
+    if (state.phase !== "INTERRUPTING") return false;
+    return !state.pendingDiscard?.pendingActions.some((a) => a.playerId === action.playerId);
+  },
+};
+
+// --- Action Handlers ---
+
+const ACTION_HANDLERS: Record<
+  MahjongAction["type"],
+  (state: MahjongState, action: MahjongAction, rng?: IGameRNG) => MahjongState
+> = {
+  START: (state, action, rng) => {
+    const playerIds = Object.values(state.players || {}).filter((p) => p !== null) as string[];
+    const wallArr = createWall(rng);
+    const deadW: Tile[] = wallArr.splice(-DEAD_WALL_SIZE);
+    const doraIndicators = [deadW.pop()!];
+
+    const hands: Record<string, Secret<Tile[]>> = {};
+    const discards: Record<string, Tile[]> = {};
+    const melds: Record<string, Meld[]> = {};
+    const scores: Record<string, number> = {};
+
+    for (const pId of playerIds) {
+      scores[pId] = INITIAL_SCORE;
+      discards[pId] = [];
+      melds[pId] = [];
+      const handArr = wallArr.splice(0, 13).sort();
+      hands[pId] = createSecret(handArr, [pId], Array(handArr.length).fill("?"));
+    }
 
     return {
+      ...state,
+      status: "PLAYING",
+      phase: "PLAYING",
+      playerIds,
+      wall: createSecret(wallArr, [], Array(wallArr.length).fill("?")),
+      deadWall: createSecret(deadW, [], Array(deadW.length).fill("?")),
+      doraIndicators,
+      hands,
+      discards,
+      melds,
+      scores,
+      turnIndex: 0,
+      activePlayers: [playerIds[0]],
+    };
+  },
+
+  DRAW: (state, action) => {
+    const pId = action.playerId!;
+    const wallArr = [...state.wall.value];
+    const drawTile = wallArr.pop();
+
+    if (!drawTile) {
+      return { ...state, status: "FINISHED", phase: "FINISHED", message: "流局 (No tiles left)." };
+    }
+
+    const handArr = [...state.hands[pId].value, drawTile];
+    return {
+      ...state,
+      wall: createSecret(wallArr, [], Array(wallArr.length).fill("?")),
+      hands: {
+        ...state.hands,
+        [pId]: createSecret(handArr, [pId], Array(handArr.length).fill("?")),
+      },
+    };
+  },
+
+  DISCARD: (state, action) => {
+    const pId = action.playerId!;
+    const tile = action.tile!;
+    const hand = [...state.hands[pId].value];
+    const idx = hand.indexOf(tile);
+    hand.splice(idx, 1);
+
+    return {
+      ...state,
+      phase: "INTERRUPTING",
+      hands: {
+        ...state.hands,
+        [pId]: createSecret(hand, [pId], Array(hand.length).fill("?")),
+      },
+      discards: {
+        ...state.discards,
+        [pId]: [...state.discards[pId], tile],
+      },
+      pendingDiscard: {
+        playerId: pId,
+        tile,
+        pendingActions: [],
+      },
+      activePlayers: state.playerIds.filter((id) => id !== pId),
+      turnDeadline: Date.now() + 10000,
+    };
+  },
+
+  TSUMO: (state, action) => {
+    const pId = action.playerId!;
+    const hand = state.hands[pId].value;
+    const result = MahjongHandEvaluator.evaluate(
+      hand,
+      state.melds[pId],
+      hand[hand.length - 1],
+      true,
+      state,
+    );
+
+    if (result.isAgari) {
+      const perPlayer = Math.ceil(result.ten / 3);
+      const newScores = { ...state.scores };
+      for (const id of state.playerIds) {
+        if (id === pId) newScores[id] += perPlayer * 3;
+        else newScores[id] -= perPlayer;
+      }
+      return {
+        ...state,
+        status: "FINISHED",
+        phase: "FINISHED",
+        scores: newScores,
+        message: `Player ${pId} won by TSUMO! [${result.ten}pts]`,
+      };
+    }
+    return { ...state, message: "Invalid TSUMO claim." };
+  },
+
+  RON: (state, action) => handleInterruption(state, action),
+  CALL: (state, action) => handleInterruption(state, action),
+  PASS: (state, action) => handleInterruption(state, action),
+};
+
+/** 割り込みアクションの解決 */
+function handleInterruption(state: MahjongState, action: MahjongAction): MahjongState {
+  if (!state.pendingDiscard) return state;
+
+  const pendingActions = [
+    ...state.pendingDiscard.pendingActions,
+    { playerId: action.playerId!, action },
+  ];
+  if (pendingActions.length < 3) {
+    return {
+      ...state,
+      pendingDiscard: { ...state.pendingDiscard, pendingActions },
+    };
+  }
+
+  // 全員の回答が揃った
+  const tile = state.pendingDiscard.tile;
+  const discarderId = state.pendingDiscard.playerId;
+
+  // 優先順位: RON > CALL(PON/KAN) > CALL(CHI) > PASS
+  const rons = pendingActions.filter((a) => a.action.type === "RON");
+  if (rons.length > 0) {
+    const newScores = { ...state.scores };
+    const messages: string[] = [];
+    for (const ron of rons) {
+      const winnerId = ron.playerId;
+      const hand = [...state.hands[winnerId].value, tile];
+      const result = MahjongHandEvaluator.evaluate(hand, state.melds[winnerId], tile, false, state);
+      if (result.isAgari) {
+        newScores[winnerId] += result.ten;
+        newScores[discarderId] -= result.ten;
+        messages.push(`Player ${winnerId} won by RON! [${result.ten}pts]`);
+      }
+    }
+    return {
+      ...state,
+      status: "FINISHED",
+      phase: "FINISHED",
+      scores: newScores,
+      message: messages.join(" | "),
+      pendingDiscard: undefined,
+    };
+  }
+
+  const calls = pendingActions.filter((a) => a.action.type === "CALL");
+  const priorityCall = calls.find((a) => a.action.meldType !== "CHI") || calls[0];
+
+  if (priorityCall) {
+    const pId = priorityCall.playerId;
+    const meld: Meld = {
+      type: priorityCall.action.meldType!,
+      tile,
+      consumed: [], // 本来は手牌から削る処理が必要
+    };
+    return {
+      ...state,
+      ...advanceTurn(state, state.playerIds.indexOf(pId)),
+      melds: {
+        ...state.melds,
+        [pId]: [...state.melds[pId], meld],
+      },
+    };
+  }
+
+  // 全員パス
+  return {
+    ...state,
+    ...advanceTurn(state),
+  };
+}
+
+// --- Ruleset Definition ---
+
+export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
+  getInitialState: (options: any): MahjongState => {
+    const playerIds = (options?.playerIds || []).filter((id: any) => !!id);
+    return {
       status: "WAITING",
-      players:
-        playerIds.length > 0
-          ? playerIds.reduce((acc: Record<string, string>, p: string) => ({ ...acc, [p]: p }), {})
-          : { 0: null, 1: null, 2: null, 3: null },
+      phase: "WAITING",
+      players: playerIds.reduce((acc: any, p: string) => ({ ...acc, [p]: p }), {
+        0: null,
+        1: null,
+        2: null,
+        3: null,
+      }),
       playerIds,
       activePlayers: [],
       turnIndex: 0,
@@ -91,359 +353,64 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
     };
   },
 
-  isValidAction: (state: MahjongState, action: MahjongAction): boolean => {
-    const pId = action.playerId!;
-
-    if (action.type === "START") {
-      // 4人揃っているときだけ開始可能
-      const joinedPlayers = Object.values(state.players || {}).filter((p) => p !== null);
-      const isUninitialized = Object.keys(state.hands || {}).length === 0;
-      return (
-        (state.status === "WAITING" || (state.status === "PLAYING" && isUninitialized)) &&
-        joinedPlayers.length === 4
-      );
-    }
-
-    if (state.status !== "PLAYING") return false;
-
-    // --- A. 割り込み待ち（誰かの打牌直後）状態の場合 ---
-    if (state.pendingDiscard) {
-      // 打牌した本人以外がアクション可能
-      if (pId === state.pendingDiscard.playerId) return false;
-      // 既にアクション済みなら不可（1人1回まで）
-      if (state.pendingDiscard.pendingActions.some((a) => a.playerId === pId)) return false;
-
-      // 許容されるアクションは「鳴き」「ロン」「パス」のみ
-      if (["CALL", "RON", "PASS"].includes(action.type)) {
-        return true;
-      }
-      return false;
-    }
-
-    // --- B. 通常の手番（ツモ後）状態の場合 ---
-    if (!state.activePlayers || !state.activePlayers.includes(pId)) return false;
-
-    switch (action.type) {
-      case "DRAW": {
-        // 山から引くフェーズかチェック
-        const hand = state.hands[pId]?.value || [];
-        return hand.length === 13;
-      }
-      case "DISCARD": {
-        if (!action.tile) return false;
-        const h = state.hands[pId]?.value || [];
-        return h.includes(action.tile) && h.length === 14;
-      }
-      case "TSUMO": {
-        const tsHand = state.hands[pId]?.value || [];
-        return tsHand.length === 14;
-      }
-      case "CALL": {
-        return true;
-      }
-      default: {
-        return false;
-      }
-    }
+  isValidAction: (state, action) => {
+    const validator = ACTION_VALIDATORS[action.type];
+    return validator ? validator(state, action) : false;
   },
 
-  reduce: (state: MahjongState, action: MahjongAction, rng?: IGameRNG): MahjongState => {
-    if (action.type === "START") {
-      const playerIds = Object.values(state.players || {}).filter((p) => p !== null) as string[];
-      const wallArr = createWall(rng);
-      const deadW: Tile[] = [];
-      const doraIndicators: Tile[] = [];
-      const hands: Record<string, Secret<Tile[]>> = {};
-      const discards: Record<string, Tile[]> = {};
-      const melds: Record<string, any[]> = {};
-      const scores: Record<string, number> = {};
-
-      // 王牌を14枚分確保
-      for (let i = 0; i < 14; i++) {
-        deadW.push(wallArr.pop()!);
-      }
-      doraIndicators.push(deadW.pop()!);
-
-      for (const pId of playerIds) {
-        scores[pId] = 25000;
-        discards[pId] = [];
-        melds[pId] = [];
-        const handArr: Tile[] = [];
-        for (let i = 0; i < 13; i++) {
-          handArr.push(wallArr.pop()!);
-        }
-        hands[pId] = createSecret(
-          handArr.sort(),
-          [pId],
-          handArr.map(() => "?"),
-        );
-      }
-
-      return {
-        ...state,
-        status: "PLAYING",
-        playerIds,
-        wall: createSecret(
-          wallArr,
-          [],
-          wallArr.map(() => "?"),
-        ),
-        deadWall: createSecret(
-          deadW,
-          [],
-          deadW.map(() => "?"),
-        ),
-        doraIndicators,
-        hands,
-        discards,
-        melds,
-        scores,
-        turnIndex: 0,
-        activePlayers: [playerIds[0]], // 東家から開始
-      };
-    }
-
-    const newState: MahjongState = {
-      ...state,
-      scores: { ...state.scores },
-      hands: { ...state.hands },
-      discards: { ...state.discards },
-      melds: { ...state.melds },
-      pendingDiscard: state.pendingDiscard
-        ? {
-            ...state.pendingDiscard,
-            pendingActions: [...state.pendingDiscard.pendingActions],
-          }
-        : undefined,
-    };
-    const pId = action.playerId!;
-
-    // 割り込み待ち処理の解決ロジック
-    if (newState.pendingDiscard) {
-      newState.pendingDiscard.pendingActions.push({ playerId: pId, action });
-
-      if (newState.pendingDiscard.pendingActions.length === 3) {
-        const actions = newState.pendingDiscard.pendingActions;
-        const tile = newState.pendingDiscard.tile;
-
-        const rons = actions.filter((a) => a.action.type === "RON");
-        const pankan = actions.filter(
-          (a) =>
-            a.action.type === "CALL" &&
-            (a.action.meldType === "PON" || a.action.meldType === "KAN"),
-        );
-        const chi = actions.filter((a) => a.action.type === "CALL" && a.action.meldType === "CHI");
-
-        if (rons.length > 0) {
-          newState.status = "FINISHED";
-          const messages: string[] = [];
-          for (const ronAction of rons) {
-            const winnerId = ronAction.playerId;
-            const handWithWinTile = [...newState.hands[winnerId].value, tile];
-            const result = MahjongHandEvaluator.evaluate(
-              handWithWinTile,
-              newState.melds[winnerId],
-              tile,
-              false,
-              newState,
-            );
-            if (result.isAgari) {
-              newState.scores[winnerId] += result.ten;
-              newState.scores[newState.pendingDiscard!.playerId] -= result.ten;
-              messages.push(`Player ${winnerId} won by RON! [${result.ten}pts]`);
-            }
-          }
-          newState.message = messages.length > 0 ? messages.join(" | ") : "Game Over";
-          newState.pendingDiscard = undefined;
-          return newState;
-        }
-
-        if (pankan.length > 0) {
-          const winner = pankan[0];
-          newState.melds[winner.playerId].push({
-            type: winner.action.meldType,
-            tile,
-          });
-          newState.turnIndex = newState.playerIds.indexOf(winner.playerId);
-          newState.activePlayers = [winner.playerId];
-          newState.pendingDiscard = undefined;
-          return newState;
-        }
-
-        if (chi.length > 0) {
-          const winner = chi[0];
-          newState.melds[winner.playerId].push({
-            type: winner.action.meldType,
-            tile,
-          });
-          newState.turnIndex = newState.playerIds.indexOf(winner.playerId);
-          newState.activePlayers = [winner.playerId];
-          newState.pendingDiscard = undefined;
-          return newState;
-        }
-
-        newState.pendingDiscard = undefined;
-        newState.turnIndex = (newState.turnIndex + 1) % 4;
-        newState.activePlayers = [newState.playerIds[newState.turnIndex]];
-      }
-      return newState;
-    }
-
-    switch (action.type) {
-      case "DRAW": {
-        const wallArr = [...newState.wall.value];
-        const drawTile = wallArr.pop();
-        if (!drawTile) {
-          newState.status = "FINISHED";
-          newState.message = "Game drawn (No tiles left).";
-          return newState;
-        }
-        newState.wall = createSecret(
-          wallArr,
-          [],
-          wallArr.map(() => "?"),
-        );
-        const handArr = [...newState.hands[pId].value, drawTile];
-        newState.hands[pId] = createSecret(
-          handArr,
-          [pId],
-          handArr.map(() => "?"),
-        );
-        break;
-      }
-      case "DISCARD": {
-        const dHand = [...newState.hands[pId].value];
-        const idx = dHand.indexOf(action.tile!);
-        dHand.splice(idx, 1);
-        newState.hands[pId] = createSecret(
-          dHand,
-          [pId],
-          dHand.map(() => "?"),
-        );
-        newState.discards[pId].push(action.tile!);
-        newState.pendingDiscard = {
-          playerId: pId,
-          tile: action.tile!,
-          pendingActions: [],
-        };
-        newState.activePlayers = newState.playerIds.filter((id) => id !== pId);
-        newState.turnDeadline = Date.now() + 10000;
-        break;
-      }
-      case "TSUMO": {
-        const tsHandV = newState.hands[pId].value;
-        const winningTile = tsHandV[tsHandV.length - 1];
-        const tsResult = MahjongHandEvaluator.evaluate(
-          tsHandV,
-          newState.melds[pId],
-          winningTile,
-          true,
-          newState,
-        );
-        newState.status = "FINISHED";
-        if (tsResult.isAgari) {
-          const paymentPerPlayer = Math.ceil(tsResult.ten / 3);
-          for (const otherId of newState.playerIds) {
-            if (otherId !== pId) newState.scores[otherId] -= paymentPerPlayer;
-          }
-          newState.scores[pId] += paymentPerPlayer * 3;
-          newState.message = `Player ${pId} won by TSUMO! [${tsResult.ten}pts]`;
-        } else {
-          newState.message = `Player ${pId} claimed TSUMO, but hand is invalid.`;
-        }
-        break;
-      }
-    }
-    return newState;
+  reduce: (state, action, rng) => {
+    const handler = ACTION_HANDLERS[action.type];
+    return handler ? handler(state, action, rng) : state;
   },
 
-  checkWinCondition: (state: MahjongState) => {
+  getLegalActions: (state, playerId): MahjongAction[] => {
+    const actionTypes: MahjongAction["type"][] = [
+      "START",
+      "DRAW",
+      "DISCARD",
+      "CALL",
+      "RON",
+      "TSUMO",
+      "PASS",
+    ];
+    const actions: MahjongAction[] = [];
+
+    for (const type of actionTypes) {
+      if (type === "DISCARD") {
+        const hand = state.hands[playerId]?.value || [];
+        for (const tile of new Set(hand)) {
+          const action = { type, playerId, tile } as MahjongAction;
+          if (MahjongRuleset.isValidAction(state, action)) actions.push(action);
+        }
+      } else {
+        const action = { type, playerId } as MahjongAction;
+        if (type === "CALL") action.meldType = "PON"; // 簡易化
+        if (MahjongRuleset.isValidAction(state, action)) actions.push(action);
+      }
+    }
+    return actions;
+  },
+
+  checkWinCondition: (state) => {
     if (state.status === "FINISHED") {
-      const winnerIds: string[] = [];
-      // メッセージから勝者を特定（RON! または TSUMO! の直前のプレイヤー名）
       const match = state.message?.match(/Player (.+?) won/);
-      if (match) {
-        winnerIds.push(match[1]);
-      }
-      return {
-        isFinished: true,
-        winnerIds,
-        message: state.message || "Game finished.",
-      };
+      return { isFinished: true, winnerIds: match ? [match[1]] : [], message: state.message };
     }
     return { isFinished: false };
   },
 
-  getTimeoutAction: (state: MahjongState): MahjongAction | null => {
-    if (!state.pendingDiscard || !state.turnDeadline) return null;
-    if (Date.now() > state.turnDeadline) {
+  getTimeoutAction: (state) => {
+    if (state.phase === "INTERRUPTING" && state.turnDeadline && Date.now() > state.turnDeadline) {
       return { type: "PASS", playerId: state.activePlayers![0] };
     }
     return null;
   },
 
-  getLegalActions: (state: MahjongState, playerId: string): MahjongAction[] => {
-    if (state.status === "WAITING") {
-      const startAction = { type: "START", playerId } as MahjongAction;
-      return MahjongRuleset.isValidAction(state, startAction) ? [startAction] : [];
-    }
-    if (state.status !== "PLAYING") return [];
-    const actions: MahjongAction[] = [];
-
-    if (state.pendingDiscard && state.pendingDiscard.playerId !== playerId) {
-      if (!state.pendingDiscard.pendingActions.some((a) => a.playerId === playerId)) {
-        const interruptActions: MahjongAction[] = [
-          { type: "PASS", playerId },
-          { type: "RON", playerId },
-          {
-            type: "CALL",
-            meldType: "PON",
-            tile: state.pendingDiscard.tile,
-            playerId,
-          },
-          {
-            type: "CALL",
-            meldType: "CHI",
-            tile: state.pendingDiscard.tile,
-            playerId,
-          },
-          {
-            type: "CALL",
-            meldType: "KAN",
-            tile: state.pendingDiscard.tile,
-            playerId,
-          },
-        ];
-        for (const a of interruptActions)
-          if (MahjongRuleset.isValidAction(state, a)) actions.push(a);
-        return actions;
-      }
-    }
-
-    if (!state.activePlayers || !state.activePlayers.includes(playerId)) return [];
-
-    const drawAction: MahjongAction = { type: "DRAW", playerId };
-    if (MahjongRuleset.isValidAction(state, drawAction)) actions.push(drawAction);
-
-    if (state.hands[playerId]) {
-      const uniqueTiles = Array.from(new Set(state.hands[playerId].value));
-      for (const tile of uniqueTiles) {
-        const discardAction: MahjongAction = { type: "DISCARD", tile, playerId };
-        if (MahjongRuleset.isValidAction(state, discardAction)) actions.push(discardAction);
-      }
-      const tsumoAction: MahjongAction = { type: "TSUMO", playerId };
-      if (MahjongRuleset.isValidAction(state, tsumoAction)) actions.push(tsumoAction);
-    }
-
-    return actions;
-  },
-
-  applyWinResult: (state, winResult) => {
-    return {
-      ...state,
-      status: "FINISHED",
-      message: winResult.message ?? state.message,
-      activePlayers: [],
-    };
-  },
+  applyWinResult: (state, winResult) => ({
+    ...state,
+    status: "FINISHED",
+    phase: "FINISHED",
+    message: winResult.message ?? state.message,
+    activePlayers: [],
+  }),
 };
