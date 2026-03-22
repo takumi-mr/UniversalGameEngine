@@ -19,6 +19,7 @@ import { WordleRuleset } from "./rules/WordleRuleset";
 import { SpeedRuleset } from "./rules/SpeedRuleset";
 import { MinesweeperRuleset } from "./rules/MinesweeperRuleset";
 import { PokemonPocketRuleset } from "./rules/PokemonPocket/PokemonPocketRuleset";
+import { WerewolfRuleset } from "./rules/WerewolfRuleset";
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
   type: string;
   name: string;
@@ -255,6 +256,17 @@ class GameRegistry {
       emoji: "🃏",
       rules:
         "エネルギーゾーンから毎ターンエネルギーをつけ、ポケモンを育てて戦います。相手のポケモンをきぜつさせて3ポイント獲得すると勝利です。",
+    });
+    this.register({
+      type: "werewolf",
+      name: "Werewolf",
+      ruleset: WerewolfRuleset,
+      minPlayers: 5,
+      maxPlayers: 15,
+      description: "正体隠匿系パーティーゲーム。村人陣営と人狼陣営に分かれて戦う。",
+      emoji: "🐺",
+      rules:
+        "昼は話し合いと投票で怪しい人を処刑。夜は人狼が村人を襲撃。村人陣営は全ての人狼を処刑すれば勝利、人狼陣営は生存人狼数が村人陣営と同数以上になれば勝利。",
     });
   }
 
