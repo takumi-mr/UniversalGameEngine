@@ -2,6 +2,7 @@
 
 import { UniversalEngine } from "../UniversalEngine";
 import type { GameRuleset, BaseGameState, BaseGameAction } from "../GameRules";
+import { ProvablyFairRNG } from "../utils/ProvablyFairRNG";
 import { createHash } from "crypto";
 
 /* ---------------- Utils ---------------- */
@@ -112,12 +113,17 @@ export function assertDeterministic<
     const action = legal[0];
 
     /* ---------------- Pure reduce check ---------------- */
+    // Note: We use two separate but identical RNG instances to ensure both calls
+    // get the same sequence of random numbers if the ruleset uses the RNG.
+    const seed = "purity-check";
+    const rng1 = new ProvablyFairRNG(seed, seed, 0);
+    const rng2 = new ProvablyFairRNG(seed, seed, 0);
 
-    const next1a = rules.reduce(s1, action);
-    const next1b = rules.reduce(s1, action);
+    const next1a = rules.reduce(s1, action, rng1);
+    const next1b = rules.reduce(s1, action, rng2);
 
     if (!deepEqual(next1a, next1b)) {
-      throw new Error(`Reduce is not pure at step ${step}`);
+      throw new Error(`Reduce is not pure at step ${step} for action type: ${action.type}`);
     }
 
     /* ---------------- Dispatch ---------------- */
