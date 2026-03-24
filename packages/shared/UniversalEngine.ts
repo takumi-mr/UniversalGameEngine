@@ -1,4 +1,4 @@
-// packages/shared/UniversalEngine.ts
+import { deepFreeze } from "./utils/freeze";
 import { isSecret } from "./GameRules";
 import type { BaseGameState, BaseGameAction, GameRuleset, GameRecord } from "./GameRules";
 import { ProvablyFairRNG } from "./utils/ProvablyFairRNG";
@@ -194,6 +194,12 @@ export class UniversalEngine<
 
     // 2. 状態の更新 (Reducerパターン: 副作用を持たせず新しい状態を生成)
     const base = this.cloneStrategy.clone(this.state);
+
+    // 開発/テスト環境では、reduce内で状態が変更されないよう凍結する
+    if (process.env.NODE_ENV !== "production") {
+      deepFreeze(base);
+    }
+
     this.state = this.rules.reduce(base, action, rng);
 
     // nonceを同期

@@ -149,4 +149,24 @@ describe("UniversalEngine", () => {
     customEngine.dispatch({ type: "INCREMENT", value: 1 });
     expect(cloneCount).toBe(2);
   });
+
+  test("should throw error if state is mutated in reduce (development mode)", () => {
+    const mutatingRules: GameRuleset<MockState, MockAction, MockOptions> = {
+      ...mockRules,
+      reduce: (state, _action) => {
+        (state as any).count += 1; // Mutation!
+        return state;
+      },
+    };
+
+    const engineWithMutatingRules = new UniversalEngine<MockState, MockAction, MockOptions>(
+      mutatingRules,
+      { initialCount: 5 },
+    );
+
+    // In 'test' environment (Bun defaults to 'test'), it should throw
+    expect(() => {
+      engineWithMutatingRules.dispatch({ type: "INCREMENT" });
+    }).toThrow();
+  });
 });
