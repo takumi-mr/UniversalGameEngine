@@ -126,4 +126,27 @@ describe("UniversalEngine", () => {
     const stateForP2 = engine.getMaskedState("player2");
     expect(stateForP2.secretData).toBe("?");
   });
+
+  test("should use custom clone strategy", () => {
+    let cloneCount = 0;
+    const customStrategy = {
+      clone: (state: MockState) => {
+        cloneCount++;
+        return JSON.parse(JSON.stringify(state));
+      },
+    };
+
+    const customEngine = new UniversalEngine<MockState, MockAction, MockOptions>(
+      mockRules,
+      { initialCount: 5 },
+      customStrategy,
+    );
+
+    // 1. Constructor clones for initialState
+    expect(cloneCount).toBe(1);
+
+    // 2. Dispatch clones before reduce
+    customEngine.dispatch({ type: "INCREMENT", value: 1 });
+    expect(cloneCount).toBe(2);
+  });
 });
