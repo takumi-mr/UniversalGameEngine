@@ -33,6 +33,10 @@
 
 決定権を外部のgRPCサーバーに委譲するAIプレイヤーです。Python (PyTorch/TensorFlow) 等で実装されたモデルと連携する際に使用します。
 
+### [LLMPlayer.ts](./LLMPLayer.ts)
+
+LLM（Large Language Model）を使用してゲームの指し手を決定するAIプレイヤーです。プロンプトエンジニアリングを用いてゲーム状態を言語化し、LLMの推論能力を活用します。
+
 ## ユーティリティ
 
 ### [AITensorAdapterRegistry.ts](./AITensorAdapterRegistry.ts)
