@@ -5,6 +5,7 @@ import { ProvablyFairRNG } from "./utils/ProvablyFairRNG";
 import { sha256, generateRandomSeed } from "./utils/crypto";
 import type { IGameRNG } from "./utils/IGameRNG";
 import { calculateStateHash } from "./utils/hash";
+import { CloneStrategy, StructuredCloneStrategy } from "./utils/CloneStrategy";
 
 interface InternalGameState extends BaseGameState {
   prngSecret?: string;
@@ -22,10 +23,16 @@ export class UniversalEngine<
   public readonly options: TOptions;
   private initialState: TState;
   private stateHashes: string[] = [];
+  private cloneStrategy: CloneStrategy<TState>;
 
-  constructor(rules: GameRuleset<TState, TAction, TOptions>, options: TOptions) {
+  constructor(
+    rules: GameRuleset<TState, TAction, TOptions>,
+    options: TOptions,
+    cloneStrategy: CloneStrategy<TState> = new StructuredCloneStrategy(),
+  ) {
     this.rules = rules;
     this.options = options;
+    this.cloneStrategy = cloneStrategy;
 
     const opt = options as Record<string, unknown>;
     const clientSeed = typeof opt.clientSeed === "string" ? opt.clientSeed : undefined;
@@ -70,7 +77,8 @@ export class UniversalEngine<
     }
 
     // 初期状態をディープコピーして保存
-    this.initialState = JSON.parse(JSON.stringify(this.state));
+    this.initialState = this.cloneStrategy.clone(this.state);
+
     // 初期状態のハッシュを記録
     this.stateHashes.push(calculateStateHash(this.state));
   }
@@ -185,7 +193,8 @@ export class UniversalEngine<
     const rng = this.createRNGInstance();
 
     // 2. 状態の更新 (Reducerパターン: 副作用を持たせず新しい状態を生成)
-    this.state = this.rules.reduce(this.state, action, rng);
+    const base = this.cloneStrategy.clone(this.state);
+    this.state = this.rules.reduce(base, action, rng);
 
     // nonceを同期
     if (rng) {
