@@ -1,9 +1,10 @@
 // packages/shared/UniversalEngine.ts
 import { isSecret } from "./GameRules";
-import type { BaseGameState, BaseGameAction, GameRuleset } from "./GameRules";
+import type { BaseGameState, BaseGameAction, GameRuleset, GameRecord } from "./GameRules";
 import { ProvablyFairRNG } from "./utils/ProvablyFairRNG";
 import { sha256, generateRandomSeed } from "./utils/crypto";
 import type { IGameRNG } from "./utils/IGameRNG";
+import { calculateStateHash } from "./utils/hash";
 
 interface InternalGameState extends BaseGameState {
   prngSecret?: string;
@@ -19,6 +20,8 @@ export class UniversalEngine<
   private rules: GameRuleset<TState, TAction, TOptions>;
   public history: TAction[] = [];
   public readonly options: TOptions;
+  private initialState: TState;
+  private stateHashes: string[] = [];
 
   constructor(rules: GameRuleset<TState, TAction, TOptions>, options: TOptions) {
     this.rules = rules;
@@ -65,6 +68,11 @@ export class UniversalEngine<
     if (this.state.version === undefined) {
       this.state.version = 0;
     }
+
+    // 初期状態をディープコピーして保存
+    this.initialState = JSON.parse(JSON.stringify(this.state));
+    // 初期状態のハッシュを記録
+    this.stateHashes.push(calculateStateHash(this.state));
   }
 
   /**
@@ -206,7 +214,27 @@ export class UniversalEngine<
     // 3.5 状態のバージョンをインクリメント
     this.state.version = (this.state.version ?? 0) + 1;
 
+    // 3.6 状態のハッシュを計算して記録
+    const currentHash = calculateStateHash(this.state);
+    this.state.hash = currentHash;
+    this.stateHashes.push(currentHash);
+
     return true;
+  }
+
+  /**
+   * 現在のゲームセッションをGameRecord形式で出力する
+   */
+  public getGameRecord(gameId: string): GameRecord<TState, TAction> {
+    return {
+      gameId,
+      initialState: this.initialState,
+      actions: [...this.history],
+      serverSeedHash: this.state.prngConfig?.serverSeedHash || "",
+      clientSeed: this.state.prngConfig?.clientSeed || "",
+      finalServerSeed: this.state.status === "FINISHED" ? this.state.prngSecret : undefined,
+      stateHashes: [...this.stateHashes],
+    };
   }
 
   /**
