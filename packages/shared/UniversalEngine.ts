@@ -114,7 +114,13 @@ export class UniversalEngine<
 
   private updateStateNonce(rng: IGameRNG): void {
     if (this.state.prngConfig && rng instanceof ProvablyFairRNG) {
-      this.state.prngConfig.nonce = rng.getNonce();
+      this.state = {
+        ...this.state,
+        prngConfig: {
+          ...this.state.prngConfig,
+          nonce: rng.getNonce(),
+        },
+      };
     }
   }
 
