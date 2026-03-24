@@ -121,7 +121,7 @@ const proceedToNextTurnOrYakuCheck = (state: HanafudaState, playerId: string): H
 };
 
 export interface HanafudaOptions {
-  playerIds: string[];
+  playerIds?: string[];
 }
 
 // --- 3. ルールセット本体 ---
