@@ -24,16 +24,40 @@ export class UniversalEngine<
     this.rules = rules;
     this.options = options;
 
-    // RNGの初期化（オプションにシードがあれば使用）
-    let rng: IGameRNG | undefined;
     const opt = options as Record<string, unknown>;
-    if (typeof opt.clientSeed === "string") {
-      this.setupPRNG(opt.clientSeed);
-      rng = this.createRNGInstance();
+    const clientSeed = typeof opt.clientSeed === "string" ? opt.clientSeed : undefined;
+    const serverSeed = typeof opt.serverSeed === "string" ? opt.serverSeed : undefined;
+
+    // 1. RNGの準備
+    let rng: IGameRNG | undefined;
+    let initialPrngConfig: BaseGameState["prngConfig"] | undefined;
+    let initialPrngSecret: string | undefined;
+
+    if (clientSeed) {
+      // サーバーシードがない場合はランダム生成（通常時）、ある場合はそれを使用（テスト・再現時）
+      const sSeed = serverSeed || generateRandomSeed();
+      const sSeedHash = sha256(sSeed);
+
+      initialPrngConfig = {
+        serverSeedHash: sSeedHash,
+        clientSeed,
+        nonce: 0,
+      };
+      initialPrngSecret = sSeed;
+
+      rng = new ProvablyFairRNG(sSeed, clientSeed, 0);
     }
 
+    // 2. 初期状態の生成
     this.state = this.rules.getInitialState(options, rng);
 
+    // 3. PRNG設定を状態に反映
+    if (initialPrngConfig) {
+      this.state.prngConfig = initialPrngConfig;
+      this.state.prngSecret = initialPrngSecret;
+    }
+
+    // nonceを同期（getInitialState内で乱数が使われた場合）
     if (rng instanceof ProvablyFairRNG) {
       this.updateStateNonce(rng);
     }
@@ -44,11 +68,11 @@ export class UniversalEngine<
   }
 
   /**
-   * Provably Fair PRNGをセットアップする（サーバー側で初期化時に呼ぶ）
+   * Provably Fair PRNGをセットアップする（サーバー側で途中から初期化する場合などに使用）
    */
-  public setupPRNG(clientSeed: string): void {
-    const serverSeed = generateRandomSeed();
-    const serverSeedHash = sha256(serverSeed);
+  public setupPRNG(clientSeed: string, serverSeed?: string): void {
+    const sSeed = serverSeed || generateRandomSeed();
+    const serverSeedHash = sha256(sSeed);
 
     this.state.prngConfig = {
       serverSeedHash,
@@ -56,8 +80,8 @@ export class UniversalEngine<
       nonce: 0,
     };
 
-    // サーバーシードは Secret として保存（通常は誰も見れない、または終了時に公開）
-    this.state.prngSecret = serverSeed;
+    // サーバーシードは Secret として保存
+    this.state.prngSecret = sSeed;
   }
 
   private createRNGInstance(): IGameRNG | undefined {

@@ -20,6 +20,8 @@ import { SpeedRuleset } from "./rules/SpeedRuleset";
 import { MinesweeperRuleset } from "./rules/MinesweeperRuleset";
 import { PokemonPocketRuleset } from "./rules/PokemonPocket/PokemonPocketRuleset";
 import { WerewolfRuleset } from "./rules/WerewolfRuleset";
+import { HanafudaRuleset } from "./rules/HanafudaRuleset";
+import { NovelRuleset } from "./rules/NovelRuleset";
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
   type: string;
   name: string;
@@ -267,6 +269,27 @@ class GameRegistry {
       emoji: "🐺",
       rules:
         "昼は話し合いと投票で怪しい人を処刑。夜は人狼が村人を襲撃。村人陣営は全ての人狼を処刑すれば勝利、人狼陣営は生存人狼数が村人陣営と同数以上になれば勝利。",
+    });
+    this.register({
+      type: "hanafuda",
+      name: "Hanafuda",
+      ruleset: HanafudaRuleset,
+      minPlayers: 2,
+      maxPlayers: 2,
+      description: "花札（こいこい）。季節の花を合わせよう。",
+      emoji: "🎴",
+      rules:
+        "場札と手札の同じ月の札を合わせ、役を作ります。役ができたら「こいこい」でさらに高みを目指すか、「勝負」で終わらせるかを選びます。",
+    });
+    this.register({
+      type: "novel",
+      name: "Novel Game",
+      ruleset: NovelRuleset,
+      minPlayers: 1,
+      maxPlayers: 1,
+      description: "選択肢で物語が分岐するノベルゲーム。",
+      emoji: "📖",
+      rules: "テキストを読み進め、途中で現れる選択肢によって物語の結末が変化します。",
     });
   }
 
