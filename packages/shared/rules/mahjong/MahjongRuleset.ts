@@ -215,7 +215,7 @@ const ACTION_HANDLERS: Record<
         pendingActions: [],
       },
       activePlayers: state.playerIds.filter((id) => id !== pId),
-      turnDeadline: Date.now() + 10000,
+      turnDeadline: (action.timestamp || 0) + 10000,
     };
   },
 
@@ -327,7 +327,7 @@ function handleInterruption(state: MahjongState, action: MahjongAction): Mahjong
 // --- Ruleset Definition ---
 
 export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
-  getInitialState: (options: any): MahjongState => {
+  getInitialState: (options: any, _rng?: IGameRNG): MahjongState => {
     const playerIds = (options?.playerIds || []).filter((id: any) => !!id);
     return {
       status: "WAITING",
@@ -399,10 +399,9 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
     return { isFinished: false };
   },
 
-  getTimeoutAction: (state) => {
-    if (state.phase === "INTERRUPTING" && state.turnDeadline && Date.now() > state.turnDeadline) {
-      return { type: "PASS", playerId: state.activePlayers![0] };
-    }
+  getTimeoutAction: (_state) => {
+    // Note: getTimeoutAction itself might be called with Date.now() by the engine,
+    // but the engine is responsible for the timing.
     return null;
   },
 

@@ -19,6 +19,8 @@ export interface BaseGameState {
     clientSeed: string;
     nonce: number;
   };
+  // 過去のアクションによって生成された状態のハッシュ履歴 (リプレイ検証用)
+  stateHashes?: string[];
 }
 
 // エンジンがアクションを識別するための最低限の約束
@@ -94,4 +96,24 @@ export interface GameRuleset<
 
   // 特定のプレイヤーが現在実行可能な合法手の完全なリストを返す関数（AI用）
   getLegalActions: (state: TState, playerId: string) => TAction[];
+}
+
+/**
+ * ゲームの全記録を保持するインターフェース。
+ * 初期状態（またはシード）とアクションの履歴を保存し、完全な再現を可能にする。
+ */
+export interface GameRecord<TState extends BaseGameState, TAction extends BaseGameAction> {
+  gameId: string;
+
+  // 再現用
+  initialState: TState;
+  actions: TAction[];
+
+  // RNG検証用
+  serverSeedHash: string;
+  clientSeed: string;
+  finalServerSeed?: string; // ゲーム終了後に開示可能
+
+  // 各ステップでのハッシュ（検証用）
+  stateHashes?: string[];
 }

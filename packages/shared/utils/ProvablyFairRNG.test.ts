@@ -56,6 +56,15 @@ describe("ProvablyFairRNG", () => {
     }
   });
 
+  it("should generate deterministic sequence", () => {
+    const rng1 = new ProvablyFairRNG("server", "client", 0);
+    const rng2 = new ProvablyFairRNG("server", "client", 0);
+
+    for (let i = 0; i < 100; i++) {
+      expect(rng1.nextFloat()).toBe(rng2.nextFloat());
+    }
+  });
+
   it("increments nonce correctly", () => {
     const rng = new ProvablyFairRNG(serverSeed, clientSeed, 0);
     expect(rng.getNonce()).toBe(0);
