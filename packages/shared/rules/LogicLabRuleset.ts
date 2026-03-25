@@ -5,6 +5,7 @@ import {
   type GateType,
   type LogicBlock,
   type Connection,
+  type SubCircuit,
 } from "../utils/LogicCircuitEngine";
 
 export interface TestCase {
@@ -26,11 +27,14 @@ export interface LogicLabState extends BaseGameState {
   currentLevelId: number;
   blocks: Record<string, LogicBlock>;
   connections: Connection[];
-  testResults: boolean[]; // Whether each test case passed
+  testResults: boolean[];
+  unlockedLevels: number[];
+  customBlocks: Record<string, { name: string; compound: SubCircuit }>;
 }
 
 export type LogicLabAction =
   | { type: "ADD_BLOCK"; gateType: GateType; x?: number; y?: number }
+  | { type: "ADD_CUSTOM_BLOCK"; levelId: number; x?: number; y?: number }
   | { type: "REMOVE_BLOCK"; blockId: string }
   | { type: "MOVE_BLOCK"; blockId: string; x: number; y: number }
   | {
@@ -51,10 +55,10 @@ export const LOGIC_LAB_LEVELS: LogicLabLevel[] = [
   {
     id: 1,
     name: "NOT Gate",
-    description: "Build a NOT gate using... wait, just build it.",
+    description: "Build a NOT gate.",
     allowedGates: ["NOT", "SWITCH", "LED"],
-    inputBlocks: [{ id: "in1", label: "Input A" }],
-    outputBlocks: [{ id: "out1", label: "Output Y" }],
+    inputBlocks: [{ id: "in1", label: "A" }],
+    outputBlocks: [{ id: "out1", label: "Y" }],
     testCases: [
       { inputs: { in1: 0 }, outputs: { out1: 1 } },
       { inputs: { in1: 1 }, outputs: { out1: 0 } },
@@ -63,7 +67,7 @@ export const LOGIC_LAB_LEVELS: LogicLabLevel[] = [
   {
     id: 2,
     name: "AND Gate",
-    description: "Combine two inputs to get 1 only when both are 1.",
+    description: "Output 1 only if both inputs are 1.",
     allowedGates: ["AND", "SWITCH", "LED"],
     inputBlocks: [
       { id: "in1", label: "A" },
@@ -114,7 +118,7 @@ export const LOGIC_LAB_LEVELS: LogicLabLevel[] = [
   {
     id: 5,
     name: "Half Adder",
-    description: "Build a circuit that adds two bits.",
+    description: "A+B = Sum, Carry.",
     allowedGates: ["AND", "OR", "NOT", "XOR", "SWITCH", "LED"],
     inputBlocks: [
       { id: "in1", label: "A" },
@@ -131,6 +135,57 @@ export const LOGIC_LAB_LEVELS: LogicLabLevel[] = [
       { inputs: { in1: 1, in2: 1 }, outputs: { out1: 0, out2: 1 } },
     ],
   },
+  {
+    id: 6,
+    name: "Full Adder",
+    description: "A+B+Cin = Sum, Cout. Use your Half Adder!",
+    allowedGates: ["AND", "OR", "XOR", "SWITCH", "LED"],
+    inputBlocks: [
+      { id: "in1", label: "A" },
+      { id: "in2", label: "B" },
+      { id: "in3", label: "Cin" },
+    ],
+    outputBlocks: [
+      { id: "out1", label: "Sum" },
+      { id: "out2", label: "Cout" },
+    ],
+    testCases: [
+      { inputs: { in1: 0, in2: 0, in3: 0 }, outputs: { out1: 0, out2: 0 } },
+      { inputs: { in1: 1, in2: 0, in3: 0 }, outputs: { out1: 1, out2: 0 } },
+      { inputs: { in1: 0, in2: 1, in3: 0 }, outputs: { out1: 1, out2: 0 } },
+      { inputs: { in1: 1, in2: 1, in3: 0 }, outputs: { out1: 0, out2: 1 } },
+      { inputs: { in1: 0, in2: 0, in3: 1 }, outputs: { out1: 1, out2: 0 } },
+      { inputs: { in1: 1, in2: 0, in3: 1 }, outputs: { out1: 0, out2: 1 } },
+      { inputs: { in1: 0, in2: 1, in3: 1 }, outputs: { out1: 0, out2: 1 } },
+      { inputs: { in1: 1, in2: 1, in3: 1 }, outputs: { out1: 1, out2: 1 } },
+    ],
+  },
+  {
+    id: 7,
+    name: "1-bit ALU",
+    description: "Simple ALU: Sum, Carry, AND, OR. Select inputs decide.",
+    allowedGates: ["AND", "OR", "XOR", "NOT", "SWITCH", "LED"],
+    inputBlocks: [
+      { id: "in1", label: "A" },
+      { id: "in2", label: "B" },
+      { id: "in3", label: "Cin" },
+      { id: "in4", label: "S0" }, // Operation select
+      { id: "in5", label: "S1" },
+    ],
+    outputBlocks: [
+      { id: "out1", label: "Result" },
+      { id: "out2", label: "Cout" },
+    ],
+    testCases: [
+      // Op 00 (AND): A & B
+      { inputs: { in1: 1, in2: 0, in3: 0, in4: 0, in5: 0 }, outputs: { out1: 0 } },
+      { inputs: { in1: 1, in2: 1, in3: 0, in4: 0, in5: 0 }, outputs: { out1: 1 } },
+      // Op 01 (OR): A | B
+      { inputs: { in1: 1, in2: 0, in3: 0, in4: 1, in5: 0 }, outputs: { out1: 1 } },
+      // Op 10 (ADD): A + B + Cin
+      { inputs: { in1: 1, in2: 1, in3: 1, in4: 0, in5: 1 }, outputs: { out1: 1, out2: 1 } },
+    ],
+  },
 ];
 
 export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
@@ -140,10 +195,10 @@ export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
 
     const blocks: Record<string, LogicBlock> = {};
     level.inputBlocks.forEach((ib, idx) => {
-      blocks[ib.id] = { id: ib.id, type: "SWITCH", inputs: [], value: 0, x: 50, y: 100 + idx * 80 };
+      blocks[ib.id] = { id: ib.id, type: "SWITCH", outputs: [0], x: 50, y: 100 + idx * 80 };
     });
     level.outputBlocks.forEach((ob, idx) => {
-      blocks[ob.id] = { id: ob.id, type: "LED", inputs: [], value: 0, x: 500, y: 100 + idx * 80 };
+      blocks[ob.id] = { id: ob.id, type: "LED", outputs: [0], x: 600, y: 100 + idx * 80 };
     });
 
     return {
@@ -153,6 +208,8 @@ export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
       connections: [],
       testResults: [],
       activePlayers: [],
+      unlockedLevels: [],
+      customBlocks: {},
     };
   },
 
@@ -172,8 +229,22 @@ export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
           newState.blocks[id] = {
             id,
             type: action.gateType,
-            inputs: [],
-            value: 0,
+            outputs: [0],
+            x: action.x || 200,
+            y: action.y || 200,
+          };
+        }
+        break;
+      }
+      case "ADD_CUSTOM_BLOCK": {
+        const custom = newState.customBlocks[action.levelId];
+        if (custom) {
+          const id = `custom_${action.levelId}_${Math.random().toString(36).substr(2, 9)}`;
+          newState.blocks[id] = {
+            id,
+            type: custom.name,
+            outputs: [],
+            compound: custom.compound,
             x: action.x || 200,
             y: action.y || 200,
           };
@@ -202,12 +273,12 @@ export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
         break;
       }
       case "CONNECT": {
-        // Remove existing connection to same input pin
         newState.connections = newState.connections.filter(
           (c) => !(c.toBlockId === action.toBlockId && c.toPinIndex === action.toPinIndex),
         );
         newState.connections.push({
           fromBlockId: action.fromBlockId,
+          fromPinIndex: action.fromPinIndex,
           toBlockId: action.toBlockId,
           toPinIndex: action.toPinIndex,
         });
@@ -230,18 +301,48 @@ export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
           newState.testResults = level.testCases.map((tc) => {
             const testBlocks = structuredClone(newState.blocks);
             for (const id in tc.inputs) {
-              if (testBlocks[id]) testBlocks[id].value = tc.inputs[id];
+              if (testBlocks[id]) testBlocks[id].outputs = [tc.inputs[id]];
             }
             LogicCircuitEngine.simulate(testBlocks, newState.connections);
-            return Object.entries(tc.outputs).every(([id, val]) => testBlocks[id]?.value === val);
+            return Object.entries(tc.outputs).every(
+              ([id, val]) => testBlocks[id]?.outputs?.[0] === val,
+            );
           });
+
+          if (newState.testResults.every((r) => r === true)) {
+            // Unlock custom block
+            if (!newState.unlockedLevels.includes(level.id)) {
+              newState.unlockedLevels.push(level.id);
+              newState.customBlocks[level.id] = {
+                name: level.name,
+                compound: {
+                  blocks: structuredClone(newState.blocks),
+                  connections: structuredClone(newState.connections),
+                },
+              };
+            }
+          }
         }
         break;
       }
-      case "RESET":
-        return LogicLabRuleset.getInitialState({ levelId: state.currentLevelId });
+      case "TOGGLE_SWITCH": {
+        const block = newState.blocks[action.blockId];
+        if (block?.type === "SWITCH") {
+          block.outputs = [block.outputs?.[0] === 1 ? 0 : 1];
+        }
+        break;
+      }
+      case "RESET": {
+        const s = LogicLabRuleset.getInitialState({ levelId: state.currentLevelId });
+        s.unlockedLevels = state.unlockedLevels;
+        s.customBlocks = state.customBlocks;
+        return s;
+      }
       case "NEXT_LEVEL": {
-        return LogicLabRuleset.getInitialState({ levelId: state.currentLevelId + 1 });
+        const s = LogicLabRuleset.getInitialState({ levelId: state.currentLevelId + 1 });
+        s.unlockedLevels = state.unlockedLevels;
+        s.customBlocks = state.customBlocks;
+        return s;
       }
     }
 

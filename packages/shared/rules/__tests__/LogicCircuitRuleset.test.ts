@@ -43,12 +43,19 @@ describe("LogicCircuitRuleset", () => {
   });
 
   it("should toggle a switch", () => {
-    let state = LogicCircuitRuleset.getInitialState();
-    state = LogicCircuitRuleset.reduce(state, { type: "ADD_BLOCK", gateType: "SWITCH" });
-    const swId = Object.keys(state.blocks)[0];
+    const state = LogicCircuitRuleset.getInitialState();
+    const state1 = LogicCircuitRuleset.reduce(state, {
+      type: "ADD_BLOCK",
+      gateType: "SWITCH",
+      x: 0,
+      y: 0,
+    });
+    const blockId = Object.keys(state1.blocks)[0];
 
-    expect(state.blocks[swId].value).toBe(0);
-    state = LogicCircuitRuleset.reduce(state, { type: "TOGGLE_SWITCH", blockId: swId });
-    expect(state.blocks[swId].value).toBe(1);
+    const state2 = LogicCircuitRuleset.reduce(state1, { type: "TOGGLE_SWITCH", blockId });
+    expect(state2.blocks[blockId].outputs[0]).toBe(1);
+
+    const state3 = LogicCircuitRuleset.reduce(state2, { type: "TOGGLE_SWITCH", blockId });
+    expect(state3.blocks[blockId].outputs[0]).toBe(0);
   });
 });

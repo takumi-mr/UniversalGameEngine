@@ -16,8 +16,20 @@ export type LogicCircuitAction =
   | { type: "ADD_BLOCK"; gateType: GateType; x?: number; y?: number }
   | { type: "REMOVE_BLOCK"; blockId: string }
   | { type: "MOVE_BLOCK"; blockId: string; x: number; y: number }
-  | { type: "CONNECT"; fromBlockId: string; toBlockId: string; toPinIndex: number }
-  | { type: "DISCONNECT"; fromBlockId: string; toBlockId: string; toPinIndex: number }
+  | {
+      type: "CONNECT";
+      fromBlockId: string;
+      fromPinIndex: number;
+      toBlockId: string;
+      toPinIndex: number;
+    }
+  | {
+      type: "DISCONNECT";
+      fromBlockId: string;
+      fromPinIndex: number;
+      toBlockId: string;
+      toPinIndex: number;
+    }
   | { type: "TOGGLE_SWITCH"; blockId: string }
   | { type: "RESET" };
 
@@ -45,8 +57,7 @@ export const LogicCircuitRuleset: GameRuleset<LogicCircuitState, any> = {
         newState.blocks[id] = {
           id,
           type: action.gateType,
-          inputs: [],
-          value: 0,
+          outputs: [0],
           x: action.x || 100,
           y: action.y || 100,
         };
@@ -67,8 +78,13 @@ export const LogicCircuitRuleset: GameRuleset<LogicCircuitState, any> = {
         break;
       }
       case "CONNECT": {
+        // Remove existing connection to same input pin
+        newState.connections = newState.connections.filter(
+          (c) => !(c.toBlockId === action.toBlockId && c.toPinIndex === action.toPinIndex),
+        );
         newState.connections.push({
           fromBlockId: action.fromBlockId,
+          fromPinIndex: action.fromPinIndex,
           toBlockId: action.toBlockId,
           toPinIndex: action.toPinIndex,
         });
@@ -79,6 +95,7 @@ export const LogicCircuitRuleset: GameRuleset<LogicCircuitState, any> = {
           (c) =>
             !(
               c.fromBlockId === action.fromBlockId &&
+              c.fromPinIndex === action.fromPinIndex &&
               c.toBlockId === action.toBlockId &&
               c.toPinIndex === action.toPinIndex
             ),
@@ -86,9 +103,9 @@ export const LogicCircuitRuleset: GameRuleset<LogicCircuitState, any> = {
         break;
       }
       case "TOGGLE_SWITCH": {
-        if (newState.blocks[action.blockId]?.type === "SWITCH") {
-          newState.blocks[action.blockId].value =
-            newState.blocks[action.blockId].value === 1 ? 0 : 1;
+        const block = newState.blocks[action.blockId];
+        if (block?.type === "SWITCH") {
+          block.outputs = [block.outputs?.[0] === 1 ? 0 : 1];
         }
         break;
       }

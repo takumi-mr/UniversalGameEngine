@@ -37,6 +37,21 @@
               {{ gate }}
             </v-btn>
           </div>
+
+          <div v-if="Object.keys(customBlocks).length" class="text-overline mt-4 mb-2">Custom</div>
+          <div class="gate-grid">
+            <v-btn
+              v-for="(custom, levelId) in customBlocks"
+              :key="levelId"
+              size="small"
+              variant="tonal"
+              color="secondary"
+              class="mb-2"
+              @click="addCustomBlock(Number(levelId))"
+            >
+              {{ custom.name }}
+            </v-btn>
+          </div>
         </v-card>
 
         <v-card
@@ -73,7 +88,6 @@
                 stroke-width="0.5"
               />
             </pattern>
-            pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
 
@@ -108,32 +122,40 @@
           >
             <rect
               width="80"
-              height="50"
+              :height="
+                Math.max(
+                  50,
+                  (Math.max(getInputPinCount(block), getOutputPinCount(block)) || 1) * 20,
+                )
+              "
               rx="8"
               class="block-bg"
-              :class="{ 'is-active': block.value === 1 }"
+              :class="{ 'is-active': block.outputs?.[0] === 1 }"
+              @click="onBlockClick(block)"
             />
-            <text x="40" y="30" text-anchor="middle" class="block-label">{{ block.type }}</text>
+            <text x="40" y="25" text-anchor="middle" class="block-label">{{ block.type }}</text>
 
             <!-- Input Pins -->
             <circle
               v-for="i in getInputPinCount(block)"
               :key="'in-' + i"
               cx="0"
-              :cy="10 + i * 10"
+              :cy="getPinY(block, i - 1, getInputPinCount(block))"
               r="5"
               class="pin input-pin"
               @mouseup.stop="onPinMouseUp(block.id, i - 1, 'in')"
             />
 
-            <!-- Output Pin -->
+            <!-- Output Pins -->
             <circle
+              v-for="i in getOutputPinCount(block)"
+              :key="'out-' + i"
               cx="80"
-              cy="25"
+              :cy="getPinY(block, i - 1, getOutputPinCount(block))"
               r="5"
               class="pin output-pin"
-              :class="{ 'is-active': block.value === 1 }"
-              @mousedown.stop="onPinMouseDown(block.id, 0, 'out')"
+              :class="{ 'is-active': block.outputs?.[i - 1] === 1 }"
+              @mousedown.stop="onPinMouseDown(block.id, i - 1, 'out')"
             />
 
             <!-- Remove Button -->
@@ -159,8 +181,8 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: "action", action: any): void }>();
 
 const canvasContainer = ref<HTMLElement | null>(null);
-const canvasWidth = ref(800);
-const canvasHeight = ref(600);
+const canvasWidth = ref(1200);
+const canvasHeight = ref(800);
 
 const level = computed(() => {
   if ("currentLevelId" in props.state) {
@@ -189,6 +211,13 @@ const allowedGates = computed(() => {
     "LED",
     "D_FLIP_FLOP",
   ];
+});
+
+const customBlocks = computed(() => {
+  if ("customBlocks" in props.state) {
+    return (props.state as LogicLabState).customBlocks;
+  }
+  return {};
 });
 
 // Dragging Logic
@@ -236,24 +265,31 @@ const startDragBlock = (block: any, _e: MouseEvent) => {
 
 const onPinMouseDown = (blockId: string, pinIndex: number, type: "in" | "out") => {
   const block = props.state.blocks[blockId];
+  const x = (block.x || 100) + (type === "out" ? 80 : 0);
+  const y =
+    (block.y || 100) +
+    getPinY(block, pinIndex, type === "in" ? getInputPinCount(block) : getOutputPinCount(block));
+
   draggingPin.value = {
     blockId,
     pinIndex,
     type,
-    x: (block.x || 100) + (type === "out" ? 80 : 0),
-    y: (block.y || 100) + 25,
+    x,
+    y,
   };
 };
 
 const onPinMouseUp = (blockId: string, pinIndex: number, type: "in" | "out") => {
   if (draggingPin.value && draggingPin.value.type !== type) {
     const fromId = type === "out" ? blockId : draggingPin.value.blockId;
+    const fromPin = type === "out" ? pinIndex : draggingPin.value.pinIndex;
     const toId = type === "in" ? blockId : draggingPin.value.blockId;
     const toPin = type === "in" ? pinIndex : draggingPin.value.pinIndex;
 
     emit("action", {
       type: "CONNECT",
       fromBlockId: fromId,
+      fromPinIndex: fromPin,
       toBlockId: toId,
       toPinIndex: toPin,
     });
@@ -261,12 +297,44 @@ const onPinMouseUp = (blockId: string, pinIndex: number, type: "in" | "out") => 
   draggingPin.value = null;
 };
 
+const onBlockClick = (block: any) => {
+  if (block.type === "SWITCH") {
+    emit("action", { type: "TOGGLE_SWITCH", blockId: block.id });
+  }
+};
+
 // Utils
 const getInputPinCount = (block: any) => {
+  if (block.compound) {
+    return Object.keys(block.compound.blocks).filter((id) => id.startsWith("in")).length;
+  }
+  if (block.type === "1-bit ALU") return 5;
+  if (block.type === "Full Adder") return 3;
   if (["AND", "OR", "NAND", "NOR", "XOR", "XNOR"].includes(block.type)) return 2;
   if (["NOT", "BUFFER", "LED"].includes(block.type)) return 1;
-  if (block.type === "D_FLIP_FLOP") return 2; // D and Clock
+  if (block.type === "D_FLIP_FLOP") return 2;
   return 0;
+};
+
+const getOutputPinCount = (block: any) => {
+  if (block.compound) {
+    return Object.keys(block.compound.blocks).filter((id) => id.startsWith("out")).length;
+  }
+  if (block.type === "1-bit ALU") return 2;
+  if (block.type === "Full Adder") return 2;
+  if (block.type === "Half Adder") return 2;
+  if (block.type === "SWITCH") return 1;
+  return 1;
+};
+
+const getPinY = (block: any, index: number, total: number) => {
+  const height = Math.max(
+    50,
+    (Math.max(getInputPinCount(block), getOutputPinCount(block)) || 1) * 20,
+  );
+  if (total <= 1) return height / 2;
+  const spacing = (height - 20) / (total - 1);
+  return 10 + index * spacing;
 };
 
 const getConnectionPath = (conn: any) => {
@@ -275,9 +343,10 @@ const getConnectionPath = (conn: any) => {
   if (!fromBlock || !toBlock) return "";
 
   const x1 = (fromBlock.x || 100) + 80;
-  const y1 = (fromBlock.y || 100) + 25;
+  const y1 =
+    (fromBlock.y || 100) + getPinY(fromBlock, conn.fromPinIndex, getOutputPinCount(fromBlock));
   const x2 = toBlock.x || 100;
-  const y2 = (toBlock.y || 100) + 10 + (conn.toPinIndex + 1) * 10;
+  const y2 = (toBlock.y || 100) + getPinY(toBlock, conn.toPinIndex, getInputPinCount(toBlock));
 
   const dx = Math.abs(x1 - x2) / 2;
   return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
@@ -294,11 +363,15 @@ const getDragPath = () => {
 };
 
 const isWireActive = (conn: any) => {
-  return props.state.blocks[conn.fromBlockId]?.value === 1;
+  return props.state.blocks[conn.fromBlockId]?.outputs?.[conn.fromPinIndex] === 1;
 };
 
 const addBlock = (gateType: string) => {
-  emit("action", { type: "ADD_BLOCK", gateType, x: 100, y: 100 });
+  emit("action", { type: "ADD_BLOCK", gateType, x: 200, y: 200 });
+};
+
+const addCustomBlock = (levelId: number) => {
+  emit("action", { type: "ADD_CUSTOM_BLOCK", levelId, x: 200, y: 200 });
 };
 
 const removeBlock = (blockId: string) => {
@@ -360,75 +433,94 @@ const removeConnection = (conn: any) => {
 }
 
 .block-bg {
-  fill: #333;
-  stroke: #555;
+  fill: #2a2a2a;
+  stroke: #444;
   stroke-width: 2;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.block-bg:hover {
+  stroke: #666;
+  fill: #333;
 }
 
 .block-bg.is-active {
-  stroke: #4caf50;
-  box-shadow: 0 0 10px #4caf50;
+  stroke: #00e676;
+  filter: drop-shadow(0 0 8px rgba(0, 230, 118, 0.4));
 }
 
 .block-label {
   fill: #fff;
-  font-size: 12px;
-  font-weight: bold;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   pointer-events: none;
 }
 
 .pin {
-  stroke: #555;
-  stroke-width: 2;
-  fill: #222;
+  stroke: #444;
+  stroke-width: 1.5;
+  fill: #1a1a1a;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .pin:hover {
   fill: #fff;
-  r: 7;
+  r: 6;
+  stroke: #2196f3;
 }
 
 .pin.output-pin.is-active {
-  fill: #4caf50;
+  fill: #00e676;
+  stroke: #00e676;
+  filter: drop-shadow(0 0 4px #00e676);
 }
 
 .connection-wire {
-  stroke: #555;
+  stroke: #444;
+  stroke-linecap: round;
   transition: stroke 0.2s;
   cursor: pointer;
 }
 
 .connection-wire:hover {
-  stroke: #f44336;
+  stroke: #ff5252;
+  stroke-width: 4;
 }
 
 .connection-wire.active {
-  stroke: #4caf50;
-  filter: drop-shadow(0 0 2px #4caf50);
+  stroke: #00e676;
+  filter: drop-shadow(0 0 3px #00e676);
+  stroke-width: 4;
 }
 
 .connection-wire.dragging {
-  stroke: #aaa;
+  stroke: #2196f3;
+  opacity: 0.6;
   pointer-events: none;
 }
 
 .remove-btn {
-  fill: #f44336;
+  fill: #ff5252;
   opacity: 0;
   transition: opacity 0.2s;
   cursor: pointer;
 }
 
 g:hover .remove-btn {
+  opacity: 0.8;
+}
+
+.remove-btn:hover {
   opacity: 1;
 }
 
 .remove-icon {
   fill: white;
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: bold;
   pointer-events: none;
   opacity: 0;
 }

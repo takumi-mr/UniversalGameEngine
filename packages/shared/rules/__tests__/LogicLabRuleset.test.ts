@@ -25,12 +25,14 @@ describe("LogicLabRuleset", () => {
     state = LogicLabRuleset.reduce(state, {
       type: "CONNECT",
       fromBlockId: "in1",
+      fromPinIndex: 0,
       toBlockId: notId,
       toPinIndex: 0,
     });
     state = LogicLabRuleset.reduce(state, {
       type: "CONNECT",
       fromBlockId: notId,
+      fromPinIndex: 0,
       toBlockId: "out1",
       toPinIndex: 0,
     });
