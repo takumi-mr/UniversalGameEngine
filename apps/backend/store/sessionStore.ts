@@ -20,6 +20,9 @@ export class SocketGameServer extends GenericGameServer<any, any> {
   public aiPlayers: Map<string, IAIPlayer<any, any>> = new Map();
   private computingAIPlayers: Set<string> = new Set();
 
+  // リプレイの重複保存を避けるためのフラグ
+  private isRecordSaved: boolean = false;
+
   constructor(roomId: string, engine: UniversalEngine<any, any>, io: Server, gameType?: string) {
     super(roomId, engine);
     this.io = io;
@@ -38,6 +41,17 @@ export class SocketGameServer extends GenericGameServer<any, any> {
         .saveSession(this.roomId, this.gameType, state, state.status === "FINISHED")
         .catch((err) =>
           console.error(`[Redis] Failed to save session for game ${this.roomId}:`, err),
+        );
+    }
+
+    // ゲーム終了時に1度だけリプレイ（GameRecord）を保存する
+    if (state.status === "FINISHED" && !this.isRecordSaved) {
+      this.isRecordSaved = true;
+      const record = this.engine.getGameRecord(this.roomId);
+      repo
+        .saveGameRecord(this.roomId, record)
+        .catch((err) =>
+          console.error(`[Replay] Failed to save game record for ${this.roomId}:`, err),
         );
     }
 

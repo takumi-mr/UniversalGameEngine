@@ -37,11 +37,12 @@ mock.module("mongodb", () => ({
 
 // ※モックの設定が終わった後にテスト対象をインポートします
 import { HybridGameRepository } from "./HybridGameRepository";
+import type { BaseGameState } from "@engine/shared/GameRules";
 
 // --- 2. テストの記述 ---
 
 describe("HybridGameRepository", () => {
-  type GameState = { score: number; turn: number };
+  type GameState = BaseGameState & { score: number; turn: number };
   let repo: HybridGameRepository<GameState>;
 
   beforeEach(() => {
@@ -58,8 +59,8 @@ describe("HybridGameRepository", () => {
   });
 
   describe("save", () => {
-    it("isFinishedがfalseの場合、Redisにのみ保存され、MongoDBには保存されないこと", async () => {
-      const state = { score: 100, turn: 5 };
+    it("isFinishedがfalseの場合, Redisにのみ保存され, MongoDBには保存されないこと", async () => {
+      const state: GameState = { status: "PLAYING", score: 100, turn: 5 };
       await repo.save("game-1", state);
 
       // Redisにはシリアライズされて、24時間(86400秒)の有効期限で保存される
@@ -69,8 +70,8 @@ describe("HybridGameRepository", () => {
       expect(mockMongoUpdateOne).not.toHaveBeenCalled();
     });
 
-    it("isFinishedがtrueの場合、RedisとMongoDBの両方に保存されること", async () => {
-      const state = { score: 100, turn: 5 };
+    it("isFinishedがtrueの場合, RedisとMongoDBの両方に保存されること", async () => {
+      const state: GameState = { status: "FINISHED", score: 100, turn: 5 };
       await repo.save("game-1", state, true);
 
       // Redisの呼び出し確認
@@ -86,8 +87,8 @@ describe("HybridGameRepository", () => {
   });
 
   describe("load", () => {
-    it("Redisにキャッシュが存在する場合、MongoDBをクエリせずにキャッシュを返すこと", async () => {
-      const state = { score: 200, turn: 10 };
+    it("Redisにキャッシュが存在する場合, MongoDBをクエリせずにキャッシュを返すこと", async () => {
+      const state: GameState = { status: "PLAYING", score: 200, turn: 10 };
       mockRedisGet.mockResolvedValueOnce(JSON.stringify(state));
 
       const result = await repo.load("game-2");
@@ -97,8 +98,8 @@ describe("HybridGameRepository", () => {
       expect(mockMongoFindOne).not.toHaveBeenCalled(); // MongoDBは呼ばれない
     });
 
-    it("Redisにキャッシュがない場合、MongoDBからデータを取得して返すこと", async () => {
-      const state = { score: 300, turn: 15 };
+    it("Redisにキャッシュがない場合, MongoDBからデータを取得して返すこと", async () => {
+      const state: GameState = { status: "PLAYING", score: 300, turn: 15 };
       mockRedisGet.mockResolvedValueOnce(null); // Redisは空
       mockMongoFindOne.mockResolvedValueOnce({ _id: "game-3", state }); // MongoDBにはある
 

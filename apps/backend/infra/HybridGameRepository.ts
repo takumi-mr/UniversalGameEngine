@@ -2,6 +2,7 @@
 import { MongoClient, Db, type Document, type UpdateFilter } from "mongodb";
 import Redis from "ioredis";
 import type { IGameRepository } from "@engine/shared/stores/repository";
+import type { GameRecord, BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
 
 // 保存するドキュメントの型を定義
 interface GameDocument<T> extends Document {
@@ -11,7 +12,13 @@ interface GameDocument<T> extends Document {
   finishedAt?: Date;
 }
 
-export class HybridGameRepository<TState> implements IGameRepository<TState> {
+interface ReplayDocument<TState extends BaseGameState> extends Document {
+  _id: string;
+  record: GameRecord<TState, BaseGameAction>;
+  createdAt: Date;
+}
+
+export class HybridGameRepository<TState extends BaseGameState> implements IGameRepository<TState> {
   private redis: Redis;
   private mongoDb: Db;
   private mongoClient: MongoClient;
@@ -24,6 +31,10 @@ export class HybridGameRepository<TState> implements IGameRepository<TState> {
 
   private get collection() {
     return this.mongoDb.collection<GameDocument<TState>>("games_archive");
+  }
+
+  private get replayCollection() {
+    return this.mongoDb.collection<ReplayDocument<TState>>("game_replays");
   }
 
   async save(gameId: string, state: TState, isFinished = false): Promise<void> {
@@ -109,5 +120,26 @@ export class HybridGameRepository<TState> implements IGameRepository<TState> {
   async close(): Promise<void> {
     await this.redis.quit();
     await this.mongoClient.close();
+  }
+
+  // --- Game History (Replay) Implementation ---
+
+  async saveGameRecord(gameId: string, record: GameRecord<TState, BaseGameAction>): Promise<void> {
+    await this.replayCollection.updateOne(
+      { _id: gameId },
+      {
+        $set: {
+          record,
+          createdAt: new Date(),
+        } as UpdateFilter<ReplayDocument<TState>>,
+      },
+      { upsert: true },
+    );
+    console.log(`[Replay] Game record saved for ${gameId}`);
+  }
+
+  async loadGameRecord(gameId: string): Promise<GameRecord<TState, BaseGameAction> | null> {
+    const doc = await this.replayCollection.findOne({ _id: gameId });
+    return doc ? (doc.record as GameRecord<TState, BaseGameAction>) : null;
   }
 }
