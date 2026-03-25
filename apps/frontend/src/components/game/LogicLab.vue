@@ -54,6 +54,13 @@
           </div>
         </v-card>
 
+        <v-card variant="outlined" class="pa-2 mt-4">
+          <div class="text-overline mb-2">Sim Controls</div>
+          <v-btn block size="small" color="secondary" class="mb-2" @click="pulseClock">
+            Pulse Clock
+          </v-btn>
+        </v-card>
+
         <v-card
           v-if="'testResults' in state && (state as any).testResults?.length"
           variant="outlined"
@@ -130,10 +137,24 @@
               "
               rx="8"
               class="block-bg"
-              :class="{ 'is-active': block.outputs?.[0] === 1 }"
+              :class="{
+                'is-active': block.outputs?.[0] === 1,
+                'is-selected': selectedBlock?.id === block.id,
+              }"
               @click="onBlockClick(block)"
             />
             <text x="40" y="25" text-anchor="middle" class="block-label">{{ block.type }}</text>
+
+            <!-- RAM Memory Mini-indicator -->
+            <text
+              v-if="block.type === 'RAM'"
+              x="40"
+              y="45"
+              text-anchor="middle"
+              class="block-subtext"
+            >
+              [RAM]
+            </text>
 
             <!-- Input Pins -->
             <circle
@@ -165,6 +186,36 @@
         </svg>
       </div>
     </div>
+
+    <!-- ROM Editor Dialog -->
+    <v-dialog v-model="romEditorOpen" max-width="600px">
+      <v-card>
+        <v-card-title class="d-flex justify-space-between align-center">
+          <span>ROM DATA EDITOR (16 x 8-bit)</span>
+          <v-btn icon="mdi-close" variant="text" @click="romEditorOpen = false"></v-btn>
+        </v-card-title>
+        <v-card-text>
+          <div class="rom-data-grid">
+            <div v-for="i in 16" :key="i" class="rom-cell">
+              <span class="text-caption">0x{{ (i - 1).toString(16).toUpperCase() }}</span>
+              <v-text-field
+                v-model.number="romDataArray[i - 1]"
+                type="number"
+                min="0"
+                max="255"
+                density="compact"
+                hide-details
+                variant="outlined"
+              ></v-text-field>
+            </div>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="primary" @click="saveRomData">Apply Data</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -181,8 +232,12 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: "action", action: any): void }>();
 
 const canvasContainer = ref<HTMLElement | null>(null);
-const canvasWidth = ref(1200);
-const canvasHeight = ref(800);
+const canvasWidth = ref(1500);
+const canvasHeight = ref(1000);
+
+const selectedBlock = ref<any>(null);
+const romEditorOpen = ref(false);
+const romDataArray = ref<number[]>(new Array(16).fill(0));
 
 const level = computed(() => {
   if ("currentLevelId" in props.state) {
@@ -298,8 +353,34 @@ const onPinMouseUp = (blockId: string, pinIndex: number, type: "in" | "out") => 
 };
 
 const onBlockClick = (block: any) => {
+  selectedBlock.value = block;
   if (block.type === "SWITCH") {
     emit("action", { type: "TOGGLE_SWITCH", blockId: block.id });
+  } else if (block.type === "ROM") {
+    romDataArray.value = block.romData ? [...block.romData] : new Array(16).fill(0);
+    romEditorOpen.value = true;
+  }
+};
+
+const pulseClock = () => {
+  Object.values(props.state.blocks).forEach((block) => {
+    if (
+      block.type === "SWITCH" &&
+      (block.id.toLowerCase().includes("clock") || block.id.toLowerCase().includes("clk"))
+    ) {
+      emit("action", { type: "TOGGLE_SWITCH", blockId: block.id });
+    }
+  });
+};
+
+const saveRomData = () => {
+  if (selectedBlock.value && selectedBlock.value.type === "ROM") {
+    emit("action", {
+      type: "ROM_SET_DATA",
+      blockId: selectedBlock.value.id,
+      data: [...romDataArray.value],
+    });
+    romEditorOpen.value = false;
   }
 };
 
@@ -308,10 +389,12 @@ const getInputPinCount = (block: any) => {
   if (block.compound) {
     return Object.keys(block.compound.blocks).filter((id) => id.startsWith("in")).length;
   }
+  if (block.type === "ROM") return 4;
+  if (block.type === "RAM") return 10;
   if (block.type === "1-bit ALU") return 5;
   if (block.type === "Full Adder") return 3;
   if (["AND", "OR", "NAND", "NOR", "XOR", "XNOR"].includes(block.type)) return 2;
-  if (["NOT", "BUFFER", "LED"].includes(block.type)) return 1;
+  if (["NOT", "BUFFER", "LED", "D_FLIP_FLOP"].includes(block.type)) return 1;
   if (block.type === "D_FLIP_FLOP") return 2;
   return 0;
 };
@@ -320,6 +403,8 @@ const getOutputPinCount = (block: any) => {
   if (block.compound) {
     return Object.keys(block.compound.blocks).filter((id) => id.startsWith("out")).length;
   }
+  if (block.type === "ROM") return 8;
+  if (block.type === "RAM") return 4;
   if (block.type === "1-bit ALU") return 2;
   if (block.type === "Full Adder") return 2;
   if (block.type === "Half Adder") return 2;
@@ -367,7 +452,10 @@ const isWireActive = (conn: any) => {
 };
 
 const addBlock = (gateType: string) => {
-  emit("action", { type: "ADD_BLOCK", gateType, x: 200, y: 200 });
+  const rect = canvasContainer.value?.getBoundingClientRect();
+  const x = rect ? (canvasContainer.value?.scrollLeft || 0) + 200 : 200;
+  const y = rect ? (canvasContainer.value?.scrollTop || 0) + 200 : 200;
+  emit("action", { type: "ADD_BLOCK", gateType, x, y });
 };
 
 const addCustomBlock = (levelId: number) => {
@@ -410,10 +498,11 @@ const removeConnection = (conn: any) => {
 }
 
 .toolbar {
-  width: 200px;
+  width: 220px;
   padding: 1rem;
   background: rgba(0, 0, 0, 0.2);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
+  overflow-y: auto;
 }
 
 .gate-grid {
@@ -444,6 +533,11 @@ const removeConnection = (conn: any) => {
   fill: #333;
 }
 
+.block-bg.is-selected {
+  stroke: #2196f3;
+  stroke-width: 3;
+}
+
 .block-bg.is-active {
   stroke: #00e676;
   filter: drop-shadow(0 0 8px rgba(0, 230, 118, 0.4));
@@ -455,6 +549,12 @@ const removeConnection = (conn: any) => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+.block-subtext {
+  fill: rgba(255, 255, 255, 0.5);
+  font-size: 8px;
   pointer-events: none;
 }
 
@@ -527,5 +627,25 @@ g:hover .remove-btn {
 
 g:hover .remove-icon {
   opacity: 1;
+}
+
+.rom-data-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.rom-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.test-item {
+  display: flex;
+  align-items: center;
+  font-size: 0.8rem;
+  margin-bottom: 4px;
 }
 </style>

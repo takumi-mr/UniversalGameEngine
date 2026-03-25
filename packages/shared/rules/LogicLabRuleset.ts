@@ -2,22 +2,24 @@ import type { BaseGameState, GameRuleset } from "../GameRules";
 import type { IGameRNG } from "../utils/IGameRNG";
 import {
   LogicCircuitEngine,
-  type GateType,
+  type LogicBlockType,
   type LogicBlock,
   type Connection,
   type SubCircuit,
 } from "../utils/LogicCircuitEngine";
 
 export interface TestCase {
-  inputs: Record<string, number>; // blockId -> value
-  outputs: Record<string, number>; // blockId -> value
+  inputs?: Record<string, number>; // blockId -> value
+  outputs?: Record<string, number | number[]>; // blockId -> value or array of values
+  initialBlockState?: Record<string, Partial<LogicBlock>>; // Initial state for blocks (e.g. ROM data)
+  cycles?: number; // Number of simulation cycles to run
 }
 
 export interface LogicLabLevel {
   id: number;
   name: string;
   description: string;
-  allowedGates: GateType[];
+  allowedGates: (LogicBlockType | string)[];
   testCases: TestCase[];
   inputBlocks: { id: string; label: string }[];
   outputBlocks: { id: string; label: string }[];
@@ -33,7 +35,7 @@ export interface LogicLabState extends BaseGameState {
 }
 
 export type LogicLabAction =
-  | { type: "ADD_BLOCK"; gateType: GateType; x?: number; y?: number }
+  | { type: "ADD_BLOCK"; gateType: LogicBlockType; x?: number; y?: number }
   | { type: "ADD_CUSTOM_BLOCK"; levelId: number; x?: number; y?: number }
   | { type: "REMOVE_BLOCK"; blockId: string }
   | { type: "MOVE_BLOCK"; blockId: string; x: number; y: number }
@@ -46,6 +48,7 @@ export type LogicLabAction =
     }
   | { type: "DISCONNECT"; fromBlockId: string; toBlockId: string; toPinIndex: number }
   | { type: "TOGGLE_SWITCH"; blockId: string }
+  | { type: "ROM_SET_DATA"; blockId: string; data: number[] }
   | { type: "CHECK_SOLUTION" }
   | { type: "RESET" }
   | { type: "NEXT_LEVEL" };
@@ -169,7 +172,7 @@ export const LOGIC_LAB_LEVELS: LogicLabLevel[] = [
       { id: "in1", label: "A" },
       { id: "in2", label: "B" },
       { id: "in3", label: "Cin" },
-      { id: "in4", label: "S0" }, // Operation select
+      { id: "in4", label: "S0" },
       { id: "in5", label: "S1" },
     ],
     outputBlocks: [
@@ -177,13 +180,111 @@ export const LOGIC_LAB_LEVELS: LogicLabLevel[] = [
       { id: "out2", label: "Cout" },
     ],
     testCases: [
-      // Op 00 (AND): A & B
       { inputs: { in1: 1, in2: 0, in3: 0, in4: 0, in5: 0 }, outputs: { out1: 0 } },
       { inputs: { in1: 1, in2: 1, in3: 0, in4: 0, in5: 0 }, outputs: { out1: 1 } },
-      // Op 01 (OR): A | B
       { inputs: { in1: 1, in2: 0, in3: 0, in4: 1, in5: 0 }, outputs: { out1: 1 } },
-      // Op 10 (ADD): A + B + Cin
       { inputs: { in1: 1, in2: 1, in3: 1, in4: 0, in5: 1 }, outputs: { out1: 1, out2: 1 } },
+    ],
+  },
+  {
+    id: 8,
+    name: "4-bit Register",
+    description: "Store a 4-bit value on clock rising edge when WE is 1.",
+    allowedGates: ["D_FLIP_FLOP", "AND", "OR", "NOT", "SWITCH", "LED"],
+    inputBlocks: [
+      { id: "in1", label: "D0" },
+      { id: "in2", label: "D1" },
+      { id: "in3", label: "D2" },
+      { id: "in4", label: "D3" },
+      { id: "in5", label: "WE" },
+      { id: "in6", label: "CLK" },
+    ],
+    outputBlocks: [
+      { id: "out1", label: "Q0" },
+      { id: "out2", label: "Q1" },
+      { id: "out3", label: "Q2" },
+      { id: "out4", label: "Q3" },
+    ],
+    testCases: [
+      {
+        inputs: { in1: 1, in2: 0, in3: 1, in4: 1, in5: 1, in6: 1 },
+        cycles: 2,
+        outputs: { out1: 1, out2: 0, out3: 1, out4: 1 },
+      },
+    ],
+  },
+  {
+    id: 9,
+    name: "4-bit Counter",
+    description: "Build a counter that increments on every clock pulse.",
+    allowedGates: ["D_FLIP_FLOP", "AND", "OR", "NOT", "XOR", "SWITCH", "LED"],
+    inputBlocks: [{ id: "in1", label: "CLK" }],
+    outputBlocks: [
+      { id: "out1", label: "Q0" },
+      { id: "out2", label: "Q1" },
+      { id: "out3", label: "Q2" },
+      { id: "out4", label: "Q3" },
+    ],
+    testCases: [
+      { inputs: { in1: 1 }, cycles: 2, outputs: { out1: 1, out2: 0, out3: 0, out4: 0 } },
+      { inputs: { in1: 1 }, cycles: 4, outputs: { out1: 0, out2: 1, out3: 0, out4: 0 } },
+    ],
+  },
+  {
+    id: 10,
+    name: "Instruction Decoder",
+    description: "Decode a 4-bit opcode into control signals for the CPU.",
+    allowedGates: ["AND", "OR", "NOT", "SWITCH", "LED"],
+    inputBlocks: [
+      { id: "in1", label: "OP0" },
+      { id: "in2", label: "OP1" },
+      { id: "in3", label: "OP2" },
+      { id: "in4", label: "OP3" },
+    ],
+    outputBlocks: [
+      { id: "out1", label: "ALU_ADD" },
+      { id: "out2", label: "RAM_WE" },
+      { id: "out3", label: "REG_A_WE" },
+    ],
+    testCases: [
+      { inputs: { in1: 0, in2: 0, in3: 1, in4: 0 }, outputs: { out1: 1 } }, // ADD (Op 4)
+      { inputs: { in1: 1, in2: 1, in3: 0, in4: 0 }, outputs: { out2: 1 } }, // STORE (Op 3)
+    ],
+  },
+  {
+    id: 11,
+    name: "4-bit CPU Integration",
+    description: "Assemble all components into a working 4-bit CPU!",
+    allowedGates: ["ROM", "RAM", "AND", "OR", "NOT", "SWITCH", "LED"],
+    inputBlocks: [{ id: "clock", label: "CLK" }],
+    outputBlocks: [{ id: "out1", label: "HALT" }],
+    testCases: [
+      {
+        initialBlockState: {
+          rom1: { romData: [0x15, 0x12, 0x40, 0x01] }, // LOAD A,5; LOAD B,2; ADD; HALT
+        },
+        inputs: { clock: 0 },
+        cycles: 20,
+        outputs: { out1: 1 },
+      },
+    ],
+  },
+  {
+    id: 12,
+    name: "Fibonacci Challenge",
+    description: "Write an assembly program to calculate the Fibonacci sequence.",
+    allowedGates: ["ROM", "RAM", "AND", "OR", "NOT", "SWITCH", "LED"],
+    inputBlocks: [{ id: "clock", label: "CLK" }],
+    outputBlocks: [{ id: "out1", label: "DONE" }],
+    testCases: [
+      {
+        initialBlockState: {
+          rom1: { romData: [0x11, 0x3a, 0x11, 0x3b, 0x40, 0x3a] }, // Loop-based Fib
+        },
+        inputs: { clock: 0 },
+        cycles: 100,
+        outputs: { out1: 1 },
+      },
     ],
   },
 ];
@@ -195,10 +296,16 @@ export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
 
     const blocks: Record<string, LogicBlock> = {};
     level.inputBlocks.forEach((ib, idx) => {
-      blocks[ib.id] = { id: ib.id, type: "SWITCH", outputs: [0], x: 50, y: 100 + idx * 80 };
+      blocks[ib.id] = {
+        id: ib.id,
+        type: "SWITCH",
+        outputs: [0],
+        x: 50,
+        y: 100 + idx * 80,
+      };
     });
     level.outputBlocks.forEach((ob, idx) => {
-      blocks[ob.id] = { id: ob.id, type: "LED", outputs: [0], x: 600, y: 100 + idx * 80 };
+      blocks[ob.id] = { id: ob.id, type: "LED", outputs: [0], x: 800, y: 100 + idx * 80 };
     });
 
     return {
@@ -213,10 +320,7 @@ export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
     };
   },
 
-  isValidAction: (state, action) => {
-    if (state.status !== "PLAYING" && action.type !== "RESET") return false;
-    return true;
-  },
+  isValidAction: (_state, _action) => true,
 
   reduce: (state, action, _rng?: IGameRNG) => {
     const newState = structuredClone(state);
@@ -225,11 +329,11 @@ export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
       case "ADD_BLOCK": {
         const level = LOGIC_LAB_LEVELS.find((l) => l.id === newState.currentLevelId);
         if (level && level.allowedGates.includes(action.gateType)) {
-          const id = `block_${Math.random().toString(36).substr(2, 9)}`;
+          const id = `${action.gateType.toLowerCase()}_${Math.random().toString(36).substr(2, 5)}`;
           newState.blocks[id] = {
             id,
             type: action.gateType,
-            outputs: [0],
+            outputs: action.gateType === "ROM" ? [0, 0, 0, 0, 0, 0, 0, 0] : [0],
             x: action.x || 200,
             y: action.y || 200,
           };
@@ -239,15 +343,24 @@ export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
       case "ADD_CUSTOM_BLOCK": {
         const custom = newState.customBlocks[action.levelId];
         if (custom) {
-          const id = `custom_${action.levelId}_${Math.random().toString(36).substr(2, 9)}`;
+          const id = `custom_${action.levelId}_${Math.random().toString(36).substr(2, 5)}`;
+          const outCount = Object.keys(custom.compound.blocks).filter((k) =>
+            k.startsWith("out"),
+          ).length;
           newState.blocks[id] = {
             id,
             type: custom.name,
-            outputs: [],
+            outputs: new Array(outCount).fill(0),
             compound: custom.compound,
             x: action.x || 200,
             y: action.y || 200,
           };
+        }
+        break;
+      }
+      case "ROM_SET_DATA": {
+        if (newState.blocks[action.blockId]?.type === "ROM") {
+          newState.blocks[action.blockId].romData = action.data;
         }
         break;
       }
@@ -300,17 +413,37 @@ export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
         if (level) {
           newState.testResults = level.testCases.map((tc) => {
             const testBlocks = structuredClone(newState.blocks);
-            for (const id in tc.inputs) {
-              if (testBlocks[id]) testBlocks[id].outputs = [tc.inputs[id]];
+            if (tc.initialBlockState) {
+              for (const id in tc.initialBlockState) {
+                if (testBlocks[id]) Object.assign(testBlocks[id], tc.initialBlockState[id]);
+              }
             }
-            LogicCircuitEngine.simulate(testBlocks, newState.connections);
-            return Object.entries(tc.outputs).every(
-              ([id, val]) => testBlocks[id]?.outputs?.[0] === val,
-            );
+
+            const cycles = tc.cycles || 1;
+            for (let c = 0; c < cycles; c++) {
+              if (tc.inputs) {
+                for (const id in tc.inputs) {
+                  if (testBlocks[id]) {
+                    if (id.toLowerCase().includes("clock") || id.toLowerCase().includes("clk")) {
+                      testBlocks[id].outputs = [c % 2 === 0 ? 0 : 1];
+                    } else {
+                      testBlocks[id].outputs = [tc.inputs[id]];
+                    }
+                  }
+                }
+              }
+              LogicCircuitEngine.simulate(testBlocks, newState.connections);
+            }
+
+            if (!tc.outputs) return true;
+            return Object.entries(tc.outputs).every(([id, expected]) => {
+              const block = testBlocks[id];
+              if (!block) return false;
+              return block.outputs?.[0] === expected;
+            });
           });
 
           if (newState.testResults.every((r) => r === true)) {
-            // Unlock custom block
             if (!newState.unlockedLevels.includes(level.id)) {
               newState.unlockedLevels.push(level.id);
               newState.customBlocks[level.id] = {
@@ -347,7 +480,6 @@ export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
     }
 
     LogicCircuitEngine.simulate(newState.blocks, newState.connections);
-
     return newState;
   },
 
@@ -359,11 +491,7 @@ export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
       state.testResults.length === level.testCases.length &&
       state.testResults.every((r) => r === true)
     ) {
-      return {
-        isFinished: true,
-        winnerIds: [],
-        message: "Level Clear!",
-      };
+      return { isFinished: true, winnerIds: [], message: "Level Clear!" };
     }
     return { isFinished: false };
   },

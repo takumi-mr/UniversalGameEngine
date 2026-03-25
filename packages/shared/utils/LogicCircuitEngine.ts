@@ -1,4 +1,4 @@
-export type GateType =
+export type LogicBlockType =
   | "AND"
   | "OR"
   | "NOT"
@@ -9,10 +9,10 @@ export type GateType =
   | "BUFFER"
   | "SWITCH"
   | "LED"
-  | "CLOCK"
   | "D_FLIP_FLOP"
-  | "T_FLIP_FLOP"
-  | "RS_LATCH";
+  | "ROM"
+  | "RAM"
+  | string;
 
 export interface SubCircuit {
   blocks: Record<string, LogicBlock>;
@@ -21,13 +21,16 @@ export interface SubCircuit {
 
 export interface LogicBlock {
   id: string;
-  type: GateType | string;
-  x?: number; // Visual position
-  y?: number; // Visual position
-  outputs: number[]; // Array of current output states
-  lastClock?: number; // For edge-triggered components
-  state?: any; // For sequential logic internal state
-  compound?: SubCircuit; // Internal circuit for custom blocks
+  type: LogicBlockType;
+  x?: number;
+  y?: number;
+  outputs: number[]; // Array of output values (0 or 1)
+
+  // Internal state for specific gates
+  lastClock?: number; // For flip-flops and RAM
+  memory?: number[]; // For RAM data
+  romData?: number[]; // For ROM instructions
+  compound?: SubCircuit; // For nested circuits
 }
 
 export interface Connection {
@@ -156,6 +159,39 @@ export class LogicCircuitEngine {
           return [D];
         }
         return block.outputs || [0];
+      }
+      case "ROM": {
+        const addr =
+          (inputs[0] || 0) + (inputs[1] || 0) * 2 + (inputs[2] || 0) * 4 + (inputs[3] || 0) * 8;
+        const val = block.romData ? block.romData[addr] || 0 : 0;
+        const results: number[] = [];
+        for (let i = 0; i < 8; i++) {
+          results.push((val >> i) & 1);
+        }
+        return results;
+      }
+      case "RAM": {
+        const addr =
+          (inputs[0] || 0) + (inputs[1] || 0) * 2 + (inputs[2] || 0) * 4 + (inputs[3] || 0) * 8;
+        const dataIn =
+          (inputs[4] || 0) + (inputs[5] || 0) * 2 + (inputs[6] || 0) * 4 + (inputs[7] || 0) * 8;
+        const we = inputs[8] || 0;
+        const clk = inputs[9] || 0;
+        const prevClk = block.lastClock || 0;
+        block.lastClock = clk;
+
+        if (!block.memory) block.memory = new Array(16).fill(0);
+
+        if (clk === 1 && prevClk === 0 && we === 1) {
+          block.memory[addr] = dataIn;
+        }
+
+        const val = block.memory[addr] || 0;
+        const results: number[] = [];
+        for (let i = 0; i < 4; i++) {
+          results.push((val >> i) & 1);
+        }
+        return results;
       }
       default:
         return block.outputs || [0];
