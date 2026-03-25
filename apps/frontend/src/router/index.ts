@@ -3,6 +3,7 @@ import LoginView from "../views/LoginView.vue";
 import SelectionView from "../views/SelectionView.vue";
 import RoomListView from "../views/RoomListView.vue";
 import GameView from "../views/GameView.vue";
+import ReplayView from "../views/ReplayView.vue";
 
 const routes = [
   {
@@ -28,6 +29,11 @@ const routes = [
     path: "/game/:gameType/:roomId",
     name: "Game",
     component: GameView,
+  },
+  {
+    path: "/replay/:gameType/:recordId?",
+    name: "ReplayPage",
+    component: ReplayView,
   },
 ];
 

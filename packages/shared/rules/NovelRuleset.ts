@@ -1,7 +1,7 @@
 // packages/shared/rules/NovelRuleset.ts
 import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
 import type { IGameRNG } from "../utils/IGameRNG";
-import { ScenarioEngine, ScenarioNode } from "../utils/ScenarioEngine";
+import { ScenarioEngine, type ScenarioNode } from "../utils/ScenarioEngine";
 
 /**
  * ノベルゲームの状態
