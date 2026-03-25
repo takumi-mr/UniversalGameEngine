@@ -22,6 +22,8 @@ import { PokemonPocketRuleset } from "./rules/PokemonPocket/PokemonPocketRuleset
 import { WerewolfRuleset } from "./rules/WerewolfRuleset";
 import { HanafudaRuleset } from "./rules/HanafudaRuleset";
 import { NovelRuleset } from "./rules/NovelRuleset";
+import { TheGameOfLifeRuleset } from "./rules/TheGameOfLifeRuleset";
+
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
   type: string;
   name: string;
@@ -290,6 +292,18 @@ class GameRegistry {
       description: "選択肢で物語が分岐するノベルゲーム。",
       emoji: "📖",
       rules: "テキストを読み進め、途中で現れる選択肢によって物語の結末が変化します。",
+    });
+    this.register({
+      type: "the_game_of_life",
+      name: "The Game of Life",
+      ruleset: TheGameOfLifeRuleset,
+      minPlayers: 2,
+      maxPlayers: 4,
+      description:
+        "人生をシミュレーションするボードゲーム。就職、結婚、出産を経て、最終的な資産を競います。",
+      emoji: "🎲",
+      rules:
+        "ルーレットを回して進み、止まったマスの指示に従います。給料日のマスを通過すると給料がもらえます。全員がゴールした時点で、最も多くの資産を持っているプレイヤーの勝ちです。",
     });
   }
 
