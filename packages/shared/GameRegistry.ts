@@ -25,6 +25,8 @@ import { NovelRuleset } from "./rules/NovelRuleset";
 import { TheGameOfLifeRuleset } from "./rules/TheGameOfLifeRuleset";
 import { HakoiriMusumeRuleset } from "./rules/HakoiriMusumeRuleset";
 import { TowerOfHanoiRuleset } from "./rules/TowerOfHanoiRuleset";
+import { LogicCircuitRuleset } from "./rules/LogicCircuitRuleset";
+import { LogicLabRuleset } from "./rules/LogicLabRuleset";
 
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
   type: string;
@@ -328,6 +330,28 @@ class GameRegistry {
       emoji: "🗼",
       rules:
         "3本の杭があり、最初は1本の杭に全ての円盤が小さい順に積まれています。一度に1枚しか動かせず、大きな円盤を小さな円盤の上に置くことはできません。全ての円盤を別の杭に移動させればクリアです。",
+    });
+    this.register({
+      type: "logic_circuit",
+      name: "Logic Circuit Sandbox",
+      ruleset: LogicCircuitRuleset,
+      minPlayers: 1,
+      maxPlayers: 1,
+      description: "論理回路を自由に組めるサンドボックスモード。",
+      emoji: "🔌",
+      rules:
+        "様々な論理ゲート（AND, OR, NOT等）を配置して、自由に回路を組み立てることができます。デジタル回路の仕組みを学んだり、実験したりするのに最適です。",
+    });
+    this.register({
+      type: "logic_lab",
+      name: "Logic Lab",
+      ruleset: LogicLabRuleset,
+      minPlayers: 1,
+      maxPlayers: 1,
+      description: "論理回路パズル。期待される出力を得るための回路を設計しよう。",
+      emoji: "🧠",
+      rules:
+        "各レベルで提示される「入力」と「期待される出力」のパターン（真理値表）を満たすように回路を設計します。単純なゲートから始まり、徐々に複雑な回路（加算器やCPU等）を目指します。",
     });
   }
 

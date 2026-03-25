@@ -229,4 +229,26 @@ export const availableGames = [
     rules:
       "3本の杭があり、最初は1本の杭に全ての円盤が小さい順に積まれています。大きな円盤を小さな円盤の上に置かずに、全ての円盤を別の杭に移動させればクリアです。",
   },
+  {
+    type: "logic_circuit",
+    name: "Logic Circuit Sandbox",
+    description: "論理回路を自由に組めるサンドボックスモード。",
+    emoji: "🔌",
+    minPlayers: 1,
+    maxPlayers: 1,
+    category: "Special",
+    rules:
+      "論理ゲートを配置して、自由に回路を組み立てることができます。デジタル回路の仕組みを学んだり、実験したりするのに最適です。",
+  },
+  {
+    type: "logic_lab",
+    name: "Logic Lab",
+    description: "論理回路パズル。目指せ計算機作り！",
+    emoji: "🧠",
+    minPlayers: 1,
+    maxPlayers: 1,
+    category: "Puzzles",
+    rules:
+      "各レベルの真理値表を満たすように回路を設計します。単純なゲートから始まり、徐々に複雑な回路を目指します。",
+  },
 ];
