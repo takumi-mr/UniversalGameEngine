@@ -114,6 +114,10 @@ export interface GameRecord<TState extends BaseGameState, TAction extends BaseGa
   clientSeed: string;
   finalServerSeed?: string; // ゲーム終了後に開示可能
 
+  // スナップショット（履歴を切り捨てて復旧する場合に使用）
+  snapshotState?: TState;
+  snapshotVersion?: number;
+
   // 各ステップでのハッシュ（検証用）
   stateHashes?: string[];
 }

@@ -11,11 +11,17 @@ interface InternalGameState extends BaseGameState {
   prngSecret?: string;
 }
 
+export interface UniversalEngineOptions {
+  autoHash?: boolean;
+  hashInterval?: number;
+  maxHistorySize?: number;
+}
+
 // --- 2. 汎用エンジン本体 ---
 export class UniversalEngine<
   TState extends BaseGameState,
   TAction extends BaseGameAction,
-  TOptions = Record<string, unknown>,
+  TOptions = Record<string, unknown> & UniversalEngineOptions,
 > {
   private state: TState & InternalGameState;
   private rules: GameRuleset<TState, TAction, TOptions>;
@@ -25,6 +31,10 @@ export class UniversalEngine<
   private stateHashes: string[] = [];
   private cloneStrategy: CloneStrategy<TState>;
 
+  private snapshotState?: TState;
+  private snapshotVersion: number = 0;
+  private engineOptions: UniversalEngineOptions;
+
   constructor(
     rules: GameRuleset<TState, TAction, TOptions>,
     options: TOptions,
@@ -33,6 +43,7 @@ export class UniversalEngine<
     this.rules = rules;
     this.options = options;
     this.cloneStrategy = cloneStrategy;
+    this.engineOptions = options as unknown as UniversalEngineOptions;
 
     const opt = options as Record<string, unknown>;
     const clientSeed = typeof opt.clientSeed === "string" ? opt.clientSeed : undefined;
@@ -132,6 +143,34 @@ export class UniversalEngine<
   public loadState(savedState: TState, history: TAction[] = []): void {
     this.state = savedState;
     this.history = history;
+
+    // バージョンが不明な場合は 0 とみなす
+    if (this.state.version === undefined) {
+      this.state.version = 0;
+    }
+
+    // スナップショットがあれば同期させる
+    this.snapshotVersion = this.state.version - this.history.length;
+  }
+
+  /**
+   * 手動で状態ハッシュを計算し、現在の状態にセットする
+   */
+  public computeHash(): string {
+    const hash = calculateStateHash(this.state);
+    this.state.hash = hash;
+    this.stateHashes.push(hash);
+    return hash;
+  }
+
+  /**
+   * 現在の状態をスナップショットとして保存し、古い履歴をパージする準備をする
+   */
+  public takeSnapshot(): void {
+    this.snapshotState = this.cloneStrategy.clone(this.state);
+    this.snapshotVersion = this.state.version ?? 0;
+    // 完全にクリアするのではなく、履歴をスナップショット時点からのものに切り替える
+    // 通常は dispatch 内で history.length が閾値を超えた時に呼ばれる
   }
 
   public getState(): TState {
@@ -236,9 +275,22 @@ export class UniversalEngine<
     this.state.version = (this.state.version ?? 0) + 1;
 
     // 3.6 状態のハッシュを計算して記録
-    const currentHash = calculateStateHash(this.state);
-    this.state.hash = currentHash;
-    this.stateHashes.push(currentHash);
+    const interval = this.engineOptions.hashInterval ?? 1;
+    const shouldHash =
+      (this.engineOptions.autoHash !== false && this.state.version! % interval === 0) ||
+      this.state.status === "FINISHED";
+
+    if (shouldHash) {
+      this.computeHash();
+    }
+
+    if (
+      this.engineOptions.maxHistorySize !== undefined &&
+      this.history.length >= this.engineOptions.maxHistorySize
+    ) {
+      this.takeSnapshot();
+      this.history = []; // メモリ解放のために現在のアクション履歴をクリア
+    }
 
     return true;
   }
@@ -255,6 +307,8 @@ export class UniversalEngine<
       clientSeed: this.state.prngConfig?.clientSeed || "",
       finalServerSeed: this.state.status === "FINISHED" ? this.state.prngSecret : undefined,
       stateHashes: [...this.stateHashes],
+      snapshotState: this.snapshotState,
+      snapshotVersion: this.snapshotVersion > 0 ? this.snapshotVersion : undefined,
     };
   }
 

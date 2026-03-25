@@ -142,4 +142,48 @@ export class HybridGameRepository<TState extends BaseGameState> implements IGame
     const doc = await this.replayCollection.findOne({ _id: gameId });
     return doc ? (doc.record as GameRecord<TState, BaseGameAction>) : null;
   }
+
+  /**
+   * 既存のゲーム記録にアクションを追加する（スナップショット対応用）。
+   * 既に記録がある場合は actions と stateHashes を末尾に追加し、snapshotState を更新する。
+   */
+  async appendGameRecord(
+    gameId: string,
+    record: Partial<GameRecord<TState, BaseGameAction>>,
+  ): Promise<void> {
+    const update: any = {
+      $set: {
+        "record.snapshotState": record.snapshotState,
+        "record.snapshotVersion": record.snapshotVersion,
+        "record.finalServerSeed": record.finalServerSeed,
+        createdAt: new Date(),
+      },
+    };
+
+    // actions と stateHashes があれば $push する
+    const pushOps: any = {};
+    if (record.actions && record.actions.length > 0) {
+      pushOps["record.actions"] = { $each: record.actions };
+    }
+    if (record.stateHashes && record.stateHashes.length > 0) {
+      pushOps["record.stateHashes"] = { $each: record.stateHashes };
+    }
+
+    if (Object.keys(pushOps).length > 0) {
+      update.$push = pushOps;
+    }
+
+    // initialState などの基本情報は初回作成時のみ保存
+    const setOnInsert: any = {};
+    if (record.initialState) setOnInsert["record.initialState"] = record.initialState;
+    if (record.gameId) setOnInsert["record.gameId"] = record.gameId;
+    if (record.serverSeedHash) setOnInsert["record.serverSeedHash"] = record.serverSeedHash;
+    if (record.clientSeed) setOnInsert["record.clientSeed"] = record.clientSeed;
+
+    if (Object.keys(setOnInsert).length > 0) {
+      update.$setOnInsert = setOnInsert;
+    }
+
+    await this.replayCollection.updateOne({ _id: gameId }, update, { upsert: true });
+  }
 }

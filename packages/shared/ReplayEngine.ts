@@ -22,13 +22,28 @@ export class ReplayEngine<
 
     this.engine = new UniversalEngine(rules, options);
 
-    // 初期状態を強制的に上書き（シードから生成された初期状態がrecord.initialStateと一致することを確認するため）
-    const initialHash = calculateStateHash(record.initialState);
-    const generatedInitialHash = calculateStateHash(this.engine.getState());
+    // スナップショットがあれば、初期状態ではなくそこから開始する
+    if (record.snapshotState) {
+      this.engine.loadState(record.snapshotState, []);
+      // スナップショット時点でのハッシュ検証
+      if (record.stateHashes && record.snapshotVersion !== undefined) {
+        const currentHash = calculateStateHash(this.engine.getState());
+        const expectedHash = record.stateHashes[record.snapshotVersion];
+        if (expectedHash && currentHash !== expectedHash) {
+          throw new Error(
+            `Snapshot state hash mismatch at version ${record.snapshotVersion}. Expected ${expectedHash}, got ${currentHash}`,
+          );
+        }
+      }
+    } else {
+      // 初期状態を強制的に上書き（シードから生成された初期状態がrecord.initialStateと一致することを確認するため）
+      const initialHash = calculateStateHash(record.initialState);
+      const generatedInitialHash = calculateStateHash(this.engine.getState());
 
-    if (initialHash !== generatedInitialHash) {
-      console.warn("Initial state hash mismatch! Checking if manual load is needed.");
-      this.engine.loadState(record.initialState);
+      if (initialHash !== generatedInitialHash) {
+        console.warn("Initial state hash mismatch! Checking if manual load is needed.");
+        this.engine.loadState(record.initialState);
+      }
     }
   }
 
@@ -37,10 +52,10 @@ export class ReplayEngine<
    * @returns 検証結果（成功した場合はtrue、途中で不正を検知した場合はエラーを投げる）
    */
   public verify(record: GameRecord<TState, TAction>): boolean {
-    const { actions, stateHashes } = record;
+    const { actions, stateHashes, snapshotVersion = 0 } = record;
 
-    // ステップ 0: 初期状態のハッシュ検証
-    if (stateHashes && stateHashes.length > 0) {
+    // ステップ 0: 開始時点のハッシュ検証 (スナップショットでない場合)
+    if (!record.snapshotState && stateHashes && stateHashes.length > 0) {
       const currentHash = calculateStateHash(this.engine.getState());
       if (currentHash !== stateHashes[0]) {
         throw new Error(
@@ -58,11 +73,13 @@ export class ReplayEngine<
         throw new Error(`Failed to dispatch action at step ${i + 1}: ${JSON.stringify(action)}`);
       }
 
-      if (stateHashes && stateHashes[i + 1]) {
+      if (stateHashes && stateHashes[snapshotVersion + i + 1]) {
         const currentHash = calculateStateHash(this.engine.getState());
-        if (currentHash !== stateHashes[i + 1]) {
+        if (currentHash !== stateHashes[snapshotVersion + i + 1]) {
           throw new Error(
-            `Hash mismatch at step ${i + 1}. Expected ${stateHashes[i + 1]}, got ${currentHash}`,
+            `Hash mismatch at step ${snapshotVersion + i + 1}. Expected ${
+              stateHashes[snapshotVersion + i + 1]
+            }, got ${currentHash}`,
           );
         }
       }
