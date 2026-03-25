@@ -2,7 +2,7 @@ import type { BaseGameState, GameRuleset } from "../GameRules";
 import type { IGameRNG } from "../utils/IGameRNG";
 import {
   LogicCircuitEngine,
-  type GateType,
+  type LogicBlockType,
   type LogicBlock,
   type Connection,
 } from "../utils/LogicCircuitEngine";
@@ -13,7 +13,7 @@ export interface LogicCircuitState extends BaseGameState {
 }
 
 export type LogicCircuitAction =
-  | { type: "ADD_BLOCK"; gateType: GateType; x?: number; y?: number }
+  | { type: "ADD_BLOCK"; gateType: LogicBlockType; x?: number; y?: number }
   | { type: "REMOVE_BLOCK"; blockId: string }
   | { type: "MOVE_BLOCK"; blockId: string; x: number; y: number }
   | {
