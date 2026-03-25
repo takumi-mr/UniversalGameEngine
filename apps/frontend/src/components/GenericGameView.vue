@@ -155,6 +155,11 @@ import type {
   TowerOfHanoiState,
   TowerOfHanoiAction,
 } from "@engine/shared/rules/TowerOfHanoiRuleset";
+import type {
+  LogicCircuitState,
+  LogicCircuitAction,
+} from "@engine/shared/rules/LogicCircuitRuleset";
+import type { LogicLabState, LogicLabAction } from "@engine/shared/rules/LogicLabRuleset";
 
 // 共用体型の定義
 type GameState =
@@ -174,7 +179,9 @@ type GameState =
   | SpeedState
   | MinesweeperState
   | HakoiriMusumeState
-  | TowerOfHanoiState;
+  | TowerOfHanoiState
+  | LogicCircuitState
+  | LogicLabState;
 type GameAction =
   | TicTacToeAction
   | OthelloAction
@@ -192,7 +199,9 @@ type GameAction =
   | SpeedAction
   | MinesweeperAction
   | HakoiriMusumeAction
-  | TowerOfHanoiAction;
+  | TowerOfHanoiAction
+  | LogicCircuitAction
+  | LogicLabAction;
 
 const props = defineProps<{
   gameType: string;
@@ -248,6 +257,8 @@ const components: Record<string, Component> = {
   minesweeper: defineAsyncComponent(() => import("./game/Minesweeper.vue")),
   hakoiri_musume: defineAsyncComponent(() => import("./game/HakoiriMusume.vue")),
   tower_of_hanoi: defineAsyncComponent(() => import("./game/TowerOfHanoi.vue")),
+  logic_circuit: defineAsyncComponent(() => import("./game/LogicLab.vue")),
+  logic_lab: defineAsyncComponent(() => import("./game/LogicLab.vue")),
 };
 
 const gameComponent = computed(() => components[props.gameType] || null);
