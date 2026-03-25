@@ -80,9 +80,52 @@ bun run dev  # または task dev
 
 ---
 
-## 📐 アーキテクチャ
+## 🏗️ アーキテクチャ概要 (Architecture Overview)
 
-### データフロー
+本プロジェクトは、堅牢性、再現性、および拡張性を最優先した多層アーキテクチャを採用しています。
+
+### 1. 全体構造
+
+```mermaid
+graph TD
+    subgraph "Presentation Layer (apps/frontend)"
+        Vue["Vue 3 / Vite"]
+        Three["Three.js (3D Renderer)"]
+        UI["UI Components (2D)"]
+    end
+
+    subgraph "Communication Layer"
+        Socket["Socket.io (Realtime)"]
+        GRPC["gRPC (High-perf)"]
+        Delta["JSON Patch (Delta Syncing)"]
+    end
+
+    subgraph "Core Engine (packages/shared)"
+        Engine["UniversalEngine (Core)"]
+        Ruleset["GameRuleset (Logic)"]
+        RNG["ProvablyFairRNG (Determinism)"]
+        Secret["Secret<T> (Obfuscation)"]
+    end
+
+    subgraph "Persistence & AI"
+        DB["MongoDB / Redis"]
+        AI["AI Players (MCTS, LLM, etc.)"]
+        Replay["ReplayEngine"]
+    end
+
+    Vue --> Socket
+    Vue --> GRPC
+    Socket --> Engine
+    GRPC --> Engine
+    Engine --> Ruleset
+    Engine --> RNG
+    Engine --> Secret
+    Engine --> DB
+    AI --> Engine
+    Replay --> Engine
+```
+
+### 2. データフロー (Data Flow)
 
 プレイヤーのアクションがどのように処理され、状態が更新されるかのシーケンスです。
 
@@ -107,9 +150,30 @@ sequenceDiagram
     WS-->>Client: state update
 ```
 
----
+### 3. コア・エンジン設計思想
 
-### プレゼンテーション層の分離 (Renderer-Agnostic)
+#### Reducerパターンとイミュータビリティ
+
+エンジンの状態遷移は、Reduxにインスパイアされた **Reducerパターン** に基づいています。
+
+- **純粋関数**: `reduce(state, action) -> newState` は副作用を持たず、現在の状態とアクションのみから次の状態を決定します。
+- **完全なイミュータビリティ**: 開発環境では `deepFreeze` を用いて状態の破壊的変更を禁止し、予期せぬバグを未然に防ぎます。
+
+#### 検証可能な決定論 (Provably Fair Determinism)
+
+`IGameRNG` インターフェースを通じて、**決定論的な乱数生成** を行います。
+
+- **再現性**: 初期シードとアクションログがあれば、誰でも同じゲーム展開を1ビットの狂いなく再現可能です。
+- **Provably Fair**: `serverSeed`（秘密）と `clientSeed`（公開）を組み合わせたハッシュ化により、運営側による不正操作が不可能な公平性を担保します。
+
+### 4. 情報制御の自動化 (`Secret<T>`)
+
+不完全情報ゲーム（麻雀、ポーカー等）における情報の非対称性を、型レベルで安全に扱います。
+
+- **宣言的な秘匿**: 状態定義内で `Secret<T>` 型を使用することで、「誰にどの情報を見せるか」を定義。
+- **自動マスク処理**: `getMaskedState(playerId)` を呼び出すだけで、エンジンが再帰的に状態を走査し、権限のない情報を自動的に伏せ字（`"?"`等）に変換してクライアントへ送信します。
+
+### 5. プレゼンテーション層の分離 (Renderer-Agnostic)
 
 フロントエンドは特定のレンダリングライブラリに依存しません。
 
@@ -117,40 +181,36 @@ sequenceDiagram
 - **DOM/CSS**: `TicTacToe.vue`, `Uno.vue` 等、軽量でアクセシビリティが重要なゲームで使用。
 - **拡張性**: 将来的に Unity (WebGL) や Babylon.js への移行もコアロジックを崩さずに行えます。
 
+### 6. AI エコシステム
+
+共通の `IAIPlayer` インターフェースにより、多種多様な意思決定アルゴリズムをシームレスに統合。
+
+- **探索ベース**: Minimax (Alpha-Beta pruning), MCTS (UCT Algorithm)。
+- **LLMベース**: `LLMPlayer` による自然言語対話型・推論型AI。
+- **非同期実行**: 重い計算を伴うAIは Web Workers や外部サーバーで実行され、エンジン本体のリアルタイム性を損ないません。
+
+### 7. 通信・スケーラビリティ
+
+- **State Delta (JSON Patch)**: 状態全体ではなく、変更箇所のみを送信することで通信帯域を劇的に削減。
+- **プロトコル・アグノスティック**: `INetworkClient` 抽象化により、WebSocket (低遅延重視) と gRPC (型安全・高スループット重視) を透過的に切り替え可能。
+- **ステートレス設計**: エンジン状態は MongoDB/Redis に永続化され、サーバーを跨いだスケーリングが容易です。
+
 ---
 
-### AIプレイヤーの階層
+## 🧠 状態遷移の数学的モデル (Formal Model)
 
-1. **`IAIPlayer`**: 非同期意思決定を行う基本インターフェース。
-2. **`RandomPlayer`**: 合法手の中からランダムに選択するベースラインAI。
-3. **`MinimaxPlayer`**: Alpha-Beta枝刈りを備えた固定深度探索AI。
-4. **`MCTSPlayer`**: UCTアルゴリズムを用いたモンテカルロ木探索AI。
-
----
-
-## 🧠 状態遷移の数学的モデル (Architecture Philosophy)
-
-本エンジンは、ゲームの進行を数学的な「状態遷移関数」として厳密に捉える思想に基づいています。これにより、高度な分析やAIの最適化が可能になります。
+本エンジンは、ゲームの進行を数学的な「状態遷移関数」として厳密に定義しています。
 
 ### 1. 状態遷移の形式化
 
-ゲームのルール遂行は、状態空間 $S$ とアクション空間 $A$ を用いて、次のような決定論的な状態遷移関数 $T$ として定義されます。
+ゲームのルール遂行は、状態空間 $S$ とアクション空間 $A$ を用いて、決定論的な状態遷移関数 $T$ として定義されます。
 
 $$T: S \times A \rightarrow S \cup \{\text{Invalid}\}$$
 
-乱数要素も状態 $S$ にシードとして含めることで、純粋関数としての性質を維持します。
+乱数シード $\sigma$ を含めることで、非線形な遷移も純粋関数として維持されます。
 
-### 2. 関数化による利点
+### 2. 分析と応用
 
-- **履歴管理と逆関数**: 状態がイミュータブルであるため、アクションの履歴をたどることで任意の時点の再現や、逆関数的な操作（Undo）が容易です。
-
-$$\text{Revert}(S_{\text{next}}, A) \rightarrow S_{\text{current}}$$
-
-- **グラフ理論による探索**: 状態をノード、アクションをエッジとする有向グラフとしてゲームを捉えることで、到達可能性分析や最短経路問題（AIの探索）に適用できます。
-- **複雑性の定量化**: 状態空間の大きさ $|S|$ や、合法手の平均分岐数（Average Branching Factor）を計算し、AIの計算資源計画に役立てます。
-
-$$\text{Average Branching Factor} = E_S [|A_{\text{legal}}(S)|]$$
-
-### 3. 一人用パズルへの適用
-
-対戦ゲームだけでなく、数独やルービックキューブのような一人用ゲームも、初期状態から終了（解決）状態への「最短経路探索問題」として同様の関数モデルで解釈・解決することが可能です。
+- **履歴の完全再現**: 任意の $t$ における状態 $S_t$ は、初期状態 $S_0$ とアクション系列 $A_{1..t}$ の合成により一意に定まります。
+- **到達空間分析**: 状態をノード、アクションをエッジとする有向グラフとしてゲームを捉え、AIの最短経路探索や動的計画法に適用します。
+- **平均分岐数 (Branching Factor)**: $E_S [|A_{\text{legal}}(S)|]$ を算出することで、ゲームの複雑性とAIに必要な計算リソースを定量化します。
