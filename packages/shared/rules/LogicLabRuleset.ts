@@ -32,6 +32,7 @@ export interface LogicLabState extends BaseGameState {
   testResults: boolean[];
   unlockedLevels: number[];
   customBlocks: Record<string, { name: string; compound: SubCircuit }>;
+  isDirty?: boolean;
 }
 
 export type LogicLabAction =
@@ -479,8 +480,31 @@ export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
       }
     }
 
-    LogicCircuitEngine.simulate(newState.blocks, newState.connections);
+    newState.isDirty = true;
     return newState;
+  },
+
+  tickMode: "mutable",
+
+  tick: (state, _dt, _rng) => {
+    if (!state.isDirty) {
+      const hasClock = Object.values(state.blocks).some((b) =>
+        b.type.toLowerCase().includes("clock"),
+      );
+      if (!hasClock) return state;
+    }
+
+    // Mutableモードなので structuredClone は不要
+    const stable = LogicCircuitEngine.simulate(state.blocks, state.connections);
+
+    const hasClock = Object.values(state.blocks).some((b) =>
+      b.type.toLowerCase().includes("clock"),
+    );
+    if (stable && !hasClock) {
+      state.isDirty = false;
+    }
+
+    return state;
   },
 
   checkWinCondition: (state) => {

@@ -169,4 +169,117 @@ describe("UniversalEngine", () => {
       engineWithMutatingRules.dispatch({ type: "INCREMENT" });
     }).toThrow();
   });
+
+  test("should handle tick if defined in rules", () => {
+    let tickCount = 0;
+    const rulesWithTick: GameRuleset<MockState, MockAction, MockOptions> = {
+      ...mockRules,
+      tick: (state, dt) => {
+        tickCount++;
+        return { ...state, count: state.count + dt };
+      },
+    };
+
+    const engineWithTick = new UniversalEngine<MockState, MockAction, MockOptions>(rulesWithTick, {
+      initialCount: 5,
+    });
+
+    const success = engineWithTick.tick(10);
+    expect(success).toBe(true);
+    expect(engineWithTick.getState().count).toBe(15);
+    expect(engineWithTick.getState().version).toBe(1);
+    expect(tickCount).toBe(1);
+  });
+
+  test("should return true on tick even if not defined in rules (now with scheduler/time)", () => {
+    const engineWithNoRulesTick = new UniversalEngine<MockState, MockAction, MockOptions>(
+      mockRules,
+      { initialCount: 5 },
+    );
+    expect(engineWithNoRulesTick.tick(10)).toBe(true);
+    expect(engineWithNoRulesTick.getState().currentTime).toBe(10);
+  });
+
+  test("should handle runSimulation", () => {
+    const rulesWithTick: GameRuleset<MockState, MockAction, MockOptions> = {
+      ...mockRules,
+      tick: (state, _dt) => ({ ...state, count: state.count + 1 }),
+    };
+
+    const engineWithTick = new UniversalEngine<MockState, MockAction, MockOptions>(rulesWithTick, {
+      initialCount: 5,
+    });
+
+    engineWithTick.runSimulation(5);
+    expect(engineWithTick.getState().count).toBe(10);
+    expect(engineWithTick.getState().version).toBe(5);
+  });
+
+  test("should handle mutable tickMode without cloning", () => {
+    let tickCount = 0;
+    const rulesWithMutableTick: GameRuleset<MockState, MockAction, MockOptions> = {
+      ...mockRules,
+      tickMode: "mutable",
+      tick: (state, dt) => {
+        tickCount++;
+        state.count += dt; // Mutate directly
+        return state;
+      },
+    };
+
+    const engineWithMutableTick = new UniversalEngine<MockState, MockAction, MockOptions>(
+      rulesWithMutableTick,
+      { initialCount: 5 },
+    );
+
+    const success = engineWithMutableTick.tick(10);
+    expect(success).toBe(true);
+    expect(engineWithMutableTick.getState().count).toBe(15);
+    expect(engineWithMutableTick.getState().version).toBe(1);
+    expect(tickCount).toBe(1);
+
+    // Dispatch should still work correctly after mutable ticks
+    engineWithMutableTick.dispatch({ type: "INCREMENT", value: 5 });
+    expect(engineWithMutableTick.getState().count).toBe(20);
+    expect(engineWithMutableTick.getState().version).toBe(2);
+  });
+
+  test("should handle scheduled actions", () => {
+    const engineWithScheduler = new UniversalEngine<MockState, MockAction, MockOptions>(mockRules, {
+      initialCount: 5,
+    });
+
+    // Schedule an INCREMENT 100ms in the future
+    engineWithScheduler.schedule({ type: "INCREMENT", value: 10 }, 100);
+
+    // Initial tick (50ms) - should not trigger
+    engineWithScheduler.tick(50);
+    expect(engineWithScheduler.getState().count).toBe(5);
+
+    // Second tick (60ms, total 110ms) - should trigger
+    engineWithScheduler.tick(60);
+    expect(engineWithScheduler.getState().count).toBe(15);
+    expect(engineWithScheduler.history.length).toBe(2);
+  });
+
+  test("should handle periodic scheduled actions", () => {
+    const engineWithScheduler = new UniversalEngine<MockState, MockAction, MockOptions>(mockRules, {
+      initialCount: 0,
+    });
+
+    // Schedule every 100ms
+    engineWithScheduler.schedule({ type: "INCREMENT", value: 1 }, 100, 100);
+
+    engineWithScheduler.tick(150); // First trigger (total 150)
+    expect(engineWithScheduler.getState().count).toBe(1);
+
+    engineWithScheduler.tick(100); // Second trigger (total 250)
+    expect(engineWithScheduler.getState().count).toBe(2);
+
+    engineWithScheduler.tick(40); // No trigger (total 290)
+    expect(engineWithScheduler.getState().count).toBe(2);
+
+    engineWithScheduler.tick(10); // Third trigger (total 300)
+    expect(engineWithScheduler.getState().count).toBe(3);
+  });
 });

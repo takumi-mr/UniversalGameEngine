@@ -10,6 +10,7 @@ import {
 export interface LogicCircuitState extends BaseGameState {
   blocks: Record<string, LogicBlock>;
   connections: Connection[];
+  isDirty?: boolean;
 }
 
 export type LogicCircuitAction =
@@ -113,10 +114,31 @@ export const LogicCircuitRuleset: GameRuleset<LogicCircuitState, any> = {
         return LogicCircuitRuleset.getInitialState();
     }
 
-    // Run simulation
-    LogicCircuitEngine.simulate(newState.blocks, newState.connections);
-
+    newState.isDirty = true;
     return newState;
+  },
+
+  tickMode: "mutable",
+
+  tick: (state, _dt, _rng) => {
+    if (!state.isDirty) {
+      // クロックなどの時間依存ブロックがある場合は、isDirtyに関わらず回す必要がある
+      const hasClock = Object.values(state.blocks).some((b) => b.type === "CLOCK");
+      if (!hasClock) {
+        return state;
+      }
+    }
+
+    // Mutableモードなので structuredClone は不要
+    const stable = LogicCircuitEngine.simulate(state.blocks, state.connections);
+
+    // 安定かつクロックがない場合は dirty フラグを下ろす
+    const hasClock = Object.values(state.blocks).some((b) => b.type === "CLOCK");
+    if (stable && !hasClock) {
+      state.isDirty = false;
+    }
+
+    return state;
   },
 
   checkWinCondition: (_state) => ({ isFinished: false }),

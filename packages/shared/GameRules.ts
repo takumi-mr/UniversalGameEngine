@@ -21,6 +21,20 @@ export interface BaseGameState {
   };
   // 過去のアクションによって生成された状態のハッシュ履歴 (リプレイ検証用)
   stateHashes?: string[];
+  // 現在のシミュレーション時刻（ミリ秒）
+  currentTime?: number;
+  // スケジュールされたタスク
+  scheduledTasks?: ScheduledTask<BaseGameAction>[];
+}
+
+/**
+ * スケジュールされたタスクのインターフェース
+ */
+export interface ScheduledTask<TAction> {
+  id: string;
+  action: TAction;
+  dueTime: number; // 実行予定の currentTime
+  interval?: number; // 定期実行する場合の間隔
 }
 
 // エンジンがアクションを識別するための最低限の約束
@@ -29,6 +43,13 @@ export interface BaseGameAction {
   playerId?: string; // サーバー側で検証・付与された送信元のユーザーID
   timestamp?: number; // アクションが発生した時刻
 }
+
+/**
+ * エンジンが内部的に使用するシステムアクションの型定義
+ */
+export const SYSTEM_ACTION_TYPE = {
+  SCHEDULE_TASK: "@system/SCHEDULE_TASK",
+} as const;
 
 // 勝敗結果を表す専用の型
 export interface GameResult {
@@ -63,6 +84,15 @@ export function isSecret(obj: unknown): obj is Secret<unknown> {
   return !!(obj && typeof obj === "object" && (obj as Record<string, unknown>).__isSecret === true);
 }
 
+/**
+ * tick の実行結果を表す型。
+ * 単に TState を返す代わりに、追加のアクションをキューに入れることができる。
+ */
+export interface TickResult<TState, TAction> {
+  state: TState;
+  pendingActions?: TAction[];
+}
+
 import type { IGameRNG } from "./utils/IGameRNG";
 
 export interface GameRuleset<
@@ -93,6 +123,13 @@ export interface GameRuleset<
 
   // 制限時間切れの際に自動実行されるアクションを返す関数 (オプショナル)
   getTimeoutAction?: (state: TState) => TAction | null;
+
+  // 毎フレームや定期的なシミュレーションのための処理 (オプショナル)
+  tick?: (state: TState, dt: number, rng?: IGameRNG) => TState | TickResult<TState, TAction>;
+
+  // tickの実行モード (オプショナル, デフォルトは "immutable")
+  // "mutable" の場合、tick内で直接stateを書き換えることが許可され、クローン処理がスキップされる
+  tickMode?: "immutable" | "mutable";
 
   // 特定のプレイヤーが現在実行可能な合法手の完全なリストを返す関数（AI用）
   getLegalActions: (state: TState, playerId: string) => TAction[];

@@ -1,6 +1,13 @@
 import { deepFreeze } from "./utils/freeze";
-import { isSecret } from "./GameRules";
-import type { BaseGameState, BaseGameAction, GameRuleset, GameRecord } from "./GameRules";
+import { isSecret, SYSTEM_ACTION_TYPE } from "./GameRules";
+import type {
+  BaseGameState,
+  BaseGameAction,
+  GameRuleset,
+  GameRecord,
+  TickResult,
+  ScheduledTask,
+} from "./GameRules";
 import { ProvablyFairRNG } from "./utils/ProvablyFairRNG";
 import { sha256, generateRandomSeed } from "./utils/crypto";
 import type { IGameRNG } from "./utils/IGameRNG";
@@ -15,6 +22,8 @@ export interface UniversalEngineOptions {
   autoHash?: boolean;
   hashInterval?: number;
   maxHistorySize?: number;
+  // 固定シミュレーション間隔（ミリ秒）。 tick() のデフォルトDT
+  tickInterval?: number;
 }
 
 // --- 2. 汎用エンジン本体 ---
@@ -111,16 +120,14 @@ export class UniversalEngine<
     this.state.prngSecret = sSeed;
   }
 
-  private createRNGInstance(): IGameRNG | undefined {
-    const secret = this.state.prngSecret;
-    if (this.state.prngConfig && secret) {
-      return new ProvablyFairRNG(
-        secret,
-        this.state.prngConfig.clientSeed,
-        this.state.prngConfig.nonce,
-      );
-    }
-    return undefined;
+  private createRNGInstance(): IGameRNG {
+    const secret = this.state.prngSecret || "fallback_secret";
+    const config = this.state.prngConfig || {
+      serverSeedHash: "",
+      clientSeed: "fallback_client",
+      nonce: 0,
+    };
+    return new ProvablyFairRNG(secret, config.clientSeed, config.nonce);
   }
 
   private updateStateNonce(rng: IGameRNG): void {
@@ -241,8 +248,9 @@ export class UniversalEngine<
 
   // クライアントからの通信を受け取る汎用エンドポイント
   public dispatch(action: TAction): boolean {
-    // 1. 合法手チェック
-    if (!this.rules.isValidAction(this.state, action)) {
+    // 1. 合法手チェック（システムアクションはバイパス）
+    const isSystemAction = action.type && action.type.startsWith("@system/");
+    if (!isSystemAction && !this.rules.isValidAction(this.state, action)) {
       return false;
     }
 
@@ -257,7 +265,15 @@ export class UniversalEngine<
       deepFreeze(base);
     }
 
-    this.state = this.rules.reduce(base, action, rng);
+    // システムアクションの処理
+    let nextState = this.handleSystemAction(base as TState & InternalGameState, action, rng);
+
+    // ゲームルールの適用
+    if (action.type && !action.type.startsWith("@system/")) {
+      nextState = this.rules.reduce(nextState, action, rng) as TState & InternalGameState;
+    }
+
+    this.state = nextState;
 
     // nonceを同期
     if (rng) {
@@ -304,6 +320,152 @@ export class UniversalEngine<
     }
 
     return true;
+  }
+
+  /**
+   * 時間経過またはシミュレーションの1ステップを進める
+   * @param dt 経過時間（ミリ秒）。未指定の場合は engineOptions.tickInterval (デフォルト 16ms) を使用
+   * @returns 処理が実行された場合は true
+   */
+  public tick(dt?: number): boolean {
+    // 1. 時刻を進める（決定性のために固定DTを優先）
+    const interval = dt ?? this.engineOptions.tickInterval ?? 16;
+    const currentTime = (this.state.currentTime ?? 0) + interval;
+
+    // Immutableに時刻とタスクリストを更新（一時的な状態）
+    let nextState = {
+      ...this.state,
+      currentTime,
+    } as TState & InternalGameState;
+
+    const pendingActions: TAction[] = [];
+
+    // 2. スケジュールされたタスクのチェック
+    if (nextState.scheduledTasks && nextState.scheduledTasks.length > 0) {
+      const remainingTasks: ScheduledTask<TAction>[] = [];
+      for (const task of nextState.scheduledTasks) {
+        if (task.dueTime <= currentTime) {
+          pendingActions.push(task.action as TAction);
+          if (task.interval) {
+            remainingTasks.push({
+              ...(task as any),
+              dueTime: task.dueTime + task.interval,
+            });
+          }
+        } else {
+          remainingTasks.push(task as ScheduledTask<TAction>);
+        }
+      }
+      nextState.scheduledTasks = remainingTasks;
+    }
+
+    // 3. ルールのtick実行 (オプショナル)
+    if (this.rules.tick) {
+      const rng = this.createRNGInstance();
+      let result: TState | TickResult<TState, TAction>;
+
+      if (this.rules.tickMode === "mutable") {
+        result = this.rules.tick(nextState, interval, rng);
+      } else {
+        const base = this.cloneStrategy.clone(nextState);
+        if (process.env.NODE_ENV !== "production") {
+          deepFreeze(base);
+        }
+        result = this.rules.tick(base, interval, rng);
+      }
+
+      // 結果の正規化
+      if (result && typeof result === "object" && "state" in result) {
+        nextState = result.state as TState & InternalGameState;
+        if (result.pendingActions) {
+          pendingActions.push(...result.pendingActions);
+        }
+      } else {
+        nextState = result as TState & InternalGameState;
+      }
+    }
+
+    // 4. 状態の反映
+    this.state = nextState;
+
+    // 5. キューイングされたアクションの実行
+    // tick中の再帰的なdispatchを避けるため、ここでまとめて実行
+    for (const action of pendingActions) {
+      this.dispatch(action);
+    }
+
+    // 状態が変更されたとみなしてバージョンを上げる（時刻が進んでいるため）
+    // もし dispatch が呼ばれていれば、すでに dispatch 内で上げられているが、
+    // ここでも念押しで整合性をとる（dispatchが複数回呼ばれても version は最終的にユニークになる）
+    this.state = {
+      ...this.state,
+      version: (this.state.version ?? 0) + 1,
+    };
+
+    // ハッシュ計算
+    const hashInterval = this.engineOptions.hashInterval ?? 10;
+    if (this.engineOptions.autoHash !== false && this.state.version! % hashInterval === 0) {
+      this.computeHash();
+    }
+
+    return true;
+  }
+
+  /**
+   * アクションを将来の指定時刻にスケジュールする。
+   * 内部的にはシステムアクションとして dispatch され、履歴に残る。
+   * @param action 実行するアクション
+   * @param delayMillis 現在時刻からの遅延（ミリ秒）
+   * @param intervalMillis 定期実行する場合の間隔（ミリ秒）
+   */
+  public schedule(action: TAction, delayMillis: number, intervalMillis?: number): void {
+    const systemAction = {
+      type: (SYSTEM_ACTION_TYPE as any).SCHEDULE_TASK,
+      payload: {
+        action,
+        delayMillis,
+        intervalMillis,
+      },
+    } as unknown as TAction;
+
+    this.dispatch(systemAction);
+  }
+
+  /**
+   * システムアクションの処理
+   */
+  private handleSystemAction(
+    state: TState & InternalGameState,
+    action: TAction,
+    rng: IGameRNG,
+  ): TState & InternalGameState {
+    const a = action as any;
+    if (a.type === (SYSTEM_ACTION_TYPE as any).SCHEDULE_TASK) {
+      const { action: taskAction, delayMillis, intervalMillis } = a.payload;
+      // 決定論的なID生成
+      const id = `task_${state.version ?? 0}_${state.currentTime ?? 0}_${Math.floor(rng.nextFloat() * 1000000)}`;
+      const dueTime = (state.currentTime ?? 0) + delayMillis;
+
+      return {
+        ...state,
+        scheduledTasks: [
+          ...(state.scheduledTasks ?? []),
+          { id, action: taskAction, dueTime, interval: intervalMillis },
+        ],
+      };
+    }
+    return state;
+  }
+
+  /**
+   * 指定されたステップ数だけシミュレーションを進める（テストや検証用）
+   * @param cycles ステップ数
+   * @param dt 各ステップの経過時間
+   */
+  public runSimulation(cycles: number, dt: number = 0): void {
+    for (let i = 0; i < cycles; i++) {
+      this.tick(dt);
+    }
   }
 
   /**
