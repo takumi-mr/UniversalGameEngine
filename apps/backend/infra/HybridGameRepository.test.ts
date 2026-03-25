@@ -128,4 +128,42 @@ describe("HybridGameRepository", () => {
       expect(mockMongoDeleteOne).toHaveBeenCalledWith({ _id: "game-5" });
     });
   });
+
+  describe("appendGameRecord", () => {
+    it("最初の保存時に $setOnInsert で初期情報をセットし, $push でアクションを追記すること", async () => {
+      const record = {
+        gameId: "game-123",
+        initialState: { status: "PLAYING", score: 0 } as any,
+        actions: [{ type: "INCREMENT" }] as any,
+        stateHashes: ["hash0", "hash1"],
+        snapshotState: { status: "PLAYING", score: 1 } as any,
+        snapshotVersion: 1,
+      };
+
+      await repo.appendGameRecord("game-123", record);
+
+      expect(mockMongoUpdateOne).toHaveBeenCalledWith(
+        { _id: "game-123" },
+        {
+          $set: {
+            "record.snapshotState": record.snapshotState,
+            "record.snapshotVersion": 1,
+            // "record.finalServerSeed" は undefined なので omitted
+            createdAt: expect.any(Date),
+          },
+          $push: {
+            "record.actions": { $each: record.actions },
+            "record.stateHashes": { $each: record.stateHashes.slice(1) },
+          },
+          $setOnInsert: {
+            "record.initialState": record.initialState,
+            "record.gameId": "game-123",
+            // serverSeedHash, clientSeed は undefined なので omitted
+            "record.stateHashes": [record.stateHashes[0]],
+          },
+        },
+        { upsert: true },
+      );
+    });
+  });
 });

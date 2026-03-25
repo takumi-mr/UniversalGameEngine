@@ -7,5 +7,9 @@ export interface IGameRepository<TState extends BaseGameState> {
 
   // Game History (Replay) persistence
   saveGameRecord(gameId: string, record: GameRecord<TState, BaseGameAction>): Promise<void>;
+  appendGameRecord(
+    gameId: string,
+    record: Partial<GameRecord<TState, BaseGameAction>>,
+  ): Promise<void>;
   loadGameRecord(gameId: string): Promise<GameRecord<TState, BaseGameAction> | null>;
 }
