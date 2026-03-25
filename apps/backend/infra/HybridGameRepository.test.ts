@@ -148,18 +148,18 @@ describe("HybridGameRepository", () => {
           $set: {
             "record.snapshotState": record.snapshotState,
             "record.snapshotVersion": 1,
-            "record.finalServerSeed": undefined,
+            // "record.finalServerSeed" は undefined なので omitted
             createdAt: expect.any(Date),
           },
           $push: {
             "record.actions": { $each: record.actions },
-            "record.stateHashes": { $each: record.stateHashes },
+            "record.stateHashes": { $each: record.stateHashes.slice(1) },
           },
           $setOnInsert: {
             "record.initialState": record.initialState,
             "record.gameId": "game-123",
-            "record.serverSeedHash": undefined,
-            "record.clientSeed": undefined,
+            // serverSeedHash, clientSeed は undefined なので omitted
+            "record.stateHashes": [record.stateHashes[0]],
           },
         },
         { upsert: true },

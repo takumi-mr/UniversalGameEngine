@@ -153,20 +153,25 @@ export class HybridGameRepository<TState extends BaseGameState> implements IGame
   ): Promise<void> {
     const update: any = {
       $set: {
-        "record.snapshotState": record.snapshotState,
-        "record.snapshotVersion": record.snapshotVersion,
-        "record.finalServerSeed": record.finalServerSeed,
+        ...(record.snapshotState !== undefined && { "record.snapshotState": record.snapshotState }),
+        ...(record.snapshotVersion !== undefined && {
+          "record.snapshotVersion": record.snapshotVersion,
+        }),
+        ...(record.finalServerSeed !== undefined && {
+          "record.finalServerSeed": record.finalServerSeed,
+        }),
         createdAt: new Date(),
       },
     };
 
-    // actions と stateHashes があれば $push する
+    // actions はそのまま $push
     const pushOps: any = {};
     if (record.actions && record.actions.length > 0) {
       pushOps["record.actions"] = { $each: record.actions };
     }
+
+    // stateHashes は 0番目以外を $push (0番目は setOnInsert で入るため)
     if (record.stateHashes && record.stateHashes.length > 1) {
-      // 0番目は開始時点のハッシュ（前回の末尾または初期状態）なので、1番目以降を追加する
       pushOps["record.stateHashes"] = { $each: record.stateHashes.slice(1) };
     }
 
@@ -180,6 +185,11 @@ export class HybridGameRepository<TState extends BaseGameState> implements IGame
     if (record.gameId) setOnInsert["record.gameId"] = record.gameId;
     if (record.serverSeedHash) setOnInsert["record.serverSeedHash"] = record.serverSeedHash;
     if (record.clientSeed) setOnInsert["record.clientSeed"] = record.clientSeed;
+
+    // 最初のハッシュも初回作成時のみ保存
+    if (record.stateHashes && record.stateHashes.length > 0) {
+      setOnInsert["record.stateHashes"] = [record.stateHashes[0]];
+    }
 
     if (Object.keys(setOnInsert).length > 0) {
       update.$setOnInsert = setOnInsert;
