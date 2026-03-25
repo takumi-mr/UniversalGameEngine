@@ -24,6 +24,7 @@ import { HanafudaRuleset } from "./rules/HanafudaRuleset";
 import { NovelRuleset } from "./rules/NovelRuleset";
 import { TheGameOfLifeRuleset } from "./rules/TheGameOfLifeRuleset";
 import { HakoiriMusumeRuleset } from "./rules/HakoiriMusumeRuleset";
+import { TowerOfHanoiRuleset } from "./rules/TowerOfHanoiRuleset";
 
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
   type: string;
@@ -316,6 +317,17 @@ class GameRegistry {
       emoji: "👧",
       rules:
         "4x5の盤面で駒をスライドさせ、2x2の「娘」の駒を中央下部の出口まで移動させるパズルゲームです。",
+    });
+    this.register({
+      type: "tower_of_hanoi",
+      name: "Tower of Hanoi",
+      ruleset: TowerOfHanoiRuleset,
+      minPlayers: 1,
+      maxPlayers: 1,
+      description: "ハノイの塔。全ての円盤を別の杭に移動させよう。",
+      emoji: "🗼",
+      rules:
+        "3本の杭があり、最初は1本の杭に全ての円盤が小さい順に積まれています。一度に1枚しか動かせず、大きな円盤を小さな円盤の上に置くことはできません。全ての円盤を別の杭に移動させればクリアです。",
     });
   }
 
