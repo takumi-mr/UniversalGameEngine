@@ -147,6 +147,10 @@ import type { MahjongState, MahjongAction } from "@engine/shared/rules/mahjong/M
 import type { WordleState, WordleAction } from "@engine/shared/rules/WordleRuleset";
 import type { SpeedState, SpeedAction } from "@engine/shared/rules/SpeedRuleset";
 import type { MinesweeperState, MinesweeperAction } from "@engine/shared/rules/MinesweeperRuleset";
+import type {
+  HakoiriMusumeState,
+  HakoiriMusumeAction,
+} from "@engine/shared/rules/HakoiriMusumeRuleset";
 
 // 共用体型の定義
 type GameState =
@@ -164,7 +168,8 @@ type GameState =
   | MahjongState
   | WordleState
   | SpeedState
-  | MinesweeperState;
+  | MinesweeperState
+  | HakoiriMusumeState;
 type GameAction =
   | TicTacToeAction
   | OthelloAction
@@ -180,7 +185,8 @@ type GameAction =
   | MahjongAction
   | WordleAction
   | SpeedAction
-  | MinesweeperAction;
+  | MinesweeperAction
+  | HakoiriMusumeAction;
 
 const props = defineProps<{
   gameType: string;
@@ -234,6 +240,7 @@ const components: Record<string, Component> = {
   wordle: defineAsyncComponent(() => import("./game/Wordle.vue")),
   speed: defineAsyncComponent(() => import("./game/Speed.vue")),
   minesweeper: defineAsyncComponent(() => import("./game/Minesweeper.vue")),
+  hakoiri_musume: defineAsyncComponent(() => import("./game/HakoiriMusume.vue")),
 };
 
 const gameComponent = computed(() => components[props.gameType] || null);

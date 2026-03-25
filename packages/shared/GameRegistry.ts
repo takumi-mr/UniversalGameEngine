@@ -23,6 +23,7 @@ import { WerewolfRuleset } from "./rules/WerewolfRuleset";
 import { HanafudaRuleset } from "./rules/HanafudaRuleset";
 import { NovelRuleset } from "./rules/NovelRuleset";
 import { TheGameOfLifeRuleset } from "./rules/TheGameOfLifeRuleset";
+import { HakoiriMusumeRuleset } from "./rules/HakoiriMusumeRuleset";
 
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
   type: string;
@@ -304,6 +305,17 @@ class GameRegistry {
       emoji: "🎲",
       rules:
         "ルーレットを回して進み、止まったマスの指示に従います。給料日のマスを通過すると給料がもらえます。全員がゴールした時点で、最も多くの資産を持っているプレイヤーの勝ちです。",
+    });
+    this.register({
+      type: "hakoiri_musume",
+      name: "Hakoiri Musume",
+      ruleset: HakoiriMusumeRuleset,
+      minPlayers: 1,
+      maxPlayers: 1,
+      description: "古典的なスライディングパズル「箱入り娘」。娘を外に逃がそう。",
+      emoji: "👧",
+      rules:
+        "4x5の盤面で駒をスライドさせ、2x2の「娘」の駒を中央下部の出口まで移動させるパズルゲームです。",
     });
   }
 
