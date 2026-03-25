@@ -169,8 +169,20 @@ export class UniversalEngine<
   public takeSnapshot(): void {
     this.snapshotState = this.cloneStrategy.clone(this.state);
     this.snapshotVersion = this.state.version ?? 0;
-    // 完全にクリアするのではなく、履歴をスナップショット時点からのものに切り替える
-    // 通常は dispatch 内で history.length が閾値を超えた時に呼ばれる
+    // メモリ解放のために履歴とハッシュ履歴をクリア
+    this.history = [];
+    this.stateHashes = [calculateStateHash(this.state)]; // スナップショット時点のハッシュから再開
+  }
+
+  /**
+   * 外部（リポジトリ等）への保存が完了した後に、蓄積された履歴をクリアする
+   */
+  public flushHistory(): void {
+    const currentVersion = this.state.version ?? 0;
+    // スナップショットが未取得なら現時点の状態をスナップショットとする
+    if (this.snapshotVersion < currentVersion) {
+      this.takeSnapshot();
+    }
   }
 
   public getState(): TState {
@@ -289,7 +301,6 @@ export class UniversalEngine<
       this.history.length >= this.engineOptions.maxHistorySize
     ) {
       this.takeSnapshot();
-      this.history = []; // メモリ解放のために現在のアクション履歴をクリア
     }
 
     return true;

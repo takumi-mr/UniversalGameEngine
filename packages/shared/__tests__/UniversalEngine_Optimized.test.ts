@@ -116,4 +116,38 @@ describe("UniversalEngine Optimization", () => {
     expect(success).toBe(true);
     expect(replayEngine.getState().count).toBe(5);
   });
+
+  test("should support incremental recording with flushHistory", () => {
+    const engine = new UniversalEngine<MockState, MockAction, UniversalEngineOptions>(mockRules, {
+      autoHash: true,
+    });
+
+    // Step 1: First 2 actions
+    engine.dispatch({ type: "INCREMENT" });
+    engine.dispatch({ type: "INCREMENT" });
+    const record1 = engine.getGameRecord("test");
+    expect(record1.actions.length).toBe(2);
+    expect(record1.stateHashes?.length).toBe(3); // v0, v1, v2
+
+    // Flush history (simulating saved to DB)
+    engine.flushHistory();
+    expect(engine.history.length).toBe(0);
+    expect(record1.snapshotVersion).toBeUndefined(); // First record has no snapshot (v0)
+
+    // Step 2: 3 more actions
+    engine.dispatch({ type: "INCREMENT" });
+    engine.dispatch({ type: "INCREMENT" });
+    engine.dispatch({ type: "INCREMENT" });
+
+    const record2 = engine.getGameRecord("test");
+    expect(record2.actions.length).toBe(3);
+    expect(record2.stateHashes?.length).toBe(4); // v2(base), v3, v4, v5
+    expect(record2.snapshotVersion).toBe(2);
+    expect(record2.snapshotState?.count).toBe(2);
+
+    // Replay from record2 (incremental)
+    const replayEngine = new ReplayEngine(mockRules, record2);
+    replayEngine.verify(record2);
+    expect(replayEngine.getState().count).toBe(5);
+  });
 });

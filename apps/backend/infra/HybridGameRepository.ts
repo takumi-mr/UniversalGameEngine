@@ -165,8 +165,9 @@ export class HybridGameRepository<TState extends BaseGameState> implements IGame
     if (record.actions && record.actions.length > 0) {
       pushOps["record.actions"] = { $each: record.actions };
     }
-    if (record.stateHashes && record.stateHashes.length > 0) {
-      pushOps["record.stateHashes"] = { $each: record.stateHashes };
+    if (record.stateHashes && record.stateHashes.length > 1) {
+      // 0番目は開始時点のハッシュ（前回の末尾または初期状態）なので、1番目以降を追加する
+      pushOps["record.stateHashes"] = { $each: record.stateHashes.slice(1) };
     }
 
     if (Object.keys(pushOps).length > 0) {
