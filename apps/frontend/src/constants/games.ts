@@ -218,4 +218,15 @@ export const availableGames = [
     rules:
       "4x5の盤面で駒をスライドさせ、2x2の「娘」の駒を中央下部の出口まで移動させるパズルゲームです。",
   },
+  {
+    type: "tower_of_hanoi",
+    name: "Tower of Hanoi",
+    description: "古典的な数学パズル「ハノイの塔」。",
+    emoji: "🗼",
+    minPlayers: 1,
+    maxPlayers: 1,
+    category: "Puzzles",
+    rules:
+      "3本の杭があり、最初は1本の杭に全ての円盤が小さい順に積まれています。大きな円盤を小さな円盤の上に置かずに、全ての円盤を別の杭に移動させればクリアです。",
+  },
 ];

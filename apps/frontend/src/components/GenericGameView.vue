@@ -151,6 +151,10 @@ import type {
   HakoiriMusumeState,
   HakoiriMusumeAction,
 } from "@engine/shared/rules/HakoiriMusumeRuleset";
+import type {
+  TowerOfHanoiState,
+  TowerOfHanoiAction,
+} from "@engine/shared/rules/TowerOfHanoiRuleset";
 
 // 共用体型の定義
 type GameState =
@@ -169,7 +173,8 @@ type GameState =
   | WordleState
   | SpeedState
   | MinesweeperState
-  | HakoiriMusumeState;
+  | HakoiriMusumeState
+  | TowerOfHanoiState;
 type GameAction =
   | TicTacToeAction
   | OthelloAction
@@ -186,7 +191,8 @@ type GameAction =
   | WordleAction
   | SpeedAction
   | MinesweeperAction
-  | HakoiriMusumeAction;
+  | HakoiriMusumeAction
+  | TowerOfHanoiAction;
 
 const props = defineProps<{
   gameType: string;
@@ -241,6 +247,7 @@ const components: Record<string, Component> = {
   speed: defineAsyncComponent(() => import("./game/Speed.vue")),
   minesweeper: defineAsyncComponent(() => import("./game/Minesweeper.vue")),
   hakoiri_musume: defineAsyncComponent(() => import("./game/HakoiriMusume.vue")),
+  tower_of_hanoi: defineAsyncComponent(() => import("./game/TowerOfHanoi.vue")),
 };
 
 const gameComponent = computed(() => components[props.gameType] || null);

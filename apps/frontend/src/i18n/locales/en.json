@@ -484,6 +484,28 @@
           "content": "Clear the game by moving the 'daughter' block (2x2 size) to the bottom center. Try to clear it in as few moves as possible!"
         }
       }
+    },
+    "tower_of_hanoi": {
+      "name": "Tower of Hanoi",
+      "description": "Classical mathematical puzzle.",
+      "rules": "Move all disks from the source peg to the destination peg. You can only move one disk at a time and a larger disk cannot be placed onto a smaller one.",
+      "tabs": {
+        "summary": {
+          "label": "About",
+          "title": "Move all disks!",
+          "content": "Tower of Hanoi is a puzzle where you have to move a stack of disks from one peg to another."
+        },
+        "rules": {
+          "label": "Rules",
+          "title": "One at a time!",
+          "content": "1. Only one disk can be moved at a time.\n2. Each move consists of taking the upper disk from one of the stacks and placing it on top of another stack.\n3. No larger disk may be placed on top of a smaller disk."
+        },
+        "win": {
+          "label": "Goal",
+          "title": "Stack them all!",
+          "content": "You win when all disks are moved to the third peg in the correct order. Try to solve it in the minimum number of moves!"
+        }
+      }
     }
   },
   "help": {
