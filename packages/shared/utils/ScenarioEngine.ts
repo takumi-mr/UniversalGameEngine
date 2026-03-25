@@ -18,7 +18,10 @@ export type ScenarioAction =
  * ノベルゲームのシナリオ進行を管理するユーティリティ
  */
 export class ScenarioEngine {
-  constructor(private scenario: Record<string, ScenarioNode>) {}
+  private scenario: Record<string, ScenarioNode>;
+  constructor(scenario: Record<string, ScenarioNode>) {
+    this.scenario = scenario;
+  }
 
   /**
    * 現在のノードとアクションに基づいて次のノードとフラグの状態を計算する

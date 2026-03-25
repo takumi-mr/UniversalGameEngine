@@ -5,7 +5,7 @@ import { ProvablyFairRNG } from "./utils/ProvablyFairRNG";
 import { sha256, generateRandomSeed } from "./utils/crypto";
 import type { IGameRNG } from "./utils/IGameRNG";
 import { calculateStateHash } from "./utils/hash";
-import { CloneStrategy, StructuredCloneStrategy } from "./utils/CloneStrategy";
+import { type CloneStrategy, StructuredCloneStrategy } from "./utils/CloneStrategy";
 
 interface InternalGameState extends BaseGameState {
   prngSecret?: string;
