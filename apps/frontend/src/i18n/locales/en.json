@@ -445,19 +445,43 @@
       "rules": "The numbers on the board indicate the number of mines in the adjacent 8 squares. Use them to uncover all safe squares to win.",
       "tabs": {
         "summary": {
-          "label": "How to Play",
-          "title": "Clear the minefield!",
-          "content": "Minesweeper is a puzzle game where you have to clear a rectangular board containing hidden 'mines' without detonating any of them."
+          "label": "About",
+          "title": "Clear the cells avoiding mines!",
+          "content": "Minesweeper is a puzzle game where you must open all safe cells without stepping on a 'mine'!"
         },
         "rules": {
           "label": "Rules",
-          "title": "Watch the numbers!",
-          "content": "1. Left-click to reveal a square.\n2. Right-click to flag a square you think is a mine.\n3. The number on a revealed square shows how many mines are touching it."
+          "title": "Numbers are the key!",
+          "content": "1. Click a cell to open it.\n2. Right-click on a cell you think has a mine to place a flag.\n3. The number in an opened cell tells you how many mines are in the surrounding 8 cells."
         },
         "win": {
-          "label": "Winning",
-          "title": "Uncover all safe squares!",
-          "content": "You win the game when you have successfully revealed all squares that do not contain a mine. If you reveal a mine, you lose!"
+          "label": "How to Win",
+          "title": "Open all safe cells!",
+          "content": "You win if you open all cells that don't have mines. If you click a mine, it's game over!"
+        }
+      }
+    },
+    "hakoiri_musume": {
+      "name": "Hakoiri Musume",
+      "description": "Classical sliding puzzle.",
+      "rules": "Slide the blocks on a 4x5 board and move the 2x2 'daughter' block to the exit at the bottom center.",
+      "move_count": "{count} moves",
+      "reset": "Reset",
+      "tabs": {
+        "summary": {
+          "label": "About",
+          "title": "Escort the daughter to the exit!",
+          "content": "Slide the blocks on the board to move the largest 'daughter' block out through the exit at the bottom."
+        },
+        "rules": {
+          "label": "Rules",
+          "title": "Slide into empty spaces!",
+          "content": "1. You can move a block if there is an empty space next to it.\n2. You cannot jump over or overlap other blocks.\n3. Select a block and move it toward an empty direction!"
+        },
+        "win": {
+          "label": "Goal",
+          "title": "The exit is at the bottom center!",
+          "content": "Clear the game by moving the 'daughter' block (2x2 size) to the bottom center. Try to clear it in as few moves as possible!"
         }
       }
     }

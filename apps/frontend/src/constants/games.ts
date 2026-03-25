@@ -207,4 +207,15 @@ export const availableGames = [
     rules:
       "マスの数字は周囲8マスの地雷の数を示します。これをヒントに地雷がないマスをすべて開ければ勝ちです。",
   },
+  {
+    type: "hakoiri_musume",
+    name: "箱入り娘 (Hakoiri Musume)",
+    description: "古典的なスライディングパズル。",
+    emoji: "👧",
+    minPlayers: 1,
+    maxPlayers: 1,
+    category: "Puzzles",
+    rules:
+      "4x5の盤面で駒をスライドさせ、2x2の「娘」の駒を中央下部の出口まで移動させるパズルゲームです。",
+  },
 ];
