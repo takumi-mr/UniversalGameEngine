@@ -80,13 +80,36 @@ onMounted(async () => {
     ruleset.value = definition.ruleset;
     loading.value = false;
 
-    // Optional API fetch logic can be added here if recordId is provided in the future
-    // if (props.recordId) { ... fetch from API ... }
+    // recordId がある場合は API から取得を試みる
+    if (props.recordId) {
+      fetchGameRecord(props.recordId);
+    }
   } catch (e: any) {
     errorMsg.value = e.message || "Failed to load replay";
     loading.value = false;
   }
 });
+
+const fetchGameRecord = async (id: string) => {
+  loading.value = true;
+  errorMsg.value = "";
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ""}/replays/${id}`);
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error("Game record not found on server.");
+      }
+      throw new Error(`Failed to fetch: ${response.statusText}`);
+    }
+    const data = await response.json();
+    gameRecord.value = data;
+  } catch (err: any) {
+    console.error("Fetch error:", err);
+    errorMsg.value = "Failed to load replay from server: " + err.message;
+  } finally {
+    loading.value = false;
+  }
+};
 
 const triggerFileUpload = () => {
   fileInput.value?.click();

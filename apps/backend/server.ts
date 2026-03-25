@@ -7,6 +7,7 @@ import { Server } from "socket.io";
 import authRoutes from "./routes/auth";
 import roomsRoutes from "./routes/rooms";
 import gameRoutes from "./routes/game";
+import replaysRoutes from "./routes/replays";
 import { setupSocketIO } from "./socket";
 import { startGrpcServer } from "./grpc-server";
 
@@ -25,6 +26,7 @@ app.use(express.json());
 app.use("/", authRoutes);
 app.use("/rooms", roomsRoutes);
 app.use("/game", gameRoutes);
+app.use("/replays", replaysRoutes);
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
