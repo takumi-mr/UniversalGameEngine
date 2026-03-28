@@ -15,7 +15,7 @@ import { streamManager } from "./network/StreamManager";
 const PROTO_PATH = path.resolve(__dirname, "../../packages/shared/network/game.proto");
 
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
-  keepCase: true,
+  keepCase: false,
   longs: String,
   enums: String,
   defaults: true,
