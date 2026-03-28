@@ -49,23 +49,36 @@ const gameServiceHandlers: GameServiceHandlers = {
         message: "Invalid token",
       });
 
-    const { gameType, optionsJson } = call.request;
-    const def = gameRegistry.getDefinition(gameType.toLowerCase());
+    // gameType と game_type、どちらの形式でリクエストが来ても受け取れるようにする
+    const req = call.request as any;
+    const rawGameType = req.gameType || req.game_type;
+    const rawOptionsJson = req.optionsJson || req.options_json;
+
+    // もしgameTypeが指定されていなかった場合のエラーハンドリング
+    if (!rawGameType) {
+      return callback({
+        code: grpc.status.INVALID_ARGUMENT,
+        message: "game_type is required",
+      });
+    }
+
+    const def = gameRegistry.getDefinition(rawGameType.toLowerCase());
+
     if (!def)
       return callback({
         code: grpc.status.NOT_FOUND,
-        message: `Unknown game type: ${gameType}`,
+        message: `Unknown game type: ${rawGameType}`,
       });
 
     try {
       const gameId = Math.random().toString(36).substring(7);
-      const options = JSON.parse(optionsJson || "{}");
+      const options = JSON.parse(rawOptionsJson || "{}");
       const engine = new UniversalEngine(def.ruleset, options);
       const io = getIoInstance();
       const server = new SocketGameServer(gameId, engine, io);
       sessions.set(gameId, {
         server,
-        type: gameType.toLowerCase().replace(/-/g, "_"),
+        type: rawGameType.toLowerCase().replace(/-/g, "_"),
       });
 
       scheduleRoomCleanup(gameId);
