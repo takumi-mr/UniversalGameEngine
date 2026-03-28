@@ -1,4 +1,5 @@
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { InMemoryDummyRepository } from "../infra/InMemoryDummyRepository";
 import { HybridGameRepository } from "../infra/HybridGameRepository";
 import { GenericGameServer } from "@engine/shared/network/GenericGameServer";
 import { Server } from "socket.io";
@@ -7,6 +8,7 @@ import { calculateStateHash } from "@engine/shared";
 import { streamManager } from "../network/StreamManager";
 import type { IAIPlayer } from "@engine/shared/ai/IAIPlayer";
 import { gameRegistry } from "@engine/shared/GameRegistry";
+import type { IGameRepository } from "@engine/shared/stores/repository";
 
 export class SocketGameServer extends GenericGameServer<any, any> {
   private io: Server;
@@ -34,7 +36,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
     const players = state.players ? (Object.values(state.players).filter(Boolean) as string[]) : [];
     const isForceFull = !!targetSocketId;
 
-    // ★ Redis に最新状態をゲームタイプごと書き込む（ステートレス化の核心）
+    // Redis に最新状態をゲームタイプごと書き込む（ステートレス化の核心）
     // 全ての状態変化（人間着手・AI着手の両方）をカバーする
     if (this.gameType) {
       repo
@@ -195,10 +197,21 @@ export const cleanupTimers = new Map<string, NodeJS.Timeout>();
 
 export const EMPTY_ROOM_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
-export const repo = new HybridGameRepository<any>(
-  process.env.REDIS_URL || "redis://localhost:6379",
-  process.env.MONGO_URL || "mongodb://localhost:27017",
-);
+// ★ RL_MODE環境変数によってリポジトリの実装を切り替えるファクトリ関数
+function createRepository(): IGameRepository<any> {
+  if (process.env.RL_MODE === "true") {
+    console.log("🚀 Initializing repository in RL_MODE (InMemoryDummyRepository)");
+    return new InMemoryDummyRepository();
+  }
+
+  console.log("🌍 Initializing repository in PRODUCTION_MODE (HybridGameRepository)");
+  return new HybridGameRepository<any>(
+    process.env.REDIS_URL || "redis://localhost:6379",
+    process.env.MONGO_URL || "mongodb://localhost:27017",
+  );
+}
+
+export const repo = createRepository();
 
 /**
  * ★ セッションをメモリから取得する。存在しない場合は Redis / MongoDB から復元する。
