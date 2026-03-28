@@ -1,6 +1,6 @@
 // packages/shared/ai/MCTSPlayer.test.ts
 import { describe, expect, it } from "bun:test";
-import { TicTacToeRuleset, type TicTacToeState } from "../rules/TicTacToeRuleset";
+import { TicTacToeRuleset, type TicTacToeState } from "../../rules/TicTacToeRuleset";
 import { MCTSPlayer } from "./MCTSPlayer";
 
 describe("MCTSPlayer", () => {

@@ -3,8 +3,8 @@
 // メインスレッドから渡されたゲーム状態・合法手を受け取り AI 計算を行い結果を返す。
 import { parentPort } from "worker_threads";
 import { gameRegistry } from "@engine/shared/GameRegistry";
-import { MinimaxPlayer } from "@engine/shared/ai/MinimaxPlayer";
-import { MCTSPlayer } from "@engine/shared/ai/MCTSPlayer";
+import { MinimaxPlayer } from "@engine/shared/ai/AIPlayer/MinimaxPlayer";
+import { MCTSPlayer } from "@engine/shared/ai/AIPlayer/MCTSPlayer";
 import type { BaseGameAction } from "@engine/shared";
 
 export interface WorkerRequest {

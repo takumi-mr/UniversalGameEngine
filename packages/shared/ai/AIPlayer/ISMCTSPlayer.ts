@@ -1,6 +1,6 @@
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
-import type { IAIPlayer, AIDiagnosticValue } from "./IAIPlayer";
-import type { IAIStateDeterminizer } from "./IAIStateDeterminizer";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "../../GameRules";
+import type { IAIPlayer, AIDiagnosticValue } from "../IAIPlayer";
+import type { IAIStateDeterminizer } from "../IAIStateDeterminizer";
 import type { MCTSOptions } from "./MCTSPlayer";
 
 class ISMCTSNode<TAction extends BaseGameAction> {

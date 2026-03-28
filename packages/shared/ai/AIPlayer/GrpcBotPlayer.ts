@@ -1,6 +1,6 @@
 // packages/shared/ai/GrpcBotPlayer.ts
-import type { BaseGameState, BaseGameAction } from "../GameRules";
-import type { IAIPlayer } from "./IAIPlayer";
+import type { BaseGameState, BaseGameAction } from "../../GameRules";
+import type { IAIPlayer } from "../IAIPlayer";
 
 /**
  * 外部のgRPCクライアント（Pythonなど）が操作するためのAIプレイヤー実装。
