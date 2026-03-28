@@ -38,6 +38,12 @@ tasks:
       MONGO_URL: "{{.MONGO_URL}}"
       # Other variables from .env are automatically loaded by Task
 
+  rl:
+    env:
+      RL_MODE: "true"
+    cmds:
+      - bun run apps/backend/server.ts
+
   clean:
     desc: Stop infrastructure and remove volumes
     cmds:

@@ -12,4 +12,8 @@ export interface IGameRepository<TState extends BaseGameState> {
     record: Partial<GameRecord<TState, BaseGameAction>>,
   ): Promise<void>;
   loadGameRecord(gameId: string): Promise<GameRecord<TState, BaseGameAction> | null>;
+
+  saveSession(gameId: string, type: string, state: TState, isFinished?: boolean): Promise<void>;
+  loadSession(gameId: string): Promise<{ type: string; state: TState } | null>;
+  deleteSession(gameId: string): Promise<void>;
 }
