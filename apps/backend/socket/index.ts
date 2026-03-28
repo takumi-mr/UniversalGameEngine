@@ -11,8 +11,8 @@ import {
   updatePresence,
 } from "./roomManager";
 import { streamManager } from "../network/StreamManager";
-import { GrpcBotPlayer } from "@engine/shared/ai/GrpcBotPlayer";
-import { RandomPlayer } from "@engine/shared/ai/RandomPlayer";
+import { GrpcBotPlayer } from "@engine/shared/ai/AIPlayer/GrpcBotPlayer";
+import { RandomPlayer } from "@engine/shared/ai/AIPlayer/RandomPlayer";
 import { WorkerAIPlayer } from "../ai/WorkerAIPlayer";
 import { aiTensorRegistry } from "@engine/shared/ai/AITensorAdapterRegistry";
 
