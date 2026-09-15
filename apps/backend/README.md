@@ -7,8 +7,10 @@ Bun を活用した、低レイテンシ・高並列なゲームサーバーで�
 - `/routes`: HTTP API エンドポイント（認証、マッチメイキングなど）。
 - `/socket`: Socket.io による双方向リアルタイム通信。
 - **`grpc-server.ts`**: gRPC (Protocol Buffers) による高精度・低オーバーヘッド通信の実装。
-- `/store`: ゲーム状態のメモリ内管理。
-- `/infra`: データベースおよび外部サービス統合。
+- `/store`: ゲーム状態のメモリ内管理（`sessionStore.ts`。`RL_MODE` でリポジトリ実装を切り替え）。
+- `/infra`: データベース統合（`HybridGameRepository`: Redis + MongoDB / `InMemoryDummyRepository`: RL 用）。
+- `/ai`: Web Worker で AI の思考を実行する `WorkerAIPlayer`。
+- `/network`: gRPC ストリームの管理（`StreamManager`）。
 - `server.ts`: サーバーエントリーポイント。
 
 ## 🛠️ 開発ガイド
@@ -22,15 +24,19 @@ bun install
 ### 開発サーバーの起動
 
 ```bash
-bun dev          # WebSocket + HTTP
-# または
-bun run dev:grpc # gRPC サーバーの個別起動
+bun dev          # HTTP (:3000) + Socket.io + gRPC (:50051) を同時に起動（bun --watch server.ts）
 ```
 
-### Lint / Format
+強化学習用に Redis / MongoDB なしで起動する場合はリポジトリルートで `task rl`（`RL_MODE=true`）を使います。
+
+### Lint / Format / Test
+
+リポジトリルートで実行します。
 
 ```bash
-bun x biome check .
+bun run lint            # eslint
+bun x prettier --check .
+bun test                # bun:test
 ```
 
 ## 🔌 リアルタイム通信 (WebSockets)
