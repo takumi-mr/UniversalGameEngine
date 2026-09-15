@@ -21,13 +21,15 @@ jobs:
         with:
           bun-version: latest
 
+      # 依存関係のインストール
+      # ※ Prettier より先に実行し、package.json で固定したバージョンの prettier を使う
+      #   （bun x が最新版を取得すると、ルール変更で既存ファイルが引っかかる）
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
       # フォーマッターのチェック
       - name: Run Prettier Check
         run: bun x prettier --check .
-
-      # 依存関係のインストール
-      - name: Install Dependencies
-        run: bun install --ignore-scripts
 
       # Linterの実行
       - name: Run Linter
