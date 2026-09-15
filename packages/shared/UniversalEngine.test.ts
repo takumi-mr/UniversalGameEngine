@@ -81,6 +81,33 @@ describe("UniversalEngine", () => {
     expect(engine.history.length).toBe(1);
   });
 
+  test("getReplayData / loadState でリプレイ情報ごと別エンジンへ引き継げる", () => {
+    engine.dispatch({ type: "INCREMENT", value: 1 });
+    engine.dispatch({ type: "INCREMENT", value: 2 });
+    const original = engine.getGameRecord("g");
+
+    // 履歴だけ渡した場合は初期状態・ハッシュ履歴がこのエンジン生成時のもののまま
+    const partial = new UniversalEngine<MockState, MockAction, MockOptions>(mockRules, {
+      initialCount: 99,
+    });
+    partial.loadState(structuredClone(engine.getState()), [...engine.history]);
+    expect(partial.getGameRecord("g").initialState.count).toBe(99);
+
+    // リプレイ情報一式を渡せば GameRecord が元のエンジンと一致する
+    const restored = new UniversalEngine<MockState, MockAction, MockOptions>(mockRules, {
+      initialCount: 99,
+    });
+    restored.loadState(structuredClone(engine.getState()), structuredClone(engine.getReplayData()));
+    expect(restored.getGameRecord("g")).toEqual(original);
+
+    // 引き継いだ後も履歴・ハッシュが続きから積まれる
+    restored.dispatch({ type: "INCREMENT", value: 1 });
+    const cont = restored.getGameRecord("g");
+    expect(cont.actions.length).toBe(3);
+    expect(cont.stateHashes?.length).toBe(4);
+    expect(cont.initialState.count).toBe(5);
+  });
+
   test("should dispatch actions and update state", () => {
     const success = engine.dispatch({ type: "INCREMENT", value: 2 });
     expect(success).toBe(true);

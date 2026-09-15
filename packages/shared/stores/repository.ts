@@ -1,4 +1,5 @@
 import type { GameRecord, BaseGameState, BaseGameAction } from "../GameRules";
+import type { EngineReplayData } from "../UniversalEngine";
 
 /** セッションに参加している AI ボットの定義（復元時に同じボットを再生成するための情報） */
 export interface BotSpec {
@@ -15,6 +16,11 @@ export interface SessionRecord<TState extends BaseGameState> {
   type: string;
   state: TState;
   bots?: BotSpec[];
+  /**
+   * リプレイ用のエンジン内部情報（初期状態・アクション履歴・ハッシュ履歴）。
+   * これが無いと、別インスタンスで復元した対局の GameRecord は途中からの履歴しか持てない。
+   */
+  replay?: EngineReplayData<TState, BaseGameAction>;
 }
 
 export interface IGameRepository<TState extends BaseGameState> {
