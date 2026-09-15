@@ -7,11 +7,13 @@ class ISMCTSNode<TAction extends BaseGameAction> {
   public visits = 0;
   public wins = 0;
   public readonly children = new Map<string, ISMCTSNode<TAction>>();
+  public readonly parent: ISMCTSNode<TAction> | null;
+  public readonly action: TAction | null;
 
-  constructor(
-    public readonly parent: ISMCTSNode<TAction> | null = null,
-    public readonly action: TAction | null = null,
-  ) {}
+  constructor(parent: ISMCTSNode<TAction> | null = null, action: TAction | null = null) {
+    this.parent = parent;
+    this.action = action;
+  }
 
   public hasChild(action: TAction): boolean {
     return this.children.has(this.hashAction(action));
@@ -37,18 +39,24 @@ export class InformationSetMCTSPlayer<
   TState extends BaseGameState,
   TAction extends BaseGameAction,
 > implements IAIPlayer<TState, TAction> {
+  public readonly playerId: string;
   public readonly name: string;
+  private readonly ruleset: GameRuleset<TState, TAction>;
+  private readonly determinizer: IAIStateDeterminizer<TState>;
   private readonly iterations: number;
   private readonly explorationConstant: number;
   private readonly thinkDelayMs: number;
 
   constructor(
-    public readonly playerId: string,
-    private readonly ruleset: GameRuleset<TState, TAction>,
-    private readonly determinizer: IAIStateDeterminizer<TState>,
+    playerId: string,
+    ruleset: GameRuleset<TState, TAction>,
+    determinizer: IAIStateDeterminizer<TState>,
     options: MCTSOptions = {},
     name: string = "ISMCTSBot",
   ) {
+    this.playerId = playerId;
+    this.ruleset = ruleset;
+    this.determinizer = determinizer;
     this.name = name;
     this.iterations = options.iterations ?? 1000;
     this.explorationConstant = options.explorationConstant ?? Math.sqrt(2);

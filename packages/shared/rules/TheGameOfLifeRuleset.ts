@@ -2,10 +2,10 @@ import { requireRng } from "../utils/requireRng";
 import type { GameRuleset } from "../GameRules";
 import type { IGameRNG } from "../utils/IGameRNG";
 import {
-  BoardSpace,
-  Board,
-  BaseBoardState,
-  BaseBoardPlayer,
+  type BoardSpace,
+  type Board,
+  type BaseBoardState,
+  type BaseBoardPlayer,
   movePlayer,
   nextTurn,
 } from "./SugorokuGameEngine";

@@ -36,7 +36,7 @@ bun dev          # HTTP (:3000) + Socket.io + gRPC (:50051) を同時に起動�
 ```bash
 bun run lint            # eslint
 bun x prettier --check .
-bun test                # bun:test
+bun test                # bun:test（ルートからは `bun run test`）
 ```
 
 ## 🔌 リアルタイム通信 (WebSockets)

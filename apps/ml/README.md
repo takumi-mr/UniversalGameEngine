@@ -16,7 +16,7 @@ apps/ml/
 │   ├── train_az.py    # AlphaZero の学習 CLI
 │   ├── checkpoint.py  # モデルの保存・読み込み (.pt + .json)。format で DQN / AZ を判別
 │   └── evaluate.py    # 評価 CLI（対ランダム勝率）。両方式共通
-├── tests/test_mcts.py # MCTS のバックアップ規約の単体テスト（サーバー不要）
+├── tests/test_mcts.py # MCTS のバックアップ規約の単体テスト（サーバー不要。CI では pytest で実行）
 ├── proto/             # game.proto から生成した Python スタブ（コミット済み）
 ├── scripts/gen_proto.py            # proto から Python スタブを再生成
 ├── scripts/bench_simulate.py       # Simulate / BatchSimulate のスループット計測
@@ -50,8 +50,8 @@ python -m uge_rl.train_az --game othello --iterations 30 --games-per-iter 20 --s
 # 4. 評価（どちらの形式でも同じコマンド。format を見て復元する）
 python -m uge_rl.evaluate --checkpoint ../../models/othello_az.pt --games 100
 
-# 5. MCTS の単体テスト（サーバー不要）
-python -m tests.test_mcts
+# 5. MCTS の単体テスト（サーバー不要。CI と同じコマンド。pip install pytest が必要。pytest なしなら python -m tests.test_mcts）
+python -m pytest tests -q
 ```
 
 主なオプション（DQN: `python -m uge_rl.train --help`）:

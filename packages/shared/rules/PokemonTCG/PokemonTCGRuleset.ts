@@ -1,7 +1,7 @@
 import { requireRng } from "../../utils/requireRng";
-import { BaseGameState, GameRuleset } from "../../GameRules";
+import type { BaseGameState, GameRuleset } from "../../GameRules";
 import type { IGameRNG } from "../../utils/IGameRNG";
-import { EnergyType, PokemonTCGRegistry } from "./PokemonTCGRegistry";
+import { type EnergyType, PokemonTCGRegistry } from "./PokemonTCGRegistry";
 // ==========================================
 // 1. データ定義 (The Card Registry)
 // ==========================================

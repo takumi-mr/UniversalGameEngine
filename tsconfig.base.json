@@ -1,0 +1,32 @@
+{
+  // 全パッケージ共通の TypeScript 設定。
+  // 厳しさ（strict 系フラグ）はここで一元管理し、各パッケージの tsconfig は
+  // 環境依存の項目（lib / types / include / paths）だけを上書きする。
+  "compilerOptions": {
+    // 出力は行わない（実行は Bun / Vite に任せる）
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+
+    // 厳しさ
+    "strict": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+
+    // 意図的に無効にしているもの（有効化は別 PR で）
+    "noUncheckedIndexedAccess": false,
+    "noPropertyAccessFromIndexSignature": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  }
+}

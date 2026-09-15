@@ -1,14 +1,10 @@
 {
+  // 厳しさは ../../tsconfig.base.json に統一。
+  // フロント（ブラウザ）とバックエンド（Bun）の両方から使われるので lib に DOM を含める。
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
     "lib": ["ESNext", "DOM"],
-    "moduleResolution": "bundler",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "declaration": true
+    "types": ["bun"]
   },
   "include": ["."]
 }

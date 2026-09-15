@@ -7,6 +7,7 @@ on:
       - main
 
 jobs:
+  # TypeScript 側: prettier / eslint / 型チェック / bun:test（shared, backend）/ vitest（frontend）
   test-and-lint:
     runs-on: ubuntu-latest
 
@@ -35,10 +36,42 @@ jobs:
       - name: Run Linter
         run: bun run lint
 
-      # 型チェック
+      # 型チェック（ルート tsconfig で apps/** と packages/** を tsconfig.base.json の厳しさで検査）
       - name: Run Type Check
         run: bun run type-check
 
-      # テストの実行
-      - name: Run Tests
-        run: bun test
+      # bun:test（packages/shared, apps/backend）
+      - name: Run Tests (bun)
+        run: bun run test
+
+      # vitest（apps/frontend: jsdom + @vue/test-utils）
+      - name: Run Frontend Tests (vitest)
+        run: bun run test:frontend
+
+  # Python 側: apps/ml の単体テスト（gRPC サーバー不要）
+  ml-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/ml
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/ml/requirements.txt
+
+      # torch は CPU 版を先に入れる（既定の CUDA 版は数 GB あり CI では無駄）。
+      # 後続の requirements.txt の torch>=2.3 はこれで満たされるので再ダウンロードされない。
+      - name: Install Dependencies
+        run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install -r requirements.txt pytest
+
+      - name: Run Tests (pytest)
+        run: python -m pytest tests -q
