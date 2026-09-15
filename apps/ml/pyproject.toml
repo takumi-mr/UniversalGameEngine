@@ -1,0 +1,21 @@
+[project]
+name = "uge-rl"
+version = "0.1.0"
+description = "Reinforcement learning clients for the Universal Game Engine gRPC RL API"
+requires-python = ">=3.10"
+dependencies = [
+  "grpcio>=1.66,<2",
+  "protobuf>=5.26,<6",
+  "numpy>=1.26",
+  "torch>=2.3",
+]
+
+[project.optional-dependencies]
+dev = ["grpcio-tools>=1.66,<2"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["uge_rl", "proto"]

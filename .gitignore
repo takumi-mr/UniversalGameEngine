@@ -6,3 +6,5 @@ dist-electron
 .env.local
 .env.development.local
 
+# trained model weights (metadata .json is kept)
+models/*.pt

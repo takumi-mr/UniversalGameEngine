@@ -43,6 +43,10 @@ LLM（Large Language Model）を使用してゲームの指し手を決定する
 
 各ゲームに応じた `IAITensorAdapter` を管理するためのレジストリです。
 
+### [adapters/](./adapters/)
+
+組み込みの `IAITensorAdapter` 実装（現在は `OthelloTensorAdapter`）と、それらを `aiTensorRegistry` に登録する `index.ts`。gRPC の `Reset`/`Step`（強化学習ループ）はここに登録されたゲームでのみ使えます。学習側のコードは [`apps/ml`](../../../apps/ml/README.md) を参照。
+
 ## テスト
 
 各AIの実装には対応する `.test.ts` ファイルが含まれており、基本的な動作や探索の品質を確認できます。

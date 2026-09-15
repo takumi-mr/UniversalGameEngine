@@ -1,12 +1,16 @@
 // packages/shared/ai/AITensorAdapterRegistry.ts
-import { BaseGameState, BaseGameAction } from "../GameRules";
+import type { BaseGameState, BaseGameAction } from "../GameRules";
 import type { IAITensorAdapter } from "./IAITensorAdapter";
 
-class AITensorAdapterRegistry<TState extends BaseGameState, TAction extends BaseGameAction> {
+class AITensorAdapterRegistry {
   // 任意のゲームタイプ文字列に対して、アダプターを保持する
-  private adapters = new Map<string, IAITensorAdapter<TState, TAction>>();
+  // （ゲームごとに State/Action 型が異なるため、格納時は型を消去する）
+  private adapters = new Map<string, IAITensorAdapter<any, any>>();
 
-  public register(gameType: string, adapter: IAITensorAdapter<TState, TAction>): void {
+  public register<TState extends BaseGameState, TAction extends BaseGameAction>(
+    gameType: string,
+    adapter: IAITensorAdapter<TState, TAction>,
+  ): void {
     this.adapters.set(gameType.toLowerCase(), adapter);
   }
 

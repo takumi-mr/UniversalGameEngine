@@ -13,6 +13,7 @@ export default [
       "**/generated/**",
       ".bun/**",
       "**/coverage/**",
+      "**/.venv/**",
     ],
   },
 

@@ -1,0 +1,5 @@
+grpcio>=1.66,<2
+grpcio-tools>=1.66,<2
+protobuf>=5.26,<6
+numpy>=1.26
+torch>=2.3

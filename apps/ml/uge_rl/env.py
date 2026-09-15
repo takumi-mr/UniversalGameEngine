@@ -1,0 +1,160 @@
+"""gRPC 経由でゲームエンジンを操作する Gym 風の環境ラッパー。
+
+サーバー側 (apps/backend/grpc-server.ts) の契約:
+  - Reset: 全席に player_ids を着席させ PLAYING にし、active_players[0] 視点の観測を返す
+  - Step : player_id が action_id を指す。戻り値の観測・合法手は「次に行動するプレイヤー」視点、
+           reward は手を指した player_id 視点（終局時のみ非ゼロ。勝=1, 負=-1, 引分=0.5）
+"""
+
+from __future__ import annotations
+
+import time
+from dataclasses import dataclass, field
+from typing import Sequence
+
+import grpc
+import numpy as np
+
+from proto import game_pb2, game_pb2_grpc
+
+
+@dataclass
+class StepResult:
+    obs: np.ndarray  # 次の手番プレイヤー視点の状態テンソル (float32, 1 次元)
+    legal_actions: np.ndarray  # 次の手番プレイヤーの合法手 ID (int64)
+    reward: float  # 手を指したプレイヤー視点の報酬
+    done: bool
+    active_players: list[str] = field(default_factory=list)
+
+    @property
+    def next_player(self) -> str | None:
+        return self.active_players[0] if self.active_players else None
+
+
+class GrpcGameEnv:
+    """1 セッションのゲームを CreateGame → Reset → Step... で回す環境。
+
+    自己対戦を前提に、1 つのインスタンスで全プレイヤーの手番を進める。
+    """
+
+    def __init__(
+        self,
+        address: str = "localhost:50051",
+        game_type: str = "othello",
+        options: dict | None = None,
+        player_ids: Sequence[str] = ("player_1", "player_2"),
+        draw_reward: float = 0.0,
+        rpc_timeout: float = 10.0,
+    ) -> None:
+        self.address = address
+        self.game_type = game_type
+        self.options = options or {}
+        self.player_ids = list(player_ids)
+        self.draw_reward = draw_reward
+        self.rpc_timeout = rpc_timeout
+
+        self._channel: grpc.Channel | None = None
+        self._stub: game_pb2_grpc.GameServiceStub | None = None
+        self.game_id: str | None = None
+        self.n_actions: int | None = None
+        self.obs_dim: int | None = None
+
+    # ------------------------------------------------------------------ 接続
+    def connect(self, wait_ready_sec: float = 30.0) -> "GrpcGameEnv":
+        self._channel = grpc.insecure_channel(self.address)
+        grpc.channel_ready_future(self._channel).result(timeout=wait_ready_sec)
+        self._stub = game_pb2_grpc.GameServiceStub(self._channel)
+        return self
+
+    def close(self) -> None:
+        if self._channel is not None:
+            self._channel.close()
+            self._channel = None
+            self._stub = None
+
+    def __enter__(self) -> "GrpcGameEnv":
+        return self.connect()
+
+    def __exit__(self, *_exc) -> None:
+        self.close()
+
+    @property
+    def stub(self) -> game_pb2_grpc.GameServiceStub:
+        if self._stub is None:
+            self.connect()
+        assert self._stub is not None
+        return self._stub
+
+    # ------------------------------------------------------------------ RPC
+    def create_game(self) -> str:
+        import json
+
+        res = self.stub.CreateGame(
+            game_pb2.CreateGameRequest(game_type=self.game_type, options_json=json.dumps(self.options)),
+            timeout=self.rpc_timeout,
+        )
+        self.game_id = res.game_id
+        return self.game_id
+
+    def reset(self) -> tuple[np.ndarray, np.ndarray, list[str]]:
+        """(obs, legal_actions, active_players) を返す。"""
+        if self.game_id is None:
+            self.create_game()
+        try:
+            res = self._reset_rpc()
+        except grpc.RpcError as err:
+            # サーバー側の空室掃除（5 分）でセッションが消えていたら作り直す
+            if err.code() == grpc.StatusCode.NOT_FOUND:
+                self.create_game()
+                res = self._reset_rpc()
+            else:
+                raise
+
+        obs = np.asarray(res.initial_state_tensor, dtype=np.float32)
+        legal = np.asarray(res.initial_legal_action_ids, dtype=np.int64)
+        self.obs_dim = obs.shape[0]
+        if self.n_actions is None:
+            # 行動空間の大きさはアダプタの定義次第。盤面ゲームでは obs_dim == n_actions が基本
+            self.n_actions = self.obs_dim
+        return obs, legal, list(res.active_players)
+
+    def _reset_rpc(self):
+        assert self.game_id is not None
+        return self.stub.Reset(
+            game_pb2.ResetGameRequest(game_id=self.game_id, player_ids=self.player_ids),
+            timeout=self.rpc_timeout,
+        )
+
+    def step(self, player_id: str, action_id: int) -> StepResult:
+        assert self.game_id is not None, "call reset() first"
+        res = self.stub.Step(
+            game_pb2.StepRequest(game_id=self.game_id, player_id=player_id, action_id=int(action_id)),
+            timeout=self.rpc_timeout,
+        )
+        reward = float(res.reward)
+        # エンジンは引き分けを 0.5 で返すが、ゼロサム学習では 0 の方が扱いやすい
+        if res.is_finished and abs(reward - 0.5) < 1e-6:
+            reward = self.draw_reward
+        return StepResult(
+            obs=np.asarray(res.next_state_tensor, dtype=np.float32),
+            legal_actions=np.asarray(res.legal_action_ids, dtype=np.int64),
+            reward=reward,
+            done=bool(res.is_finished),
+            active_players=list(res.active_players),
+        )
+
+
+def wait_for_server(address: str, timeout_sec: float = 60.0, interval: float = 1.0) -> None:
+    """バックエンド起動待ち（Colab などでサーバーをバックグラウンド起動した直後に使う）。"""
+    deadline = time.time() + timeout_sec
+    last_err: Exception | None = None
+    while time.time() < deadline:
+        try:
+            ch = grpc.insecure_channel(address)
+            grpc.channel_ready_future(ch).result(timeout=interval)
+            ch.close()
+            return
+        except Exception as err:  # noqa: BLE001
+            last_err = err
+            time.sleep(interval)
+    raise TimeoutError(f"gRPC server at {address} not ready: {last_err}")

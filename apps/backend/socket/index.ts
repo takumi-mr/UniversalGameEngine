@@ -15,6 +15,7 @@ import { GrpcBotPlayer } from "@engine/shared/ai/GrpcBotPlayer";
 import { RandomPlayer } from "@engine/shared/ai/RandomPlayer";
 import { WorkerAIPlayer } from "../ai/WorkerAIPlayer";
 import { aiTensorRegistry } from "@engine/shared/ai/AITensorAdapterRegistry";
+import "@engine/shared/ai/adapters";
 
 export const setupSocketIO = (io: Server) => {
   setIoInstance(io);
