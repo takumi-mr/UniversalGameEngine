@@ -3,6 +3,14 @@
 import type * as grpc from "@grpc/grpc-js";
 import type { MethodDefinition } from "@grpc/proto-loader";
 import type {
+  BatchSimulateRequest as _universal_game_engine_BatchSimulateRequest,
+  BatchSimulateRequest__Output as _universal_game_engine_BatchSimulateRequest__Output,
+} from "../universal_game_engine/BatchSimulateRequest";
+import type {
+  BatchSimulateResponse as _universal_game_engine_BatchSimulateResponse,
+  BatchSimulateResponse__Output as _universal_game_engine_BatchSimulateResponse__Output,
+} from "../universal_game_engine/BatchSimulateResponse";
+import type {
   ChatMessage as _universal_game_engine_ChatMessage,
   ChatMessage__Output as _universal_game_engine_ChatMessage__Output,
 } from "../universal_game_engine/ChatMessage";
@@ -39,6 +47,14 @@ import type {
   ResetGameResponse__Output as _universal_game_engine_ResetGameResponse__Output,
 } from "../universal_game_engine/ResetGameResponse";
 import type {
+  SimulateRequest as _universal_game_engine_SimulateRequest,
+  SimulateRequest__Output as _universal_game_engine_SimulateRequest__Output,
+} from "../universal_game_engine/SimulateRequest";
+import type {
+  SimulateResponse as _universal_game_engine_SimulateResponse,
+  SimulateResponse__Output as _universal_game_engine_SimulateResponse__Output,
+} from "../universal_game_engine/SimulateResponse";
+import type {
   StepRequest as _universal_game_engine_StepRequest,
   StepRequest__Output as _universal_game_engine_StepRequest__Output,
 } from "../universal_game_engine/StepRequest";
@@ -60,6 +76,47 @@ import type {
 } from "../universal_game_engine/WaitForTurnResponse";
 
 export interface GameServiceClient extends grpc.Client {
+  BatchSimulate(
+    argument: _universal_game_engine_BatchSimulateRequest,
+    metadata: grpc.Metadata,
+    options: grpc.CallOptions,
+    callback: grpc.requestCallback<_universal_game_engine_BatchSimulateResponse__Output>,
+  ): grpc.ClientUnaryCall;
+  BatchSimulate(
+    argument: _universal_game_engine_BatchSimulateRequest,
+    metadata: grpc.Metadata,
+    callback: grpc.requestCallback<_universal_game_engine_BatchSimulateResponse__Output>,
+  ): grpc.ClientUnaryCall;
+  BatchSimulate(
+    argument: _universal_game_engine_BatchSimulateRequest,
+    options: grpc.CallOptions,
+    callback: grpc.requestCallback<_universal_game_engine_BatchSimulateResponse__Output>,
+  ): grpc.ClientUnaryCall;
+  BatchSimulate(
+    argument: _universal_game_engine_BatchSimulateRequest,
+    callback: grpc.requestCallback<_universal_game_engine_BatchSimulateResponse__Output>,
+  ): grpc.ClientUnaryCall;
+  batchSimulate(
+    argument: _universal_game_engine_BatchSimulateRequest,
+    metadata: grpc.Metadata,
+    options: grpc.CallOptions,
+    callback: grpc.requestCallback<_universal_game_engine_BatchSimulateResponse__Output>,
+  ): grpc.ClientUnaryCall;
+  batchSimulate(
+    argument: _universal_game_engine_BatchSimulateRequest,
+    metadata: grpc.Metadata,
+    callback: grpc.requestCallback<_universal_game_engine_BatchSimulateResponse__Output>,
+  ): grpc.ClientUnaryCall;
+  batchSimulate(
+    argument: _universal_game_engine_BatchSimulateRequest,
+    options: grpc.CallOptions,
+    callback: grpc.requestCallback<_universal_game_engine_BatchSimulateResponse__Output>,
+  ): grpc.ClientUnaryCall;
+  batchSimulate(
+    argument: _universal_game_engine_BatchSimulateRequest,
+    callback: grpc.requestCallback<_universal_game_engine_BatchSimulateResponse__Output>,
+  ): grpc.ClientUnaryCall;
+
   CreateGame(
     argument: _universal_game_engine_CreateGameRequest,
     metadata: grpc.Metadata,
@@ -222,6 +279,47 @@ export interface GameServiceClient extends grpc.Client {
   sendChat(
     argument: _universal_game_engine_ChatMessage,
     callback: grpc.requestCallback<_universal_game_engine_CommonResponse__Output>,
+  ): grpc.ClientUnaryCall;
+
+  Simulate(
+    argument: _universal_game_engine_SimulateRequest,
+    metadata: grpc.Metadata,
+    options: grpc.CallOptions,
+    callback: grpc.requestCallback<_universal_game_engine_SimulateResponse__Output>,
+  ): grpc.ClientUnaryCall;
+  Simulate(
+    argument: _universal_game_engine_SimulateRequest,
+    metadata: grpc.Metadata,
+    callback: grpc.requestCallback<_universal_game_engine_SimulateResponse__Output>,
+  ): grpc.ClientUnaryCall;
+  Simulate(
+    argument: _universal_game_engine_SimulateRequest,
+    options: grpc.CallOptions,
+    callback: grpc.requestCallback<_universal_game_engine_SimulateResponse__Output>,
+  ): grpc.ClientUnaryCall;
+  Simulate(
+    argument: _universal_game_engine_SimulateRequest,
+    callback: grpc.requestCallback<_universal_game_engine_SimulateResponse__Output>,
+  ): grpc.ClientUnaryCall;
+  simulate(
+    argument: _universal_game_engine_SimulateRequest,
+    metadata: grpc.Metadata,
+    options: grpc.CallOptions,
+    callback: grpc.requestCallback<_universal_game_engine_SimulateResponse__Output>,
+  ): grpc.ClientUnaryCall;
+  simulate(
+    argument: _universal_game_engine_SimulateRequest,
+    metadata: grpc.Metadata,
+    callback: grpc.requestCallback<_universal_game_engine_SimulateResponse__Output>,
+  ): grpc.ClientUnaryCall;
+  simulate(
+    argument: _universal_game_engine_SimulateRequest,
+    options: grpc.CallOptions,
+    callback: grpc.requestCallback<_universal_game_engine_SimulateResponse__Output>,
+  ): grpc.ClientUnaryCall;
+  simulate(
+    argument: _universal_game_engine_SimulateRequest,
+    callback: grpc.requestCallback<_universal_game_engine_SimulateResponse__Output>,
   ): grpc.ClientUnaryCall;
 
   Step(
@@ -346,6 +444,11 @@ export interface GameServiceClient extends grpc.Client {
 }
 
 export interface GameServiceHandlers extends grpc.UntypedServiceImplementation {
+  BatchSimulate: grpc.handleUnaryCall<
+    _universal_game_engine_BatchSimulateRequest__Output,
+    _universal_game_engine_BatchSimulateResponse
+  >;
+
   CreateGame: grpc.handleUnaryCall<
     _universal_game_engine_CreateGameRequest__Output,
     _universal_game_engine_CreateGameResponse
@@ -364,6 +467,11 @@ export interface GameServiceHandlers extends grpc.UntypedServiceImplementation {
   SendChat: grpc.handleUnaryCall<
     _universal_game_engine_ChatMessage__Output,
     _universal_game_engine_CommonResponse
+  >;
+
+  Simulate: grpc.handleUnaryCall<
+    _universal_game_engine_SimulateRequest__Output,
+    _universal_game_engine_SimulateResponse
   >;
 
   Step: grpc.handleUnaryCall<
@@ -388,6 +496,12 @@ export interface GameServiceHandlers extends grpc.UntypedServiceImplementation {
 }
 
 export interface GameServiceDefinition extends grpc.ServiceDefinition {
+  BatchSimulate: MethodDefinition<
+    _universal_game_engine_BatchSimulateRequest,
+    _universal_game_engine_BatchSimulateResponse,
+    _universal_game_engine_BatchSimulateRequest__Output,
+    _universal_game_engine_BatchSimulateResponse__Output
+  >;
   CreateGame: MethodDefinition<
     _universal_game_engine_CreateGameRequest,
     _universal_game_engine_CreateGameResponse,
@@ -411,6 +525,12 @@ export interface GameServiceDefinition extends grpc.ServiceDefinition {
     _universal_game_engine_CommonResponse,
     _universal_game_engine_ChatMessage__Output,
     _universal_game_engine_CommonResponse__Output
+  >;
+  Simulate: MethodDefinition<
+    _universal_game_engine_SimulateRequest,
+    _universal_game_engine_SimulateResponse,
+    _universal_game_engine_SimulateRequest__Output,
+    _universal_game_engine_SimulateResponse__Output
   >;
   Step: MethodDefinition<
     _universal_game_engine_StepRequest,

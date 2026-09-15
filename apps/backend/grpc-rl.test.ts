@@ -44,6 +44,8 @@ describe("gRPC RL loop (Reset/Step)", () => {
   let createGame: (req: any) => Promise<any>;
   let reset: (req: any) => Promise<any>;
   let step: (req: any) => Promise<any>;
+  let simulate: (req: any) => Promise<any>;
+  let batchSimulate: (req: any) => Promise<any>;
 
   beforeAll(async () => {
     setIoInstance(mockIo);
@@ -66,6 +68,8 @@ describe("gRPC RL loop (Reset/Step)", () => {
     createGame = promisify(client, "CreateGame");
     reset = promisify(client, "Reset");
     step = promisify(client, "Step");
+    simulate = promisify(client, "Simulate");
+    batchSimulate = promisify(client, "BatchSimulate");
   });
 
   afterAll(() => {
@@ -163,5 +167,116 @@ describe("gRPC RL loop (Reset/Step)", () => {
     const second = await reset({ gameId });
     expect(second.initialStateTensor).toEqual(first.initialStateTensor);
     expect(second.activePlayers).toEqual(["player_1"]);
+  });
+  it("Reset / Step は state_json を返し、Simulate の親局面として使えること", async () => {
+    const { gameId } = await createGame({ gameType: "othello" });
+    const root = await reset({ gameId, playerIds: ["A", "B"] });
+    expect(root.stateJson.length).toBeGreaterThan(0);
+    expect(JSON.parse(root.stateJson).status).toBe("PLAYING");
+
+    const res = await simulate({
+      gameType: "othello",
+      stateJson: root.stateJson,
+      playerId: "A",
+      actionId: 19,
+    });
+    expect(res.error).toBe("");
+    expect(res.isFinished).toBe(false);
+    expect(res.activePlayers).toEqual(["B"]);
+    expect(res.legalActionIds.length).toBeGreaterThan(0);
+    expect(res.stateTensor.length).toBe(64);
+    // (3,2) に黒が置かれ、次は白番視点なので -1 に見える
+    expect(res.stateTensor[19]).toBe(-1);
+    expect(JSON.parse(res.stateJson).board[2][3]).toBe(1);
+
+    // Simulate はセッションの実局面を変更しない
+    const live = sessions.get(gameId)!.server.engine.getState() as any;
+    expect(live.board[2][3]).toBe(0);
+    expect(live.version).toBe(JSON.parse(root.stateJson).version);
+  });
+
+  it("Simulate は不正な手・未知のゲームを error フィールドで返すこと", async () => {
+    const { gameId } = await createGame({ gameType: "othello" });
+    const root = await reset({ gameId, playerIds: ["A", "B"] });
+
+    const bad = await simulate({
+      gameType: "othello",
+      stateJson: root.stateJson,
+      playerId: "A",
+      actionId: 27,
+    });
+    expect(bad.error).toContain("Invalid action");
+    const wrongTurn = await simulate({
+      gameType: "othello",
+      stateJson: root.stateJson,
+      playerId: "B",
+      actionId: 19,
+    });
+    expect(wrongTurn.error).toContain("Invalid action");
+    const unknown = await simulate({
+      gameType: "nope",
+      stateJson: root.stateJson,
+      playerId: "A",
+      actionId: 19,
+    });
+    expect(unknown.error).toContain("Unknown game type");
+    const broken = await simulate({
+      gameType: "othello",
+      stateJson: "{",
+      playerId: "A",
+      actionId: 19,
+    });
+    expect(broken.error).toContain("not valid JSON");
+  });
+
+  it("BatchSimulate は全ての合法手を独立に展開し、順序どおり返すこと", async () => {
+    const { gameId } = await createGame({ gameType: "othello" });
+    const root = await reset({ gameId, playerIds: ["A", "B"] });
+    const ids: number[] = [...root.initialLegalActionIds, 27]; // 末尾は不正な手
+    const res = await batchSimulate({
+      items: ids.map((actionId) => ({
+        gameType: "othello",
+        stateJson: root.stateJson,
+        playerId: "A",
+        actionId,
+      })),
+    });
+    expect(res.items.length).toBe(ids.length);
+    for (let i = 0; i < ids.length - 1; i++) {
+      const item = res.items[i]!;
+      expect(item.error).toBe("");
+      // 展開先の局面で、指した位置には黒がある
+      const board = JSON.parse(item.stateJson).board;
+      expect(board[Math.floor(ids[i]! / 8)][ids[i]! % 8]).toBe(1);
+    }
+    expect(res.items[ids.length - 1]!.error).toContain("Invalid action");
+  });
+
+  it("Simulate を連鎖させて終局まで到達でき、Step と同じ報酬規則であること", async () => {
+    const { gameId } = await createGame({ gameType: "othello" });
+    const root = await reset({ gameId, playerIds: ["A", "B"] });
+    let stateJson: string = root.stateJson;
+    let legal: number[] = root.initialLegalActionIds;
+    let active: string[] = root.activePlayers;
+    let finished = false;
+    let steps = 0;
+    let lastReward = 0;
+    while (!finished) {
+      const res = await simulate({
+        gameType: "othello",
+        stateJson,
+        playerId: active[0]!,
+        actionId: legal[Math.floor(Math.random() * legal.length)]!,
+      });
+      expect(res.error).toBe("");
+      stateJson = res.stateJson;
+      legal = res.legalActionIds;
+      active = res.activePlayers;
+      finished = res.isFinished;
+      lastReward = res.reward;
+      expect(++steps).toBeLessThan(70);
+    }
+    expect([1, -1, 0.5]).toContain(lastReward);
+    expect(JSON.parse(stateJson).status).toBe("FINISHED");
   });
 });

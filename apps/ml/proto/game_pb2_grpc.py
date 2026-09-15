@@ -64,6 +64,16 @@ class GameServiceStub(object):
                 request_serializer=game__pb2.ResetGameRequest.SerializeToString,
                 response_deserializer=game__pb2.ResetGameResponse.FromString,
                 _registered_method=True)
+        self.Simulate = channel.unary_unary(
+                '/universal_game_engine.GameService/Simulate',
+                request_serializer=game__pb2.SimulateRequest.SerializeToString,
+                response_deserializer=game__pb2.SimulateResponse.FromString,
+                _registered_method=True)
+        self.BatchSimulate = channel.unary_unary(
+                '/universal_game_engine.GameService/BatchSimulate',
+                request_serializer=game__pb2.BatchSimulateRequest.SerializeToString,
+                response_deserializer=game__pb2.BatchSimulateResponse.FromString,
+                _registered_method=True)
         self.WaitForTurn = channel.unary_stream(
                 '/universal_game_engine.GameService/WaitForTurn',
                 request_serializer=game__pb2.WaitForTurnRequest.SerializeToString,
@@ -118,6 +128,19 @@ class GameServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Simulate(self, request, context):
+        """木探索用のステートレスなシミュレーション
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def BatchSimulate(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def WaitForTurn(self, request, context):
         """AIプレイ用のエンドポイント
         """
@@ -163,6 +186,16 @@ def add_GameServiceServicer_to_server(servicer, server):
                     servicer.Reset,
                     request_deserializer=game__pb2.ResetGameRequest.FromString,
                     response_serializer=game__pb2.ResetGameResponse.SerializeToString,
+            ),
+            'Simulate': grpc.unary_unary_rpc_method_handler(
+                    servicer.Simulate,
+                    request_deserializer=game__pb2.SimulateRequest.FromString,
+                    response_serializer=game__pb2.SimulateResponse.SerializeToString,
+            ),
+            'BatchSimulate': grpc.unary_unary_rpc_method_handler(
+                    servicer.BatchSimulate,
+                    request_deserializer=game__pb2.BatchSimulateRequest.FromString,
+                    response_serializer=game__pb2.BatchSimulateResponse.SerializeToString,
             ),
             'WaitForTurn': grpc.unary_stream_rpc_method_handler(
                     servicer.WaitForTurn,
@@ -337,6 +370,60 @@ class GameService(object):
             '/universal_game_engine.GameService/Reset',
             game__pb2.ResetGameRequest.SerializeToString,
             game__pb2.ResetGameResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Simulate(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/universal_game_engine.GameService/Simulate',
+            game__pb2.SimulateRequest.SerializeToString,
+            game__pb2.SimulateResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def BatchSimulate(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/universal_game_engine.GameService/BatchSimulate',
+            game__pb2.BatchSimulateRequest.SerializeToString,
+            game__pb2.BatchSimulateResponse.FromString,
             options,
             channel_credentials,
             insecure,

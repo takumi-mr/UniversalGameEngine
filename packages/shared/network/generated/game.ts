@@ -12,6 +12,8 @@ type SubtypeConstructor<Constructor extends new (...args: any) => any, Subtype> 
 
 export interface ProtoGrpcType {
   universal_game_engine: {
+    BatchSimulateRequest: MessageTypeDefinition;
+    BatchSimulateResponse: MessageTypeDefinition;
     ChatMessage: MessageTypeDefinition;
     CommonResponse: MessageTypeDefinition;
     CreateGameRequest: MessageTypeDefinition;
@@ -29,6 +31,8 @@ export interface ProtoGrpcType {
     JoinSuccess: MessageTypeDefinition;
     ResetGameRequest: MessageTypeDefinition;
     ResetGameResponse: MessageTypeDefinition;
+    SimulateRequest: MessageTypeDefinition;
+    SimulateResponse: MessageTypeDefinition;
     StepRequest: MessageTypeDefinition;
     StepResponse: MessageTypeDefinition;
     SubmitTurnRequest: MessageTypeDefinition;

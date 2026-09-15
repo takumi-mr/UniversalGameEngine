@@ -73,7 +73,8 @@ applyWinResult?, getTimeoutAction?              // 任意
 - `packages/shared/ai/TensorAdapter/`: ゲーム状態 ⇄ テンソル/行動 ID 変換（`IAITensorAdapter`）。`index.ts` で `aiTensorRegistry` に登録する。**登録がないゲームは gRPC `Reset`/`Step` が `UNIMPLEMENTED`** を返す。現在登録済み: `othello`（64 要素・自分=+1/相手=-1、actionId = `y*size+x`）。
 - gRPC RL API（`packages/shared/network/game.proto`, 実装 `apps/backend/grpc-server.ts`）の契約:
   - `Reset(game_id, player_ids?)`: 全席着席 + `PLAYING` 化。`active_players[0]` 視点の観測を返す。
-  - `Step(game_id, player_id, action_id)`: 観測・合法手は **次に行動するプレイヤー視点**、`reward` は手を指した `player_id` 視点（勝 1 / 負 -1 / 引分 0.5、終局時のみ）。
+  - `Step(game_id, player_id, action_id)`: 観測・合法手は **次に行動するプレイヤー視点**、`reward` は手を指した `player_id` 視点（勝 1 / 負 -1 / 引分 0.5、終局時のみ）。`Reset`/`Step` は完全な局面 `state_json` も返す。
+  - `Simulate(game_type, state_json, player_id, action_id)` / `BatchSimulate(items)`: **セッションに触れないステートレスな 1 手適用**（木探索用）。失敗は gRPC エラーではなく `error` フィールドで返す。サーバーはゲームタイプごとに使い回す `UniversalEngine` に `loadState` → `dispatch` するだけなので、RNG や終局処理は通常対局と同じ挙動。ローカル計測: unary ≈ 1,500 sims/s、`BatchSimulate` x64 ≈ 10,000 sims/s（`apps/ml/scripts/bench_simulate.py`）。
   - E2E テスト: `apps/backend/grpc-rl.test.ts`。
 - Python 側（`apps/ml/uge_rl/`）は `GrpcGameEnv` → `DQNAgent`（Double DQN・合法手マスク・ネガマックス TD）。詳細は [apps/ml/README.md](./apps/ml/README.md)。
 

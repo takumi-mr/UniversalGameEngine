@@ -1,0 +1,4 @@
+# ローカルのビルド成果物・Python 仮想環境（CI には存在しないが、ローカルの prettier --check . で拾わないようにする）
+**/.venv
+**/dist
+**/dist-electron
