@@ -51,11 +51,23 @@ tasks:
     cmds:
       - python -m uge_rl.train --game othello --out ../../models/othello_dqn.pt {{.CLI_ARGS}}
 
+  ml:train-az:
+    desc: Train the Othello AlphaZero-style agent (MCTS over gRPC Simulate) against a running RL-mode backend
+    dir: apps/ml
+    cmds:
+      - python -m uge_rl.train_az --game othello --out ../../models/othello_az.pt {{.CLI_ARGS}}
+
   ml:eval:
-    desc: Evaluate a trained model vs random player
+    desc: Evaluate a trained model vs random player (pass --checkpoint to choose the model)
     dir: apps/ml
     cmds:
       - python -m uge_rl.evaluate --checkpoint ../../models/othello_dqn.pt {{.CLI_ARGS}}
+
+  ml:test:
+    desc: Run apps/ml unit tests (no backend needed)
+    dir: apps/ml
+    cmds:
+      - python -m tests.test_mcts
 
   clean:
     desc: Stop infrastructure and remove volumes

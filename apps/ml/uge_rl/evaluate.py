@@ -11,9 +11,18 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from typing import Protocol
+
 from .checkpoint import load_checkpoint
-from .dqn import DQNAgent
 from .env import GrpcGameEnv
+
+
+class Policy(Protocol):
+    """対局に使える指し手の共通インターフェース（DQNAgent / AZAgent が満たす）。"""
+
+    def select_action(
+        self, obs: np.ndarray, legal: np.ndarray, state_json: str, player_id: str, env: GrpcGameEnv
+    ) -> int: ...
 
 
 @dataclass
@@ -34,7 +43,7 @@ class EvalResult:
         )
 
 
-def play_vs_random(agent: DQNAgent, env: GrpcGameEnv, games: int = 50, epsilon: float = 0.0) -> EvalResult:
+def play_vs_random(agent: Policy, env: GrpcGameEnv, games: int = 50) -> EvalResult:
     """agent が先手・後手を交互に担当し、相手はランダムに指す。"""
     wins = losses = draws = 0
     for g in range(games):
@@ -46,7 +55,7 @@ def play_vs_random(agent: DQNAgent, env: GrpcGameEnv, games: int = 50, epsilon: 
         while not done:
             mover = active[0]
             if mover == agent_seat:
-                action = agent.act(obs, legal, epsilon=epsilon)
+                action = agent.select_action(obs, legal, env.state_json, mover, env)
             else:
                 action = int(random.choice(legal.tolist()))
             res = env.step(mover, action)
@@ -75,7 +84,7 @@ def main() -> None:
     np.random.seed(args.seed)
 
     agent, meta = load_checkpoint(args.checkpoint)
-    print(f"loaded {args.checkpoint}: game={meta['game_type']} steps={meta['total_steps']}")
+    print(f"loaded {args.checkpoint}: format={meta['format']} game={meta['game_type']}")
     with GrpcGameEnv(args.address, game_type=meta["game_type"]) as env:
         result = play_vs_random(agent, env, games=args.games)
     print(result)

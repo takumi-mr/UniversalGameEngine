@@ -15,7 +15,7 @@ Bun ワークスペースのモノレポ:
 | `packages/shared` | コアエンジン、`GameRuleset` 実装（`rules/`）、AI（`ai/`）、gRPC proto（`network/`）。フロント・バックエンド双方から `@engine/shared/*` で import | TypeScript                                          |
 | `apps/backend`    | ゲームサーバー。HTTP (Express) + Socket.io + gRPC。セッション管理・永続化                                                                        | Bun, Express, Socket.io, @grpc/grpc-js, Redis/Mongo |
 | `apps/frontend`   | クライアント。ブラウザ / Electron                                                                                                                | Vue 3, Vite, Three.js, gRPC-web                     |
-| `apps/ml`         | 強化学習クライアント。gRPC `Reset`/`Step` で自己対戦し DQN を学習、モデルを保存。Colab ノートブック同梱                                          | Python 3.10+, PyTorch, grpcio                       |
+| `apps/ml`         | 強化学習クライアント。gRPC `Reset`/`Step`/`Simulate` で自己対戦し DQN / AlphaZero 風を学習、モデルを保存。Colab ノートブック同梱                 | Python 3.10+, PyTorch, grpcio                       |
 | `models/`         | 学習済みモデルの保存先（`*.pt` は gitignore、メタ `.json` のみ追跡）                                                                             | —                                                   |
 
 ## 2. セットアップとよく使うコマンド
@@ -28,7 +28,8 @@ task up / task down                 # Redis + MongoDB を docker compose で起�
 task dev                            # インフラ起動 + proto 生成 + backend/frontend 同時起動
 task rl                             # backend を RL_MODE=true（インメモリ、DB 不要）で起動 → gRPC 学習用
 task proto                          # packages/shared/network/game.proto → TS 型を再生成
-task ml:train / task ml:eval        # apps/ml の学習 / 評価（RL_MODE の backend が必要）
+task ml:train / ml:train-az / ml:eval   # apps/ml の DQN 学習 / AlphaZero 学習 / 評価（RL_MODE の backend が必要）
+task ml:test                        # apps/ml の単体テスト（サーバー不要）
 
 bun test                            # 全テスト（ルート）。パッケージ内で `bun test <pattern>` も可
 bun run lint                        # eslint（warning は多数あるが error 0 が基準）
@@ -76,7 +77,7 @@ applyWinResult?, getTimeoutAction?              // 任意
   - `Step(game_id, player_id, action_id)`: 観測・合法手は **次に行動するプレイヤー視点**、`reward` は手を指した `player_id` 視点（勝 1 / 負 -1 / 引分 0.5、終局時のみ）。`Reset`/`Step` は完全な局面 `state_json` も返す。
   - `Simulate(game_type, state_json, player_id, action_id)` / `BatchSimulate(items)`: **セッションに触れないステートレスな 1 手適用**（木探索用）。失敗は gRPC エラーではなく `error` フィールドで返す。サーバーはゲームタイプごとに使い回す `UniversalEngine` に `loadState` → `dispatch` するだけなので、RNG や終局処理は通常対局と同じ挙動。ローカル計測: unary ≈ 1,500 sims/s、`BatchSimulate` x64 ≈ 10,000 sims/s（`apps/ml/scripts/bench_simulate.py`）。
   - E2E テスト: `apps/backend/grpc-rl.test.ts`。
-- Python 側（`apps/ml/uge_rl/`）は `GrpcGameEnv` → `DQNAgent`（Double DQN・合法手マスク・ネガマックス TD）。詳細は [apps/ml/README.md](./apps/ml/README.md)。
+- Python 側（`apps/ml/uge_rl/`）: `GrpcGameEnv` の上に **DQN**（`dqn.py` / `train.py`）と **AlphaZero 風**（`mcts.py` / `az_agent.py` / `train_az.py`。探索は `BatchSimulate`、Python はルールを持たない）。どちらも `select_action(obs, legal, state_json, player_id, env)` を実装し、`checkpoint.py` が `meta.format` で判別して復元する。MCTS の符号規約は `mcts.py` 冒頭のコメントと `tests/test_mcts.py` を正とする。詳細は [apps/ml/README.md](./apps/ml/README.md)。
 
 ## 4. 変更手順のレシピ
 

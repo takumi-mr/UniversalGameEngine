@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import sys
 import time
 from dataclasses import dataclass, field
 from typing import Sequence
@@ -54,6 +55,7 @@ class GrpcGameEnv:
         player_ids: Sequence[str] = ("player_1", "player_2"),
         draw_reward: float = 0.0,
         rpc_timeout: float = 10.0,
+        max_retries: int = 3,
     ) -> None:
         self.address = address
         self.game_type = game_type
@@ -61,6 +63,7 @@ class GrpcGameEnv:
         self.player_ids = list(player_ids)
         self.draw_reward = draw_reward
         self.rpc_timeout = rpc_timeout
+        self.max_retries = max_retries
 
         self._channel: grpc.Channel | None = None
         self._stub: game_pb2_grpc.GameServiceStub | None = None
@@ -95,6 +98,32 @@ class GrpcGameEnv:
             self.connect()
         assert self._stub is not None
         return self._stub
+
+    # 長時間の連続通信で HTTP/2 トランスポートが壊れることがある
+    # （grpc-python ⇔ Bun の http2 で "Stream removed (Too many zero length data frames)" 等）。
+    # 冪等な RPC（Reset / Simulate / BatchSimulate）はチャネルを張り直して再試行する。
+    _RETRYABLE = (grpc.StatusCode.UNAVAILABLE, grpc.StatusCode.UNKNOWN, grpc.StatusCode.INTERNAL)
+
+    def _call_idempotent(self, method: str, request):
+        last: grpc.RpcError | None = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                return getattr(self.stub, method)(request, timeout=self.rpc_timeout)
+            except grpc.RpcError as err:
+                if err.code() not in self._RETRYABLE or attempt == self.max_retries:
+                    raise
+                last = err
+                print(
+                    f"[GrpcGameEnv] {method} failed ({err.code().name}); reconnecting and retrying "
+                    f"({attempt + 1}/{self.max_retries})",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                time.sleep(0.2 * (attempt + 1))
+                self.close()
+                self.connect()
+        assert last is not None
+        raise last
 
     # ------------------------------------------------------------------ RPC
     def create_game(self) -> str:
@@ -132,9 +161,8 @@ class GrpcGameEnv:
 
     def _reset_rpc(self):
         assert self.game_id is not None
-        return self.stub.Reset(
-            game_pb2.ResetGameRequest(game_id=self.game_id, player_ids=self.player_ids),
-            timeout=self.rpc_timeout,
+        return self._call_idempotent(
+            "Reset", game_pb2.ResetGameRequest(game_id=self.game_id, player_ids=self.player_ids)
         )
 
     def step(self, player_id: str, action_id: int) -> StepResult:
@@ -185,9 +213,7 @@ class GrpcGameEnv:
 
         失敗（不正な手など）は例外ではなく result.error に入る。
         """
-        res = self.stub.Simulate(
-            self._simulate_request(state_json, player_id, action_id), timeout=self.rpc_timeout
-        )
+        res = self._call_idempotent("Simulate", self._simulate_request(state_json, player_id, action_id))
         return self._to_sim_result(res)
 
     def simulate_batch(self, items: Sequence[tuple[str, str, int]]) -> list[StepResult]:
@@ -197,7 +223,7 @@ class GrpcGameEnv:
         req = game_pb2.BatchSimulateRequest(
             items=[self._simulate_request(s, p, a) for s, p, a in items]
         )
-        res = self.stub.BatchSimulate(req, timeout=self.rpc_timeout)
+        res = self._call_idempotent("BatchSimulate", req)
         return [self._to_sim_result(r) for r in res.items]
 
 
