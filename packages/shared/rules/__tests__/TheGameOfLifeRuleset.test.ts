@@ -1,5 +1,9 @@
 import { describe, it, expect } from "bun:test";
-import { TheGameOfLifeRuleset } from "../TheGameOfLifeRuleset";
+import { TheGameOfLifeRuleset as RealTheGameOfLifeRuleset } from "../TheGameOfLifeRuleset";
+import { withTestRng } from "../../testing/withTestRng";
+
+// ルールセットを直接呼ぶテストなので、固定シードの RNG を補う
+const TheGameOfLifeRuleset = withTestRng(RealTheGameOfLifeRuleset);
 
 describe("TheGameOfLifeRuleset", () => {
   it("should initialize with players at the start", () => {

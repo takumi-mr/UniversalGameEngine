@@ -1,4 +1,5 @@
 // packages/shared/rules/HanafudaRuleset.ts
+import { requireRng } from "../utils/requireRng";
 import { createSecret, type Secret } from "../GameRules";
 import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
 import type { IGameRNG } from "../utils/IGameRNG";
@@ -69,7 +70,7 @@ const createDeck = (rng?: IGameRNG): Card[] => {
   }
 
   for (let i = deck.length - 1; i > 0; i--) {
-    const j = rng ? rng.nextInt(0, i) : Math.floor(Math.random() * (i + 1));
+    const j = requireRng(rng).nextInt(0, i);
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
   return deck;

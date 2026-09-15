@@ -1,3 +1,4 @@
+import { requireRng } from "../../utils/requireRng";
 import type { BaseGameState, GameRuleset } from "../../GameRules";
 import type { IGameRNG } from "../../utils/IGameRNG";
 import type { EnergyType } from "./PokemonPocketRegistry";
@@ -183,9 +184,7 @@ export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, Pok
       if (handIdx > -1) {
         player.hand.splice(handIdx, 1);
         const newPokemon: PokemonInstance = {
-          instanceId: rng
-            ? Math.floor(rng.nextFloat() * 1000000).toString()
-            : Math.random().toString(),
+          instanceId: Math.floor(requireRng(rng, "PokemonPocket").nextFloat() * 1000000).toString(),
           evolutionStack: [action.cardDefId],
           damageTaken: 0,
           attachedEnergy: [],

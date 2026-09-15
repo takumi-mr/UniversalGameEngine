@@ -13,6 +13,7 @@
  * The World's Most Interesting Game, According to AI
  */
 
+import { requireRng } from "../utils/requireRng";
 import { createSecret, type Secret } from "../GameRules";
 import type { BaseGameState, GameRuleset } from "../GameRules";
 import type { IGameRNG } from "../utils/IGameRNG";
@@ -86,10 +87,7 @@ export type EquilibriumAction =
 // ==========================================
 
 function generateId(rng?: IGameRNG): string {
-  if (rng) {
-    return Math.floor(rng.nextFloat() * 100000000).toString(36);
-  }
-  return Math.random().toString(36).substring(2, 9);
+  return Math.floor(requireRng(rng, "Equilibrium").nextFloat() * 100000000).toString(36);
 }
 
 function updatePlayerHandSecret(player: PlayerState, newHand: Card[]): void {
@@ -124,7 +122,7 @@ function drawRandomGoal(rng?: IGameRNG): Card {
     { type: "GOAL", name: "Pacifist", value: 15, cost: 0 },
     { type: "GOAL", name: "Soul_Hoarder", value: 25, cost: 0 },
   ];
-  const idx = rng ? rng.nextInt(0, goals.length - 1) : Math.floor(Math.random() * goals.length);
+  const idx = requireRng(rng, "Equilibrium").nextInt(0, goals.length - 1);
   const selected = goals[idx];
   return { ...selected, id: generateId(rng) } as Card;
 }
@@ -139,14 +137,14 @@ function generateRandomCard(rng?: IGameRNG): Card {
     { type: "TRICK", name: "Corruption", value: 0, cost: 4 }, // Opponent discards half hand (round down)
     { type: "GOAL", name: "Sudden_Death", value: 0, cost: 0 },
   ];
-  const idx = rng ? rng.nextInt(0, pool.length - 1) : Math.floor(Math.random() * pool.length);
+  const idx = requireRng(rng, "Equilibrium").nextInt(0, pool.length - 1);
   const selected = pool[idx];
   return { ...selected, id: generateId(rng) } as Card;
 }
 
 function drawRandomBasicCard(rng?: IGameRNG): Card {
   const pool = drawInitialCards(rng);
-  const idx = rng ? rng.nextInt(0, pool.length - 1) : Math.floor(Math.random() * pool.length);
+  const idx = requireRng(rng, "Equilibrium").nextInt(0, pool.length - 1);
   return pool[idx];
 }
 
@@ -239,9 +237,7 @@ function executeCardEffect(
       const newHand = [...target.hand.value];
       const discardCount = Math.floor(newHand.length / 2);
       for (let i = 0; i < discardCount; i++) {
-        const idx = rng
-          ? rng.nextInt(0, newHand.length - 1)
-          : Math.floor(Math.random() * newHand.length);
+        const idx = requireRng(rng, "Equilibrium").nextInt(0, newHand.length - 1);
         newHand.splice(idx, 1);
       }
       updatePlayerHandSecret(target, newHand);

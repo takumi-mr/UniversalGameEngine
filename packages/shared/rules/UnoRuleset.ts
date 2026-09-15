@@ -1,3 +1,4 @@
+import { requireRng } from "../utils/requireRng";
 import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
 import type { IGameRNG } from "../utils/IGameRNG";
 
@@ -249,7 +250,7 @@ function createDeck(): number[] {
 
 function shuffle(array: any[], rng?: IGameRNG) {
   for (let i = array.length - 1; i > 0; i--) {
-    const j = rng ? rng.nextInt(0, i) : Math.floor(Math.random() * (i + 1));
+    const j = requireRng(rng).nextInt(0, i);
     [array[i], array[j]] = [array[j], array[i]];
   }
 }

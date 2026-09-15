@@ -1,3 +1,4 @@
+import { requireRng } from "../../utils/requireRng";
 import { BaseGameState, GameRuleset } from "../../GameRules";
 import type { IGameRNG } from "../../utils/IGameRNG";
 import { EnergyType, PokemonTCGRegistry } from "./PokemonTCGRegistry";
@@ -162,9 +163,7 @@ export class PokemonTCGRuleset implements GameRuleset<PokemonTCGState, PokemonTC
         const _def = PokemonTCGRegistry[action.cardDefId];
 
         const newPokemon: PokemonInstance = {
-          instanceId: rng
-            ? Math.floor(rng.nextFloat() * 1000000).toString()
-            : Math.random().toString(),
+          instanceId: Math.floor(requireRng(rng, "PokemonTCG").nextFloat() * 1000000).toString(),
           evolutionStack: [action.cardDefId],
           damageTaken: 0,
           attachedEnergy: [],

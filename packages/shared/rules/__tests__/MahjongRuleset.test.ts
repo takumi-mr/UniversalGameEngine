@@ -1,5 +1,9 @@
 import { expect, test, describe } from "bun:test";
-import { MahjongRuleset } from "../mahjong/MahjongRuleset";
+import { MahjongRuleset as RealMahjongRuleset } from "../mahjong/MahjongRuleset";
+import { withTestRng } from "../../testing/withTestRng";
+
+// ルールセットを直接呼ぶテストなので、固定シードの RNG を補う
+const MahjongRuleset = withTestRng(RealMahjongRuleset);
 
 describe("MahjongRuleset", () => {
   test("getInitialState should return correct initial state", () => {

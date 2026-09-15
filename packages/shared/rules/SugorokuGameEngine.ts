@@ -1,4 +1,5 @@
 import type { BaseGameState } from "../GameRules";
+import type { IGameRNG } from "../utils/IGameRNG";
 
 export interface BoardSpace<TState extends BaseGameState> {
   id: string;
@@ -7,11 +8,11 @@ export interface BoardSpace<TState extends BaseGameState> {
   /**
    * Called when a player stops on this space.
    */
-  onStop?: (state: TState, playerId: string) => TState;
+  onStop?: (state: TState, playerId: string, rng?: IGameRNG) => TState;
   /**
    * Called when a player passes this space (moving past it).
    */
-  onPass?: (state: TState, playerId: string) => TState;
+  onPass?: (state: TState, playerId: string, rng?: IGameRNG) => TState;
   /**
    * If true, the player MUST stop here even if they have more moves left.
    */
@@ -44,6 +45,7 @@ export function movePlayer<TState extends BaseBoardState>(
   playerId: string,
   steps: number,
   board: Board<TState>,
+  rng?: IGameRNG,
 ): TState {
   let currentState = JSON.parse(JSON.stringify(state)) as TState;
   let player = currentState.boardPlayers[playerId];
@@ -60,7 +62,7 @@ export function movePlayer<TState extends BaseBoardState>(
 
     // Apply onPass effect
     if (space?.onPass) {
-      currentState = space.onPass(currentState, playerId);
+      currentState = space.onPass(currentState, playerId, rng);
       // Re-get player in case onPass replaced the state
       player = currentState.boardPlayers[playerId];
     }
@@ -77,7 +79,7 @@ export function movePlayer<TState extends BaseBoardState>(
 
   // Apply onStop effect
   if (finalSpace?.onStop) {
-    currentState = finalSpace.onStop(currentState, playerId);
+    currentState = finalSpace.onStop(currentState, playerId, rng);
     player = currentState.boardPlayers[playerId];
   }
 

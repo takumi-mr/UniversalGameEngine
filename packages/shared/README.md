@@ -33,7 +33,9 @@ interface GameRuleset<TState extends BaseGameState, TAction extends BaseGameActi
 }
 ```
 
-プレイヤーの着席（`state.players`）と `status` の `WAITING → PLAYING` 遷移はルールセットの外側（バックエンドの `join-game` / gRPC `Reset`）で行われます。ルールセットは `status === "PLAYING"` のときだけアクションを受け付ける前提で実装してください。
+プレイヤーの着席と `WAITING → PLAYING` 遷移は、エンジンの組み込みアクション `JOIN` / `START` が行います（ルールセットがこれらを定義していればそちらが優先）。ルールセットは `status === "PLAYING"` のときだけゲーム内アクションを受け付ける前提で実装してください。
+
+乱数はエンジンが常に渡す `rng` だけを使い、`Math.random` は使いません（`requireRng(rng)` で受け取る）。シードは状態に記録されるため、すべての対局がリプレイで再現できます。
 
 この強力な抽象化により、エンジンはゲームの具体的な挙動に依存せず、Undo/Redo、通信最適化、AI 探索などを全ゲームに一律に提供します。
 

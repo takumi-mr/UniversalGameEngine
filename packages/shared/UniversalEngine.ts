@@ -46,42 +46,28 @@ export class UniversalEngine<
     this.engineOptions = options as unknown as UniversalEngineOptions;
 
     const opt = options as Record<string, unknown>;
-    const clientSeed = typeof opt.clientSeed === "string" ? opt.clientSeed : undefined;
-    const serverSeed = typeof opt.serverSeed === "string" ? opt.serverSeed : undefined;
-
     // 1. RNGの準備
-    let rng: IGameRNG | undefined;
-    let initialPrngConfig: BaseGameState["prngConfig"] | undefined;
-    let initialPrngSecret: string | undefined;
-
-    if (clientSeed) {
-      // サーバーシードがない場合はランダム生成（通常時）、ある場合はそれを使用（テスト・再現時）
-      const sSeed = serverSeed || generateRandomSeed();
-      const sSeedHash = sha256(sSeed);
-
-      initialPrngConfig = {
-        serverSeedHash: sSeedHash,
-        clientSeed,
-        nonce: 0,
-      };
-      initialPrngSecret = sSeed;
-
-      rng = new ProvablyFairRNG(sSeed, clientSeed, 0);
-    }
+    //    シードが指定されなければ自動生成する。これによりエンジンは常に決定論的な RNG を持ち、
+    //    シードは状態（prngConfig / prngSecret）に記録されるので、後から同じ展開を再現できる。
+    //    ルールセットは rng を必須として扱ってよい（Math.random は使わない）。
+    const clientSeed = typeof opt.clientSeed === "string" ? opt.clientSeed : generateRandomSeed();
+    // サーバーシードがない場合はランダム生成（通常時）、ある場合はそれを使用（テスト・再現時）
+    const serverSeed = typeof opt.serverSeed === "string" ? opt.serverSeed : generateRandomSeed();
+    const rng = new ProvablyFairRNG(serverSeed, clientSeed, 0);
 
     // 2. 初期状態の生成
     this.state = this.rules.getInitialState(options, rng);
 
     // 3. PRNG設定を状態に反映
-    if (initialPrngConfig) {
-      this.state.prngConfig = initialPrngConfig;
-      this.state.prngSecret = initialPrngSecret;
-    }
+    this.state.prngConfig = {
+      serverSeedHash: sha256(serverSeed),
+      clientSeed,
+      nonce: 0,
+    };
+    this.state.prngSecret = serverSeed;
 
     // nonceを同期（getInitialState内で乱数が使われた場合）
-    if (rng instanceof ProvablyFairRNG) {
-      this.updateStateNonce(rng);
-    }
+    this.updateStateNonce(rng);
 
     if (this.state.version === undefined) {
       this.state.version = 0;
@@ -241,23 +227,61 @@ export class UniversalEngine<
 
   // クライアントからの通信を受け取る汎用エンドポイント
   public dispatch(action: TAction): boolean {
+    const base = this.cloneStrategy.clone(this.state);
+
+    // 0. 組み込みアクション（着席・開始）
+    //    ルールセットに依存しない共通処理。ここを通すことで history / version / hash に記録され、
+    //    リプレイで着席から完全に再現できる。
+    //    - JOIN : state.players の空席（slot 指定があればその席）に着席させる。
+    //             その上でルールセットが JOIN を受け付ければルールセットの reduce も実行する
+    //    - START: ルールセットが START を受け付けなければ status を PLAYING にする
+    let builtinApplied = false;
+    if (action.type === "JOIN" && action.playerId) {
+      builtinApplied = this.seatPlayer(base, action.playerId, (action as { slot?: string }).slot);
+    }
+
     // 1. 合法手チェック
-    if (!this.rules.isValidAction(this.state, action)) {
-      return false;
+    const valid = this.rules.isValidAction(base, action);
+    if (!valid) {
+      if (action.type === "START" && base.status === "WAITING") {
+        base.status = "PLAYING";
+        builtinApplied = true;
+      } else if (!builtinApplied) {
+        return false;
+      }
     }
 
     // RNGインスタンスの作成
     const rng = this.createRNGInstance();
 
     // 2. 状態の更新 (Reducerパターン: 副作用を持たせず新しい状態を生成)
-    const base = this.cloneStrategy.clone(this.state);
-
-    // 開発/テスト環境では、reduce内で状態が変更されないよう凍結する
-    if (process.env.NODE_ENV !== "production") {
-      deepFreeze(base);
+    const prev = this.state;
+    if (valid) {
+      // 開発/テスト環境では、reduce内で状態が変更されないよう凍結する
+      if (process.env.NODE_ENV !== "production") {
+        deepFreeze(base);
+      }
+      this.state = this.rules.reduce(base, action, rng);
+    } else {
+      this.state = base;
     }
 
-    this.state = this.rules.reduce(base, action, rng);
+    // START を受け付けたのに WAITING のままなら開始扱いにする
+    // （未知のアクションを素通しするルールセットや、status を持たない実装のため）
+    if (action.type === "START" && this.state.status === "WAITING") {
+      this.state = { ...this.state, status: "PLAYING" };
+      builtinApplied = true;
+    }
+
+    // RNG 設定はエンジンの管轄。ルールセットが状態を作り直して落としても引き継ぐ
+    if (!this.state.prngConfig && prev.prngConfig) {
+      this.state = { ...this.state, prngConfig: prev.prngConfig, prngSecret: prev.prngSecret };
+    }
+
+    // 開始直後（または進行中のゲームへの着席直後）に手番が未設定なら、合法手を持つプレイヤーを手番にする
+    if ((action.type === "START" || builtinApplied) && this.state.status === "PLAYING") {
+      this.ensureActivePlayers();
+    }
 
     // nonceを同期
     if (rng) {
@@ -266,8 +290,11 @@ export class UniversalEngine<
 
     this.history.push(action);
 
-    // 3. 勝敗判定
-    const winCheck = this.rules.checkWinCondition(this.state);
+    // 3. 勝敗判定（開始前の着席中には行わない）
+    const winCheck =
+      this.state.status === "WAITING"
+        ? { isFinished: false }
+        : this.rules.checkWinCondition(this.state);
     if (winCheck.isFinished) {
       // applyWinResult がある場合はルールセットに委任（スコア精算等）
       if (this.rules.applyWinResult) {
@@ -328,5 +355,36 @@ export class UniversalEngine<
    */
   public getLegalActions(playerId: string): TAction[] {
     return this.rules.getLegalActions(this.state, playerId);
+  }
+
+  /**
+   * 組み込み JOIN: 空席に着席させる。着席できた場合 true。
+   * 既に着席済み・空席なし・指定席が埋まっている・players を持たないゲームでは false。
+   */
+  private seatPlayer(state: TState, playerId: string, slot?: string): boolean {
+    if (!state.players || state.status === "FINISHED") return false;
+    if (Object.values(state.players).includes(playerId)) return false;
+    const key =
+      slot !== undefined
+        ? state.players[slot] === null
+          ? slot
+          : undefined
+        : Object.keys(state.players).find((k) => state.players![k] === null);
+    if (key === undefined) return false;
+    state.players[key] = playerId;
+    return true;
+  }
+
+  /**
+   * activePlayers が空なら、着席中で合法手を持つプレイヤーを手番にする（開始直後用）
+   */
+  private ensureActivePlayers(): void {
+    if (this.state.activePlayers && this.state.activePlayers.length > 0) return;
+    const seated = Object.values(this.state.players ?? {}).filter(
+      (p): p is string => typeof p === "string",
+    );
+    const active = seated.filter((pid) => this.rules.getLegalActions(this.state, pid).length > 0);
+    // reduce が返した状態は凍結されている可能性があるので、新しいオブジェクトにする
+    if (active.length > 0) this.state = { ...this.state, activePlayers: active };
   }
 }

@@ -1,4 +1,5 @@
 // packages/shared/rules/HighLowRuleset.ts
+import { requireRng } from "../utils/requireRng";
 import type { GameRuleset, BaseGameState } from "../GameRules";
 import type { IGameRNG } from "../utils/IGameRNG";
 
@@ -37,7 +38,7 @@ function createDeck(rng?: IGameRNG): Card[] {
   }
   // フィッシャー–イェーツのシャッフル
   for (let i = deck.length - 1; i > 0; i--) {
-    const j = rng ? rng.nextInt(0, i) : Math.floor(Math.random() * (i + 1));
+    const j = requireRng(rng).nextInt(0, i);
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
   return deck;

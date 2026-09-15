@@ -279,4 +279,31 @@ describe("gRPC RL loop (Reset/Step)", () => {
     expect([1, -1, 0.5]).toContain(lastReward);
     expect(JSON.parse(stateJson).status).toBe("FINISHED");
   });
+  it("RL_MODE でなければ Reset / Step / Simulate / BatchSimulate は PERMISSION_DENIED になること", async () => {
+    const { gameId } = await createGame({ gameType: "othello" });
+    const root = await reset({ gameId });
+    process.env.RL_MODE = "false";
+    try {
+      expect(await grpcErrorCode(reset({ gameId }))).toBe(grpc.status.PERMISSION_DENIED);
+      expect(await grpcErrorCode(step({ gameId, playerId: "player_1", actionId: 19 }))).toBe(
+        grpc.status.PERMISSION_DENIED,
+      );
+      expect(
+        await grpcErrorCode(
+          simulate({
+            gameType: "othello",
+            stateJson: root.stateJson,
+            playerId: "player_1",
+            actionId: 19,
+          }),
+        ),
+      ).toBe(grpc.status.PERMISSION_DENIED);
+      expect(await grpcErrorCode(batchSimulate({ items: [] }))).toBe(grpc.status.PERMISSION_DENIED);
+      // 通常の RPC は影響を受けない
+      const created = await createGame({ gameType: "othello" });
+      expect(created.gameId).toBeTruthy();
+    } finally {
+      process.env.RL_MODE = "true";
+    }
+  });
 });

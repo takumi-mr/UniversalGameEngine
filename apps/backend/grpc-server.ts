@@ -3,7 +3,7 @@ import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 import path from "path";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "./config";
+import { JWT_SECRET, isRlMode } from "./config";
 import { sessions, SocketGameServer } from "./store/sessionStore";
 import { gameRegistry } from "@engine/shared/GameRegistry";
 import { aiTensorRegistry } from "@engine/shared/ai/AITensorAdapterRegistry";
@@ -126,6 +126,16 @@ const simulateOnce = (req: SimulateRequest): SimulateResponse => {
     activePlayers,
     error: "",
   };
+};
+
+/** RL 専用 RPC のガード。RL_MODE でなければ PERMISSION_DENIED を返し、ハンドラ本体は実行しない */
+const requireRlMode = (callback: (err: any) => void): boolean => {
+  if (isRlMode()) return true;
+  callback({
+    code: grpc.status.PERMISSION_DENIED,
+    message: "This RPC is only available when the server runs with RL_MODE=true",
+  });
+  return false;
 };
 
 const gameServiceHandlers: GameServiceHandlers = {
@@ -291,6 +301,7 @@ const gameServiceHandlers: GameServiceHandlers = {
   },
 
   Reset: (call, callback) => {
+    if (!requireRlMode(callback)) return;
     const { gameId, playerIds } = call.request;
     const session = sessions.get(gameId);
     if (!session)
@@ -320,46 +331,37 @@ const gameServiceHandlers: GameServiceHandlers = {
 
       // 2. 全席にプレイヤーを着席させ、即座に Step 可能な PLAYING 状態にする
       //    （Socket.io の join-game を経由しない RL クライアント向け）
+      //    着席・開始はエンジンの組み込み JOIN / START で行う
       if (state.players) {
         const slotKeys = Object.keys(state.players);
-        const seated: string[] = [];
+        const seated = slotKeys.map((_, i) => playerIds?.[i] || `player_${i + 1}`);
         slotKeys.forEach((slotKey, i) => {
-          const pid = playerIds?.[i] || `player_${i + 1}`;
-          state.players![slotKey] = pid;
-          seated.push(pid);
+          engine.dispatch({ type: "JOIN", playerId: seated[i], slot: slotKey } as any);
         });
-
-        for (const pid of seated) {
-          engine.dispatch({ type: "JOIN", playerId: pid } as any);
-        }
-        if (state.status === "WAITING") {
-          if (!engine.dispatch({ type: "START", playerId: seated[0] } as any)) {
-            state.status = "PLAYING";
-          }
-        }
-        if (!state.activePlayers || state.activePlayers.length === 0) {
-          state.activePlayers = seated.filter((pid) => engine.getLegalActions(pid).length > 0);
+        if (engine.getState().status === "WAITING") {
+          engine.dispatch({ type: "START", playerId: seated[0] } as any);
         }
       }
+      const started = engine.getState();
 
       // 3. 学習ループ中に「空室」として掃除されないよう、タイマーを張り直す
       clearRoomCleanup(gameId);
       scheduleRoomCleanup(gameId);
 
-      const activePlayers = state.activePlayers || [];
+      const activePlayers = started.activePlayers || [];
 
       // 4. 状態をAI用テンソル（数値配列）に変換
       const perspectivePlayerId = activePlayers.length > 0 ? activePlayers[0] : "";
 
-      const stateTensor = adapter.encodeState(state, perspectivePlayerId);
+      const stateTensor = adapter.encodeState(started, perspectivePlayerId);
       const legalActionIds =
-        activePlayers.length > 0 ? adapter.encodeLegalActions(state, perspectivePlayerId) : [];
+        activePlayers.length > 0 ? adapter.encodeLegalActions(started, perspectivePlayerId) : [];
 
       callback(null, {
         initialStateTensor: stateTensor,
         initialLegalActionIds: legalActionIds,
         activePlayers: activePlayers,
-        stateJson: JSON.stringify(state),
+        stateJson: JSON.stringify(started),
       });
     } catch (err: any) {
       callback({ code: grpc.status.INTERNAL, message: err.message } as any);
@@ -367,6 +369,7 @@ const gameServiceHandlers: GameServiceHandlers = {
   },
 
   Step: (call, callback) => {
+    if (!requireRlMode(callback)) return;
     const { gameId, playerId, actionId } = call.request;
     const session = sessions.get(gameId);
     if (!session)
@@ -443,6 +446,7 @@ const gameServiceHandlers: GameServiceHandlers = {
   },
 
   Simulate: (call, callback) => {
+    if (!requireRlMode(callback)) return;
     try {
       callback(null, simulateOnce(call.request));
     } catch (err: any) {
@@ -451,6 +455,7 @@ const gameServiceHandlers: GameServiceHandlers = {
   },
 
   BatchSimulate: (call, callback) => {
+    if (!requireRlMode(callback)) return;
     try {
       const items = (call.request.items ?? []).map((req) => simulateOnce(req));
       callback(null, { items });

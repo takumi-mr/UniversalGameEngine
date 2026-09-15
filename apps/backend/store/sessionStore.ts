@@ -9,6 +9,7 @@ import { streamManager } from "../network/StreamManager";
 import type { IAIPlayer } from "@engine/shared/ai/IAIPlayer";
 import { gameRegistry } from "@engine/shared/GameRegistry";
 import type { IGameRepository } from "@engine/shared/stores/repository";
+import { isRlMode } from "../config";
 
 export class SocketGameServer extends GenericGameServer<any, any> {
   private io: Server;
@@ -199,7 +200,7 @@ export const EMPTY_ROOM_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 // ★ RL_MODE環境変数によってリポジトリの実装を切り替えるファクトリ関数
 function createRepository(): IGameRepository<any> {
-  if (process.env.RL_MODE === "true") {
+  if (isRlMode()) {
     console.log("🚀 Initializing repository in RL_MODE (InMemoryDummyRepository)");
     return new InMemoryDummyRepository();
   }

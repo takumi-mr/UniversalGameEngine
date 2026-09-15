@@ -1,5 +1,9 @@
 import { expect, test, describe } from "bun:test";
-import { WerewolfRuleset, getTeam } from "../WerewolfRuleset";
+import { WerewolfRuleset as RealWerewolfRuleset, getTeam } from "../WerewolfRuleset";
+import { withTestRng } from "../../testing/withTestRng";
+
+// ルールセットを直接呼ぶテストなので、固定シードの RNG を補う
+const WerewolfRuleset = withTestRng(RealWerewolfRuleset);
 import type { WerewolfState } from "../WerewolfRuleset";
 
 // テスト用ヘルパー: 特定の役職配分で状態を作成
