@@ -17,6 +17,19 @@ export interface UniversalEngineOptions {
   maxHistorySize?: number;
 }
 
+/**
+ * リプレイ（GameRecord）を組み立てるためにエンジンが内部に持つ情報。
+ * state と一緒に永続化しておけば、別インスタンスで loadState したエンジンでも
+ * 完全な GameRecord を出力できる。
+ */
+export interface EngineReplayData<TState extends BaseGameState, TAction extends BaseGameAction> {
+  initialState: TState;
+  history: TAction[];
+  stateHashes: string[];
+  snapshotState?: TState;
+  snapshotVersion: number;
+}
+
 // --- 2. 汎用エンジン本体 ---
 export class UniversalEngine<
   TState extends BaseGameState,
@@ -124,19 +137,47 @@ export class UniversalEngine<
   /**
    * DBなどから取得した外部の状態をエンジンにセットする
    * @param savedState 保存されていた状態
-   * @param history 任意：保存されていたアクション履歴
+   * @param replay 任意：保存されていたアクション履歴、または getReplayData() で取り出したリプレイ情報一式。
+   *   履歴だけを渡した場合、初期状態やハッシュ履歴はこのエンジン生成時のものが残るので
+   *   getGameRecord() は不完全になる。インスタンスを跨いで復元するときはリプレイ情報一式を渡すこと。
    */
-  public loadState(savedState: TState, history: TAction[] = []): void {
+  public loadState(
+    savedState: TState,
+    replay: TAction[] | EngineReplayData<TState, TAction> = [],
+  ): void {
     this.state = savedState;
-    this.history = history;
 
     // バージョンが不明な場合は 0 とみなす
     if (this.state.version === undefined) {
       this.state.version = 0;
     }
 
-    // スナップショットがあれば同期させる
-    this.snapshotVersion = this.state.version - this.history.length;
+    if (Array.isArray(replay)) {
+      this.history = replay;
+      // スナップショットがあれば同期させる
+      this.snapshotVersion = this.state.version - this.history.length;
+      return;
+    }
+
+    this.initialState = replay.initialState;
+    this.history = replay.history;
+    this.stateHashes = replay.stateHashes;
+    this.snapshotState = replay.snapshotState;
+    this.snapshotVersion = replay.snapshotVersion;
+  }
+
+  /**
+   * getGameRecord() に必要な内部情報を取り出す（state と一緒に永続化するため）。
+   * 復元は loadState(state, replayData)。
+   */
+  public getReplayData(): EngineReplayData<TState, TAction> {
+    return {
+      initialState: this.initialState,
+      history: [...this.history],
+      stateHashes: [...this.stateHashes],
+      snapshotState: this.snapshotState,
+      snapshotVersion: this.snapshotVersion,
+    };
   }
 
   /**

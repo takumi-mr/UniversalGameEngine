@@ -59,7 +59,12 @@ export class SocketGameServer extends GenericGameServer<any, any> {
   }
 
   public toRecord(): SessionRecord<any> {
-    return { type: this.gameType, state: this.engine.getState(), bots: this.bots };
+    return {
+      type: this.gameType,
+      state: this.engine.getState(),
+      bots: this.bots,
+      replay: this.engine.getReplayData(),
+    };
   }
 
   /**
@@ -72,7 +77,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
     const localVersion = this.engine.getState().version ?? 0;
     const savedVersion = saved.state.version ?? 0;
     if (savedVersion !== localVersion) {
-      this.engine.loadState(saved.state);
+      this.engine.loadState(saved.state, saved.replay);
     }
     const savedBots = JSON.stringify(saved.bots ?? []);
     if (savedBots !== JSON.stringify(this.bots)) {
@@ -343,7 +348,8 @@ export async function ensureSession(gameId: string): Promise<GameSession | null>
   if (raced) return raced;
 
   const engine = new UniversalEngine(def.ruleset, {});
-  engine.loadState(saved.state);
+  // replay（初期状態・履歴）も戻さないと、この後で終局したときのリプレイ記録が不完全になる
+  engine.loadState(saved.state, saved.replay);
   const session = createSession(gameId, engine, type);
   session.server.restoreBots(saved.bots ?? []);
   console.log(`[ensureSession] Game ${gameId} restored from storage (type: ${type})`);

@@ -14,6 +14,7 @@ import {
 import { setIoInstance } from "../network/io";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import { TicTacToeRuleset } from "@engine/shared/rules/TicTacToeRuleset";
+import { ReplayEngine } from "@engine/shared/ReplayEngine";
 
 // このインスタンスに接続しているソケット（テストごとに差し替える）
 let localSockets: { id: string; data: { userId: string }; emit: (ev: string, p: any) => void }[] =
@@ -80,6 +81,44 @@ describe("sessionStore", () => {
     expect(restored!.server.bots).toEqual([{ playerId: "p2", aiType: "random", name: "R" }]);
     expect(restored!.server.aiPlayers.has("p2")).toBe(true);
     expect(restored!.server.engine.getState().status).toBe("PLAYING");
+  });
+
+  it("別インスタンスで復元した対局でも、終局時のリプレイ記録に開始からの全手が含まれる", async () => {
+    const { server } = createSession("g3r", newTicTacToe(), "tictactoe");
+    await server.commit();
+    const original = server.engine.getGameRecord("g3r");
+    expect(original.actions.length).toBe(3); // JOIN, JOIN, START
+    sessions.clear();
+
+    // 別インスタンスで復元し、そこで終局まで進める
+    const restored = (await ensureSession("g3r"))!;
+    const moves: [string, number][] = [
+      ["p1", 0],
+      ["p2", 3],
+      ["p1", 1],
+      ["p2", 4],
+      ["p1", 2],
+    ];
+    for (const [player, index] of moves) {
+      expect(await restored.server.dispatchAction(player, { type: "PLACE", index })).toBe(true);
+    }
+    expect(restored.server.engine.getState().status).toBe("FINISHED");
+
+    const record = restored.server.engine.getGameRecord("g3r");
+    expect(record.initialState).toEqual(original.initialState);
+    expect(record.actions.map((a) => a.type)).toEqual([
+      "JOIN",
+      "JOIN",
+      "START",
+      "PLACE",
+      "PLACE",
+      "PLACE",
+      "PLACE",
+      "PLACE",
+    ]);
+    expect(record.stateHashes?.length).toBe(record.actions.length + 1);
+    // 記録から初期状態→終局までを再生・検証できる
+    expect(new ReplayEngine(TicTacToeRuleset, record).verify(record)).toBe(true);
   });
 
   it("ensureSession は存在しないゲームには null を返す", async () => {
