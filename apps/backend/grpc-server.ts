@@ -8,7 +8,7 @@ import { sessions, SocketGameServer } from "./store/sessionStore";
 import { gameRegistry } from "@engine/shared/GameRegistry";
 import { aiTensorRegistry } from "@engine/shared/ai/AITensorAdapterRegistry";
 // 組み込みテンソルアダプタ（othello 等）を aiTensorRegistry に登録する
-import "@engine/shared/ai/adapters";
+import "@engine/shared/ai/TensorAdapter";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import type { GameServiceHandlers } from "@engine/shared/network/generated/universal_game_engine/GameService";
 import { getIoInstance, scheduleRoomCleanup, clearRoomCleanup } from "./socket/roomManager";

@@ -73,7 +73,7 @@ action_id = agent.greedy(obs, legal_action_ids)   # obs: サーバーの state_t
 
 ## 別のゲームを学習させるには
 
-1. `packages/shared/ai/adapters/` に `IAITensorAdapter` を実装し、`adapters/index.ts` で登録する
+1. `packages/shared/ai/TensorAdapter/` に `IAITensorAdapter` を実装し、`TensorAdapter/index.ts` で登録する
 2. `uge_rl/games.py` に `GameSpec`（観測 → NN 入力の整形）を追加する（未登録ゲームは 1 次元ベクトル + MLP で動く）
 3. `python -m uge_rl.train --game <game_type>`
 
