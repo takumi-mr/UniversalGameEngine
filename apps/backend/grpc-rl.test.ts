@@ -15,8 +15,8 @@ const PROTO_PATH = path.resolve(__dirname, "../../packages/shared/network/game.p
 // Socket.IO は使わないので最小限のモックを注入する
 const mockIo = {
   in: () => ({ fetchSockets: async () => [] }),
+  local: { in: () => ({ fetchSockets: async () => [] }) },
   to: () => ({ emit: () => {} }),
-  sockets: { adapter: { rooms: new Map() } },
 } as any;
 
 // grpc の ServiceError は Metadata を含むため、expect().rejects でのマッチングは避けて code だけ取り出す

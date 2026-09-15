@@ -1,8 +1,37 @@
 // apps/backend/infra/HybridGameRepository.ts
 import { MongoClient, Db, type Document, type UpdateFilter } from "mongodb";
 import Redis from "ioredis";
-import type { IGameRepository } from "@engine/shared/stores/repository";
+import { randomUUID } from "crypto";
+import type { IGameRepository, SessionRecord } from "@engine/shared/stores/repository";
 import type { GameRecord, BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
+
+// Redis のキー設計
+//   game:session:{gameId}  セッション本体（SessionRecord の JSON、TTL 24h）
+//   game:sessions          gameId → type の HASH（ルーム一覧用インデックス）
+//   game:lock:{gameId}     アクション処理の排他ロック（SET NX PX）
+//   game:cleanup           空室クリーンアップ予約の ZSET（score = 実行予定時刻 epoch ms）
+const SESSION_TTL_SEC = 86400;
+const SESSIONS_INDEX_KEY = "game:sessions";
+const CLEANUP_ZSET_KEY = "game:cleanup";
+const LOCK_TTL_MS = 5000;
+const LOCK_WAIT_MS = 5000;
+
+// ロックの解放は「自分が取ったロックのときだけ削除」する（TTL 切れ後に他人のロックを消さないため）
+const RELEASE_LOCK_SCRIPT = `
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("del", KEYS[1])
+end
+return 0`;
+
+// 期限切れの予約を取り出して同時に削除する（複数インスタンスが同じ gameId を拾わないよう原子的に行う）
+const CLAIM_CLEANUPS_SCRIPT = `
+local due = redis.call("zrangebyscore", KEYS[1], "-inf", ARGV[1], "LIMIT", 0, 100)
+for _, id in ipairs(due) do
+  redis.call("zrem", KEYS[1], id)
+end
+return due`;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // 保存するドキュメントの型を定義
 interface GameDocument<T> extends Document {
@@ -71,23 +100,30 @@ export class HybridGameRepository<TState extends BaseGameState> implements IGame
   }
 
   /**
-   * ゲームタイプと状態をまとめて保存する（ステートレス復元用）。
-   * Redis: game:session:{gameId} に { type, state } を保存する。
+   * セッション（type + state + bots）を保存する（ステートレス復元用）。
+   * Redis: game:session:{gameId} に SessionRecord を保存し、一覧用の HASH にも登録する。
    */
   async saveSession(
     gameId: string,
-    type: string,
-    state: TState,
+    record: SessionRecord<TState>,
     isFinished = false,
   ): Promise<void> {
-    const payload = JSON.stringify({ type, state });
-    await this.redis.set(`game:session:${gameId}`, payload, "EX", 86400);
+    const payload = JSON.stringify(record);
+    await this.redis
+      .multi()
+      .set(`game:session:${gameId}`, payload, "EX", SESSION_TTL_SEC)
+      .hset(SESSIONS_INDEX_KEY, gameId, record.type)
+      .exec();
 
     if (isFinished) {
       await this.collection.updateOne(
         { _id: gameId },
         {
-          $set: { state, finishedAt: new Date() } as UpdateFilter<GameDocument<TState>>,
+          $set: {
+            state: record.state,
+            type: record.type,
+            finishedAt: new Date(),
+          } as UpdateFilter<GameDocument<TState>>,
         },
         { upsert: true },
       );
@@ -95,14 +131,14 @@ export class HybridGameRepository<TState extends BaseGameState> implements IGame
   }
 
   /**
-   * saveSession で保存したセッション（type + state）を復元する。
+   * saveSession で保存したセッションを復元する。
    * Redis → MongoDB の順で検索する。
    */
-  async loadSession(gameId: string): Promise<{ type: string; state: TState } | null> {
+  async loadSession(gameId: string): Promise<SessionRecord<TState> | null> {
     const cached = await this.redis.get(`game:session:${gameId}`);
-    if (cached) return JSON.parse(cached) as { type: string; state: TState };
+    if (cached) return JSON.parse(cached) as SessionRecord<TState>;
 
-    // Redis になければ MongoDB のアーカイブから探す（state のみ保存されているため type は不明）
+    // Redis になければ MongoDB のアーカイブから探す（終局済みのものだけがある）
     const archived = await this.collection.findOne({ _id: gameId });
     if (!archived) return null;
 
@@ -113,8 +149,72 @@ export class HybridGameRepository<TState extends BaseGameState> implements IGame
   }
 
   async deleteSession(gameId: string): Promise<void> {
-    await this.redis.del(`game:session:${gameId}`);
+    await this.redis
+      .multi()
+      .del(`game:session:${gameId}`)
+      .hdel(SESSIONS_INDEX_KEY, gameId)
+      .zrem(CLEANUP_ZSET_KEY, gameId)
+      .exec();
     await this.delete(gameId);
+  }
+
+  /**
+   * 一覧用インデックスから存在するセッションを返す。
+   * TTL 切れなどで本体が消えているエントリはここで検出してインデックスからも外す。
+   */
+  async listSessions(): Promise<{ gameId: string; type: string }[]> {
+    const index = await this.redis.hgetall(SESSIONS_INDEX_KEY);
+    const ids = Object.keys(index);
+    if (ids.length === 0) return [];
+
+    const pipeline = this.redis.pipeline();
+    for (const id of ids) pipeline.exists(`game:session:${id}`);
+    const results = (await pipeline.exec()) ?? [];
+
+    const alive: { gameId: string; type: string }[] = [];
+    const stale: string[] = [];
+    ids.forEach((gameId, i) => {
+      if (results[i]?.[1] === 1) alive.push({ gameId, type: index[gameId] ?? "" });
+      else stale.push(gameId);
+    });
+    if (stale.length > 0) await this.redis.hdel(SESSIONS_INDEX_KEY, ...stale);
+    return alive;
+  }
+
+  /**
+   * SET NX PX による分散ロック。取得できるまで短い間隔で再試行し、LOCK_WAIT_MS で諦める。
+   * ロック TTL は保持側が落ちたときの保険なので、fn は TTL より十分短く終わること。
+   */
+  async withSessionLock<T>(gameId: string, fn: () => Promise<T>): Promise<T> {
+    const key = `game:lock:${gameId}`;
+    const token = randomUUID();
+    const deadline = Date.now() + LOCK_WAIT_MS;
+    while ((await this.redis.set(key, token, "PX", LOCK_TTL_MS, "NX")) !== "OK") {
+      if (Date.now() > deadline) {
+        throw new Error(`[Redis] Timed out waiting for session lock of game ${gameId}`);
+      }
+      await sleep(20 + Math.random() * 30);
+    }
+    try {
+      return await fn();
+    } finally {
+      await this.redis.eval(RELEASE_LOCK_SCRIPT, 1, key, token);
+    }
+  }
+
+  async scheduleCleanup(gameId: string, at: number): Promise<void> {
+    await this.redis.zadd(CLEANUP_ZSET_KEY, "NX", at, gameId);
+  }
+
+  async cancelCleanup(gameId: string): Promise<void> {
+    await this.redis.zrem(CLEANUP_ZSET_KEY, gameId);
+  }
+
+  async claimDueCleanups(now: number): Promise<string[]> {
+    const due = (await this.redis.eval(CLAIM_CLEANUPS_SCRIPT, 1, CLEANUP_ZSET_KEY, now)) as
+      | string[]
+      | null;
+    return due ?? [];
   }
 
   async close(): Promise<void> {

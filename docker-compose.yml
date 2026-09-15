@@ -14,6 +14,9 @@ services:
       - redis
       - mongodb
     restart: always
+    # 複数インスタンスで動かす場合: docker compose up --scale backend=2
+    # （Redis アダプタと Redis 上のセッションで状態を共有するのでそのままスケールできる。
+    #   ports の固定を外し、前段にロードバランサを置くこと）
 
   frontend:
     build:
