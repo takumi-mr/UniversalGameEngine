@@ -120,6 +120,8 @@ def train(
 def build_agent(env: GrpcGameEnv, cfg: DQNConfig, device: str | None, resume: str | None) -> DQNAgent:
     if resume:
         agent, meta = load_checkpoint(resume, device=device)
+        if not isinstance(agent, DQNAgent):
+            raise SystemExit(f"{resume} is not a DQN checkpoint (format={meta['format']})")
         print(f"resumed from {resume} (steps={meta['total_steps']})")
         return agent
     obs, _, _ = env.reset()

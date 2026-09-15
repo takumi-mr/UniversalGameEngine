@@ -11,7 +11,8 @@
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
@@ -19,6 +20,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .games import GameSpec
+
+if TYPE_CHECKING:
+    from .env import GrpcGameEnv
 
 
 # ---------------------------------------------------------------------- ネットワーク
@@ -145,6 +149,8 @@ class DQNConfig:
 
 
 class DQNAgent:
+    FORMAT = "uge-rl/dqn/v1"
+
     def __init__(self, spec: GameSpec, obs_dim: int, config: DQNConfig, device: str | None = None):
         self.spec = spec
         self.obs_dim = obs_dim
@@ -186,6 +192,36 @@ class DQNAgent:
         masked = np.full_like(q, -np.inf)
         masked[legal] = q[legal]
         return int(np.argmax(masked))
+
+    def select_action(
+        self, obs: np.ndarray, legal: np.ndarray, state_json: str, player_id: str, env: "GrpcGameEnv"
+    ) -> int:
+        """対局用の共通インターフェース（AZAgent と同じシグネチャ）。DQN は観測だけで決める。"""
+        return self.greedy(obs, legal)
+
+    # ---- チェックポイント
+    def checkpoint_meta(self) -> dict:
+        return {
+            "format": self.FORMAT,
+            "game_type": self.spec.game_type,
+            "obs_dim": self.obs_dim,
+            "obs_shape": list(self.spec.obs_shape) if self.spec.obs_shape else None,
+            "n_actions": self.spec.n_actions,
+            "arch": type(self.q).__name__,
+            "config": asdict(self.cfg),
+            "total_steps": self.total_steps,
+            "train_steps": self.train_steps,
+            "epsilon": self.epsilon,
+        }
+
+    def state_dict(self) -> dict:
+        return self.q.state_dict()
+
+    def load_state(self, state: dict, meta: dict) -> None:
+        self.q.load_state_dict(state)
+        self.q_target.load_state_dict(state)
+        self.total_steps = meta.get("total_steps", 0)
+        self.train_steps = meta.get("train_steps", 0)
 
     # ---- 学習
     def train_step(self) -> float | None:
