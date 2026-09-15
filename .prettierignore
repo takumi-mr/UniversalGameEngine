@@ -2,3 +2,4 @@
 **/.venv
 **/dist
 **/dist-electron
+**/.pytest_cache

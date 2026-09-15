@@ -10,7 +10,9 @@
     "dev": "task dev",
     "up": "task up",
     "down": "task down",
-    "test": "bun test",
+    "test": "bun test packages apps/backend",
+    "test:frontend": "bun run --cwd apps/frontend test",
+    "test:ml": "task ml:test",
     "lint": "eslint .",
     "format": "bun x prettier --write .",
     "type-check": "vue-tsc --noEmit"

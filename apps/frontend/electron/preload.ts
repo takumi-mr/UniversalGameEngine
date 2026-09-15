@@ -5,7 +5,7 @@ import type {
   GameMetadata,
   ChatMessage,
 } from "@engine/shared/network/INetworkClient";
-import { BaseGameState } from "@engine/shared/GameRules";
+import type { BaseGameState } from "@engine/shared/GameRules";
 
 contextBridge.exposeInMainWorld("electronAPI", {
   // --- Vue から Main へ送信 (Commands) ---

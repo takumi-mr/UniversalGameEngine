@@ -30,14 +30,5 @@ export default defineConfig(() => {
           renderer: {},
         }),
     ],
-    test: {
-      environment: "jsdom",
-      globals: true,
-      server: {
-        deps: {
-          inline: ["vuetify"],
-        },
-      },
-    },
   };
 });

@@ -25,6 +25,15 @@ bun dev          # ブラウザ版の起動
 bun run dev:electron # Electron 版の起動
 ```
 
+### テスト（vitest）
+
+```bash
+bun run test          # 一回実行（CI と同じ）
+bun run test:watch    # watch モード
+```
+
+`src/**/*.test.ts` が対象（設定は `vitest.config.ts`。jsdom 環境、Vuetify はインライン化済み）。コンポーネントは `@vue/test-utils` の `mount` に Vuetify を plugin として渡す（例: `src/components/__tests__/ThemeSwitcher.test.ts`）。
+
 ### ビルドとパッケージング
 
 ```bash

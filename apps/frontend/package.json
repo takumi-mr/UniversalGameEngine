@@ -10,7 +10,8 @@
     "dev:electron": "BUILD_TARGET=electron vite",
     "build:electron": "vue-tsc -b && BUILD_TARGET=electron vite build && electron-builder",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@engine/shared": "workspace:*",
@@ -42,7 +43,7 @@
     "vite": "^8.0.0",
     "vite-plugin-electron": "^0.29.1",
     "vite-plugin-electron-renderer": "^0.14.6",
-    "vitest": "^3.0.0",
+    "vitest": "^4.1.11",
     "vue-tsc": "^3.2.5"
   }
 }

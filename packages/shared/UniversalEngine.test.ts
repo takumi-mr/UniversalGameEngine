@@ -1,6 +1,11 @@
 import { expect, test, describe, beforeEach } from "bun:test";
 import { UniversalEngine } from "./UniversalEngine";
-import { BaseGameState, BaseGameAction, GameRuleset, createSecret } from "./GameRules";
+import {
+  type BaseGameState,
+  type BaseGameAction,
+  type GameRuleset,
+  createSecret,
+} from "./GameRules";
 
 // Mock types
 interface MockState extends BaseGameState {

@@ -29,11 +29,12 @@ task dev                            # インフラ起動 + proto 生成 + backen
 task rl                             # backend を RL_MODE=true（インメモリ、DB 不要）で起動 → gRPC 学習用
 task proto                          # packages/shared/network/game.proto → TS 型を再生成
 task ml:train / ml:train-az / ml:eval   # apps/ml の DQN 学習 / AlphaZero 学習 / 評価（RL_MODE の backend が必要）
-task ml:test                        # apps/ml の単体テスト（サーバー不要）
+task ml:test                        # apps/ml の単体テスト（pytest、サーバー不要）
 
-bun test                            # 全テスト（ルート）。パッケージ内で `bun test <pattern>` も可
+bun run test                        # bun:test（packages/ と apps/backend）。パッケージ内で `bun test <pattern>` も可
+bun run test:frontend               # vitest（apps/frontend: jsdom + @vue/test-utils）。`cd apps/frontend && bun run test:watch` で watch
 bun run lint                        # eslint（warning は多数あるが error 0 が基準）
-bun run type-check                  # vue-tsc --noEmit（ルート tsconfig で apps/** と packages/** を対象）
+bun run type-check                  # vue-tsc --noEmit（ルート tsconfig で apps/** と packages/** を tsconfig.base.json の厳しさで検査）
 bun x prettier --check .            # フォーマット
 ```
 
@@ -96,10 +97,10 @@ applyWinResult?, getTimeoutAction?              // 任意
 ## 5. 規約と CI
 
 - **コミット前フック**: `simple-git-hooks` + `lint-staged` が `prettier --write` と `eslint --fix` を staged ファイルに実行する。
-- **CI（`.github/workflows/pr-check.yml`）**: PR で `bun install --frozen-lockfile --ignore-scripts` → `prettier --check .` → `bun run lint` → `bun run type-check` → `bun test`。`bun install` を prettier より先に走らせるのは、**package.json で固定した prettier（3.8.x）を使うため**。順序を変えると最新 prettier のルール差で既存ファイルが落ちる。
+- **CI（`.github/workflows/pr-check.yml`）**: PR で 2 ジョブ。`test-and-lint` は `bun install --frozen-lockfile --ignore-scripts` → `prettier --check .` → `bun run lint` → `bun run type-check` → `bun run test`（bun:test） → `bun run test:frontend`（vitest）。`ml-test` は Python 3.12 + CPU 版 torch で `apps/ml` の `pytest tests`。`bun install` を prettier より先に走らせるのは、**package.json で固定した prettier（3.8.x）を使うため**。順序を変えると最新 prettier のルール差で既存ファイルが落ちる。
 - コミットメッセージは `feat:` / `fix:` / `refactor:` / `ci:` + 日本語の要約（既存ログに倣う）。マージは squash。
 - コードコメントは日本語、識別子は英語。ESLint の `any` 警告は既存コードに多いが、新規コードでは避ける。
-- TypeScript は全パッケージ `strict`、`apps/backend` はさらに `noUncheckedIndexedAccess`（`arr[i]` は `T | undefined`）。backend から参照される shared のコードもこの制約で検査されるため、`!` か `?? fallback` で明示する。
+- **TypeScript の厳しさはルートの `tsconfig.base.json` で一元管理**し、全パッケージの tsconfig はそれを `extends` して lib / types / include だけを上書きする（frontend は `@vue/tsconfig` と base の多段 extends で、後者が優先）。有効: `strict`, `verbatimModuleSyntax`（型は `import type`）, `erasableSyntaxOnly`（`constructor(private x)` のようなパラメータプロパティ禁止）, `noImplicitOverride`, `noFallthroughCasesInSwitch`, `noUncheckedSideEffectImports`。無効: `noUncheckedIndexedAccess`（有効化すると repo 全体で 800 件超のエラーが出るため別 PR 扱い）, `noUnusedLocals/Parameters`（eslint に任せる）。フラグを足すときは base に足し、`bun run type-check` が通ることを確認する。
 - ルート `tsconfig.json` の paths で `@engine/shared/*` → `packages/shared/*`。バックエンドからは相対パスでなくこのエイリアスを使う。
 
 ## 6. 既知の落とし穴
@@ -109,6 +110,7 @@ applyWinResult?, getTimeoutAction?              // 任意
 - **`bun test` で gRPC の `expect(...).rejects.toMatchObject(...)`** は `ServiceError` に含まれる `Metadata` のせいでハングする。try/catch で `err.code` を取り出して比較する（`grpc-rl.test.ts` の `grpcErrorCode` を参照）。
 - **`apps/ml/.venv` は eslint/prettier の対象外**にしてある（torch が `.mjs` を同梱するため）。新しい仮想環境を別名で作るなら `eslint.config.mjs` の `ignores` に追加する。
 - テストがプロセスを掴んで終わらない場合は `timeout <sec> bun test ...` で保護する（gRPC サーバーやタイマーを起動するテストは `afterAll` で `forceShutdown()` すること）。
+- **フロントのテストは vitest**（`apps/frontend/vitest.config.ts`、`src/**/*.test.ts`）。ルートの `bun run test` は `bun test packages apps/backend` とパスで絞っているので frontend のテストは走らない（素の `bun test` を打つと拾ってしまい、jsdom 前提のテストが落ちる）。新しいワークスペースに bun:test を追加したらルート `package.json` の `test` スクリプトにパスを足す。
 - Bash ツールで `cd` を含む複合コマンドを実行するとカレントディレクトリがサブパッケージに移ったままになることがある。パスは絶対指定にするか、コマンド先頭でリポジトリルートへ `cd` する。
 
 ## 7. 参照

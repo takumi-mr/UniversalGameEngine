@@ -13,16 +13,20 @@ class MCTSNode<TState extends BaseGameState, TAction extends BaseGameAction> {
   public wins = 0;
   public children: MCTSNode<TState, TAction>[] = [];
   public parent: MCTSNode<TState, TAction> | null = null;
+  public readonly state: TState;
+  public readonly lastAction: TAction | null;
 
   // キャッシュ用プロパティ
   public unexpandedActions: TAction[];
   public isTerminal: boolean;
 
   constructor(
-    public readonly state: TState,
+    state: TState,
     ruleset: GameRuleset<TState, TAction>,
-    public readonly lastAction: TAction | null = null,
+    lastAction: TAction | null = null,
   ) {
+    this.state = state;
+    this.lastAction = lastAction;
     // ノード生成時に1回だけ計算してキャッシュする
     const winResult = ruleset.checkWinCondition(state);
     this.isTerminal = winResult.isFinished;

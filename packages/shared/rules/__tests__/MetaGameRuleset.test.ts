@@ -1,7 +1,7 @@
 // packages/shared/rules/__tests__/MetaGameRuleset.test.ts
 import { describe, it, expect } from "bun:test";
-import { MetaGameRuleset, MetaGameAction } from "../MetaGameRuleset";
-import { TicTacToeRuleset, TicTacToeAction } from "../TicTacToeRuleset";
+import { MetaGameRuleset, type MetaGameAction } from "../MetaGameRuleset";
+import { TicTacToeRuleset, type TicTacToeAction } from "../TicTacToeRuleset";
 
 describe("MetaGameRuleset", () => {
   it("複数のサブゲーム（○×ゲーム）を管理し、その結果を集約できる", () => {

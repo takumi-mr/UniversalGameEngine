@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { movePlayer, Board, BaseBoardState } from "../SugorokuGameEngine";
+import { movePlayer, type Board, type BaseBoardState } from "../SugorokuGameEngine";
 
 describe("BoardGameEngine", () => {
   const mockBoard: Board<any> = {

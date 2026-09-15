@@ -64,10 +64,10 @@ tasks:
       - python -m uge_rl.evaluate --checkpoint ../../models/othello_dqn.pt {{.CLI_ARGS}}
 
   ml:test:
-    desc: Run apps/ml unit tests (no backend needed)
+    desc: Run apps/ml unit tests (no backend needed; same command as CI)
     dir: apps/ml
     cmds:
-      - python -m tests.test_mcts
+      - python -m pytest tests -q
 
   clean:
     desc: Stop infrastructure and remove volumes
