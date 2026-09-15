@@ -38,7 +38,7 @@ bun x prettier --check .            # フォーマット
 ```
 
 個別起動: `cd apps/backend && bun dev`（`bun --watch server.ts`, HTTP :3000 / gRPC :50051）、`cd apps/frontend && bun dev`（Vite）。
-環境変数: `REDIS_URL`, `MONGO_URL`, `JWT_SECRET`, `PORT`, `GRPC_PORT`, `RL_MODE`（`.env` を Task が読み込む）。
+環境変数: `REDIS_URL`, `MONGO_URL`, `JWT_SECRET`（**本番では必須**。未設定だと起動を拒否。開発では警告つきで開発用の値）, `PORT`, `GRPC_PORT`, `RL_MODE`（`.env` を Task が読み込む）。
 
 ## 3. アーキテクチャの要点（コードを触る前に知っておくこと）
 
@@ -56,14 +56,14 @@ applyWinResult?, getTimeoutAction?              // 任意
 ```
 
 - `BaseGameState` は `status: "WAITING" | "PLAYING" | "FINISHED"`, `players` (`{ "1": userId, "-1": userId }` のようなスロット→ID), `activePlayers`, `version`, `hash` を持つ。
-- **着席と開始はルールセットの外**で行われる: Socket.io の `join-game`（`apps/backend/socket/index.ts`）または gRPC `Reset` が `players` の空スロットを埋め、`minPlayers` を満たしたら `START` アクション → 失敗なら `status = "PLAYING"` を直接代入する。`isValidAction` は通常 `status !== "PLAYING"` なら false を返すため、テストでは `state.status = "PLAYING"; state.players = {...}` を手で設定する。
+- **着席と開始はエンジンの組み込みアクション** `JOIN` / `START` で行う（`UniversalEngine.dispatch`）。`JOIN {playerId, slot?}` は `state.players` の空席に着席させ（ルールセットが JOIN を受け付ければその reduce も走る）、`START` はルールセットが START を持たなければ `status = "PLAYING"` にして合法手を持つプレイヤーを `activePlayers` にする。どちらも `history` / `version` に記録されるので、リプレイは着席から再現できる。サーバー（`join-game`、gRPC `Reset`）は必ず `dispatch` 経由で行い、`state.players[...] = ...` や `state.status = ...` を直接書かない（例外: `leave-game` の離席は未対応）。`isValidAction` は通常 `status !== "PLAYING"` なら false を返すため、ルールセットの単体テストでは `state.status = "PLAYING"; state.players = {...}` を手で設定する。
 - パス処理（オセロ等）は `reduce` 内で完結させる。手番プレイヤーには必ず合法手がある状態を返す。
 - 秘匿情報は `Secret<T>` / `createSecret()` で宣言し、`engine.getMaskedState(playerId)` に任せる（`maskState` は deprecated）。
-- 乱数は `IGameRNG`（`ProvablyFairRNG` / MersenneTwister）経由のみ。`Math.random` をルールセットに書かない。
+- 乱数は `IGameRNG` 経由のみ。**エンジンは常に RNG を渡す**（シード未指定でも自動生成し `prngConfig` / `prngSecret` に記録するので、あらゆる対局が再現可能）。ルールセットでは `requireRng(rng)`（`utils/requireRng.ts`）で受け取り、`Math.random` へのフォールバックは書かない — `determinism.test.ts` が全ゲームで `Math.random` 呼び出しを検出して落とす。ルールセットを直接呼ぶテストでは `testing/withTestRng.ts` でラップする。ID 生成も乱数に頼らない（`nextBlockId` のように既存キーから決定論的に採番する）。
 
 ### エンジンとサーバー
 
-- `UniversalEngine.dispatch(action)` = validate → clone → freeze → reduce → checkWinCondition → version++ → hash。
+- `UniversalEngine.dispatch(action)` = clone → 組み込み JOIN 着席 → validate → freeze → reduce（不正なら組み込み START のみ）→ RNG 設定の引き継ぎ → checkWinCondition（`WAITING` 中は評価しない）→ version++ → hash。
 - `apps/backend/store/sessionStore.ts`: `sessions: Map<gameId, { server: SocketGameServer, type }>`。`SocketGameServer.handleAction()` が dispatch と broadcast（Socket.io + gRPC ストリーム + JSON Patch 差分）を行う。
 - リポジトリは `RL_MODE=true` で `InMemoryDummyRepository`、それ以外は `HybridGameRepository`（Redis + MongoDB）。
 - 空室は 5 分で自動削除される（`scheduleRoomCleanup`）。長時間セッションを扱う処理は `clearRoomCleanup` / 再スケジュールを忘れない。
@@ -72,7 +72,7 @@ applyWinResult?, getTimeoutAction?              // 任意
 
 - `packages/shared/ai/AIPlayer/`: `IAIPlayer` 実装（Random, Minimax, MCTS, ISMCTS, GrpcBot, LLM）。
 - `packages/shared/ai/TensorAdapter/`: ゲーム状態 ⇄ テンソル/行動 ID 変換（`IAITensorAdapter`）。`index.ts` で `aiTensorRegistry` に登録する。**登録がないゲームは gRPC `Reset`/`Step` が `UNIMPLEMENTED`** を返す。現在登録済み: `othello`（64 要素・自分=+1/相手=-1、actionId = `y*size+x`）。
-- gRPC RL API（`packages/shared/network/game.proto`, 実装 `apps/backend/grpc-server.ts`）の契約:
+- gRPC RL API（`packages/shared/network/game.proto`, 実装 `apps/backend/grpc-server.ts`）は **`RL_MODE=true` のときだけ有効**（それ以外は `PERMISSION_DENIED`）。無認証でセッションを操作し、マスクなしの状態を返すため本番で有効にしない。契約:
   - `Reset(game_id, player_ids?)`: 全席着席 + `PLAYING` 化。`active_players[0]` 視点の観測を返す。
   - `Step(game_id, player_id, action_id)`: 観測・合法手は **次に行動するプレイヤー視点**、`reward` は手を指した `player_id` 視点（勝 1 / 負 -1 / 引分 0.5、終局時のみ）。`Reset`/`Step` は完全な局面 `state_json` も返す。
   - `Simulate(game_type, state_json, player_id, action_id)` / `BatchSimulate(items)`: **セッションに触れないステートレスな 1 手適用**（木探索用）。失敗は gRPC エラーではなく `error` フィールドで返す。サーバーはゲームタイプごとに使い回す `UniversalEngine` に `loadState` → `dispatch` するだけなので、RNG や終局処理は通常対局と同じ挙動。ローカル計測: unary ≈ 1,500 sims/s、`BatchSimulate` x64 ≈ 10,000 sims/s（`apps/ml/scripts/bench_simulate.py`）。

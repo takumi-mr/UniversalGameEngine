@@ -1,5 +1,9 @@
 import { expect, test, describe } from "bun:test";
-import { TexasHoldemRuleset } from "../TexasHoldemRuleset";
+import { TexasHoldemRuleset as RealTexasHoldemRuleset } from "../TexasHoldemRuleset";
+import { withTestRng } from "../../testing/withTestRng";
+
+// ルールセットを直接呼ぶテストなので、固定シードの RNG を補う
+const TexasHoldemRuleset = withTestRng(RealTexasHoldemRuleset);
 
 describe("TexasHoldemRuleset", () => {
   const playerIds = ["p1", "p2", "p3"];

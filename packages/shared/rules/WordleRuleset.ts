@@ -1,3 +1,4 @@
+import { requireRng } from "../utils/requireRng";
 import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
 import type { IGameRNG } from "../utils/IGameRNG";
 
@@ -81,8 +82,7 @@ const WORDS = [
 
 export const WordleRuleset: GameRuleset<WordleState, WordleAction> = {
   getInitialState: (_options?: any, rng?: IGameRNG): WordleState => {
-    const secretWord =
-      WORDS[rng ? rng.nextInt(0, WORDS.length - 1) : Math.floor(Math.random() * WORDS.length)];
+    const secretWord = WORDS[requireRng(rng, "Wordle").nextInt(0, WORDS.length - 1)];
     return {
       status: "WAITING",
       secretWord: secretWord,
@@ -117,9 +117,9 @@ export const WordleRuleset: GameRuleset<WordleState, WordleAction> = {
     return true;
   },
 
-  reduce: (state, action, _rng?: IGameRNG) => {
+  reduce: (state, action, rng?: IGameRNG) => {
     if (action.type === "START") {
-      const newState = WordleRuleset.getInitialState();
+      const newState = WordleRuleset.getInitialState(undefined, rng);
       newState.status = "PLAYING";
       if (state.players) {
         newState.players = { ...state.players };

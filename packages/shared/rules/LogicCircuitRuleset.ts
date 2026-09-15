@@ -33,6 +33,13 @@ export type LogicCircuitAction =
   | { type: "TOGGLE_SWITCH"; blockId: string }
   | { type: "RESET" };
 
+/** 決定論的なブロック ID: prefix_1, prefix_2, ... のうち未使用の最小番号を返す */
+function nextBlockId(blocks: Record<string, unknown>, prefix: string): string {
+  let n = 1;
+  while (blocks[`${prefix}_${n}`] !== undefined) n++;
+  return `${prefix}_${n}`;
+}
+
 export const LogicCircuitRuleset: GameRuleset<LogicCircuitState, any> = {
   getInitialState: (_options?: any, _rng?: IGameRNG): LogicCircuitState => {
     return {
@@ -53,7 +60,7 @@ export const LogicCircuitRuleset: GameRuleset<LogicCircuitState, any> = {
 
     switch (action.type) {
       case "ADD_BLOCK": {
-        const id = `block_${Math.random().toString(36).substr(2, 9)}`;
+        const id = nextBlockId(newState.blocks, "block");
         newState.blocks[id] = {
           id,
           type: action.gateType,

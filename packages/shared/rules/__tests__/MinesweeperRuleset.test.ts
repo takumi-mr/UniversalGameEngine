@@ -1,5 +1,9 @@
 import { expect, test, describe } from "bun:test";
-import { MinesweeperRuleset } from "../MinesweeperRuleset";
+import { MinesweeperRuleset as RealMinesweeperRuleset } from "../MinesweeperRuleset";
+import { withTestRng } from "../../testing/withTestRng";
+
+// ルールセットを直接呼ぶテストなので、固定シードの RNG を補う
+const MinesweeperRuleset = withTestRng(RealMinesweeperRuleset);
 
 describe("MinesweeperRuleset", () => {
   test("getInitialState should return correct initial state", () => {

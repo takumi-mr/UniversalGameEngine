@@ -1,3 +1,4 @@
+import { requireRng } from "../utils/requireRng";
 import type { GameRuleset } from "../GameRules";
 import type { IGameRNG } from "../utils/IGameRNG";
 import {
@@ -83,7 +84,7 @@ const SPACES: BoardSpace<LifeState>[] = [
     type: "JOB",
     text: "就職活動",
     mustStop: true,
-    onStop: (state, playerId) => {
+    onStop: (state, playerId, rng) => {
       const newState = { ...state };
       newState.logs.push(`${playerId}: 仕事を探している...`);
       // In a real game, this might trigger a sub-state or UI interaction.
@@ -91,7 +92,8 @@ const SPACES: BoardSpace<LifeState>[] = [
       const player = newState.boardPlayers[playerId];
       if (!player.job) {
         const jobKeys = Object.keys(JOBS);
-        player.job = jobKeys[Math.floor(Math.random() * jobKeys.length)];
+        player.job =
+          jobKeys[Math.floor(requireRng(rng, "TheGameOfLife").nextFloat() * jobKeys.length)];
         newState.logs.push(`${playerId}: ${JOBS[player.job].name}になった！`);
       }
       return newState;
@@ -189,11 +191,11 @@ export const TheGameOfLifeRuleset: GameRuleset<LifeState, LifeAction> = {
     let newState = JSON.parse(JSON.stringify(state)) as LifeState;
 
     if (action.type === "SPIN") {
-      const spin = rng ? Math.floor(rng.nextFloat() * 10) + 1 : Math.floor(Math.random() * 10) + 1;
+      const spin = Math.floor(requireRng(rng, "TheGameOfLife").nextFloat() * 10) + 1;
       newState.lastSpin = spin;
       newState.logs.push(`${action.playerId}: ルーレットの結果は ${spin}！`);
 
-      newState = movePlayer(newState, action.playerId, spin, LIFE_BOARD);
+      newState = movePlayer(newState, action.playerId, spin, LIFE_BOARD, rng);
 
       // Check if game should end
       const allFinished = Object.values(newState.boardPlayers).every((p) => p.isFinished);

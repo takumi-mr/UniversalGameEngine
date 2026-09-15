@@ -289,6 +289,13 @@ export const LOGIC_LAB_LEVELS: LogicLabLevel[] = [
   },
 ];
 
+/** 決定論的なブロック ID: prefix_1, prefix_2, ... のうち未使用の最小番号を返す */
+function nextBlockId(blocks: Record<string, unknown>, prefix: string): string {
+  let n = 1;
+  while (blocks[`${prefix}_${n}`] !== undefined) n++;
+  return `${prefix}_${n}`;
+}
+
 export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
   getInitialState: (options?: { levelId?: number }, _rng?: IGameRNG): LogicLabState => {
     const levelId = options?.levelId || 1;
@@ -329,7 +336,7 @@ export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
       case "ADD_BLOCK": {
         const level = LOGIC_LAB_LEVELS.find((l) => l.id === newState.currentLevelId);
         if (level && level.allowedGates.includes(action.gateType)) {
-          const id = `${action.gateType.toLowerCase()}_${Math.random().toString(36).substr(2, 5)}`;
+          const id = nextBlockId(newState.blocks, action.gateType.toLowerCase());
           newState.blocks[id] = {
             id,
             type: action.gateType,
@@ -343,7 +350,7 @@ export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
       case "ADD_CUSTOM_BLOCK": {
         const custom = newState.customBlocks[action.levelId];
         if (custom) {
-          const id = `custom_${action.levelId}_${Math.random().toString(36).substr(2, 5)}`;
+          const id = nextBlockId(newState.blocks, `custom_${action.levelId}`);
           const outCount = Object.keys(custom.compound.blocks).filter((k) =>
             k.startsWith("out"),
           ).length;

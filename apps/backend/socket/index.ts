@@ -117,7 +117,8 @@ export const setupSocketIO = (io: Server) => {
               const slotKey = slotKeys[i] as string;
               if (slotType && slotType !== "human") {
                 const botId = `bot_${i}_` + Math.random().toString(36).substring(7);
-                state.players[slotKey] = botId;
+                // 着席はエンジンの組み込み JOIN（history に記録される）
+                engine.dispatch({ type: "JOIN", playerId: botId, slot: slotKey } as any);
                 const botPlayer = createBotPlayer(botId, slotType, i);
                 if (botPlayer) {
                   server.aiPlayers.set(botId, botPlayer);
@@ -132,7 +133,7 @@ export const setupSocketIO = (io: Server) => {
             for (let i = 1; i < slotKeys.length; i++) {
               const slotKey = slotKeys[i] as string;
               const botId = `bot_${i}_` + Math.random().toString(36).substring(7);
-              state.players[slotKey] = botId;
+              engine.dispatch({ type: "JOIN", playerId: botId, slot: slotKey } as any);
               const botPlayer = createBotPlayer(botId, options.addAi, i);
               if (botPlayer) {
                 server.aiPlayers.set(botId, botPlayer);
@@ -141,34 +142,15 @@ export const setupSocketIO = (io: Server) => {
             }
           }
 
-          // 全スロットが埋まっている（全員AIの場合等）なら即座にPLAYINGへ遷移
-          const filledCount = Object.values(state.players).filter((p) => p !== null).length;
-          if (filledCount >= slotKeys.length && filledCount >= def.minPlayers) {
-            // START アクションがあれば先にそれを試す（Speed, Mahjong 等の初期化のため）
-            const allPlayerIds = Object.values(state.players || {}).filter(
-              (p) => p !== null,
-            ) as string[];
-            const firstPlayerId = allPlayerIds[0];
-            const startAction = { type: "START", playerId: firstPlayerId };
-
-            if (server.engine.dispatch(startAction)) {
-              console.log(
-                `[AI] Game ${gameId} auto-started via START action from ${firstPlayerId}`,
-              );
-            } else {
-              state.status = "PLAYING";
-              console.log(`[AI] All slots filled — game ${gameId} auto-started as PLAYING`);
-            }
-
-            // 初期のアクティブプレイヤーを設定
-            if (!state.activePlayers || state.activePlayers.length === 0) {
-              const activeIds: string[] = [];
-              for (const pId of allPlayerIds) {
-                if (server.engine.getLegalActions(pId).length > 0) {
-                  activeIds.push(pId);
-                }
-              }
-              state.activePlayers = activeIds;
+          // 全スロットが埋まっている（全員AIの場合等）なら即座に開始する
+          const seated = Object.values(engine.getState().players || {}).filter(
+            (p) => p !== null,
+          ) as string[];
+          if (seated.length >= slotKeys.length && seated.length >= def.minPlayers) {
+            // START はエンジンの組み込みアクション。ルールセットが START を持てばその初期化（Speed, Mahjong 等）が走り、
+            // 持たなければ status を PLAYING にして手番を設定する
+            if (engine.dispatch({ type: "START", playerId: seated[0] } as any)) {
+              console.log(`[AI] All slots filled — game ${gameId} auto-started`);
             }
 
             // 全員AIなら即座にAIターンを開始
@@ -203,66 +185,30 @@ export const setupSocketIO = (io: Server) => {
 
       const state = session.server.engine.getState();
 
-      // プレイヤーの自動割り当てロジック (空いている席に座る)
+      // プレイヤーの自動割り当て（空いている席に座る）。
+      // 着席・開始はエンジンの組み込み JOIN / START で行い、history に記録する（リプレイで再現可能にするため）
       if (state.players && !asSpectator) {
-        let updated = false;
-        // 既に自分が割り当てられているかチェック
+        const engine = session.server.engine;
         const isAlreadyAssigned = Object.values(state.players).includes(userId);
+        const joined =
+          !isAlreadyAssigned && engine.dispatch({ type: "JOIN", playerId: userId } as any);
 
-        if (!isAlreadyAssigned) {
-          // 1. 全てのスロットをチェックして最初の空いているスロット (null) に割り当てる
-          const emptySlotEntry = Object.entries(state.players).find(([_, val]) => val === null);
-          if (emptySlotEntry) {
-            const [slotKey] = emptySlotEntry;
-            state.players[slotKey] = userId;
-            updated = true;
-            console.log(`Assigned ${userId} to slot "${slotKey}" in game ${gameId}`);
-          }
-
-          // 2. ルールセットが JOIN アクションをサポートしている場合、それをディスパッチして playerData 等を初期化
-          const joinAction = { type: "JOIN", playerId: userId } as any;
-          if (session.server.engine.dispatch(joinAction)) {
-            updated = true;
-            console.log(`User ${userId} joined game ${gameId} via JOIN action`);
-          }
-        }
-
-        // 状態が更新された場合は保存し、全員にブロードキャスト
-        if (updated) {
-          // Minimum player check and transition to 'PLAYING'
-          // Use a Set to count unique non-null players
-          const uniquePlayersCount = new Set(Object.values(state.players).filter((p) => p !== null))
-            .size;
+        if (joined) {
+          console.log(`User ${userId} joined game ${gameId}`);
+          const current = engine.getState();
+          const uniquePlayersCount = new Set(
+            Object.values(current.players ?? {}).filter((p) => p !== null),
+          ).size;
           const normalizedType = session.type.toLowerCase().replace(/-/g, "_");
           const def = gameRegistry.getDefinition(normalizedType);
 
-          if (state.status === "WAITING" && def && uniquePlayersCount >= def.minPlayers) {
-            // START アクションがあれば先にそれを試す
-            const allPlayerIds = Object.values(state.players || {}).filter(
-              (p) => p !== null,
-            ) as string[];
-            const firstPlayerId = allPlayerIds[0];
-            const startAction = { type: "START", playerId: firstPlayerId };
-
-            if (session.server.engine.dispatch(startAction)) {
-              console.log(`Game ${gameId} started via START action from ${firstPlayerId}`);
-            } else {
-              state.status = "PLAYING";
-              console.log(`Game ${gameId} transitioned to PLAYING status.`);
-            }
-
-            // 初期のアクティブプレイヤーを設定
-            if (!state.activePlayers || state.activePlayers.length === 0) {
-              const activeIds: string[] = [];
-              for (const pId of allPlayerIds) {
-                if (session.server.engine.getLegalActions(pId).length > 0) {
-                  activeIds.push(pId);
-                }
-              }
-              state.activePlayers = activeIds;
+          if (current.status === "WAITING" && def && uniquePlayersCount >= def.minPlayers) {
+            const firstPlayerId = Object.values(current.players ?? {}).find((p) => p !== null)!;
+            if (engine.dispatch({ type: "START", playerId: firstPlayerId } as any)) {
+              console.log(`Game ${gameId} started (by ${firstPlayerId})`);
             }
           }
-          await repo.save(gameId, session.server.engine.getState(), false);
+          await repo.save(gameId, engine.getState(), false);
         }
       }
 

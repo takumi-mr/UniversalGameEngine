@@ -1,3 +1,4 @@
+import { requireRng } from "../utils/requireRng";
 import type { BaseGameState, BaseGameAction, GameRuleset, Secret } from "../GameRules";
 import { createSecret } from "../GameRules";
 import type { IGameRNG } from "../utils/IGameRNG";
@@ -184,8 +185,8 @@ function initializeBoard(
   const { rows, cols, mineCount } = state;
   let placedMines = 0;
   while (placedMines < mineCount) {
-    const r = rng ? rng.nextInt(0, rows - 1) : Math.floor(Math.random() * rows);
-    const c = rng ? rng.nextInt(0, cols - 1) : Math.floor(Math.random() * cols);
+    const r = requireRng(rng, "Minesweeper").nextInt(0, rows - 1);
+    const c = requireRng(rng, "Minesweeper").nextInt(0, cols - 1);
     if (r === startRow && c === startCol) continue;
     if (state.board[r][c].secret.value.isMine) continue;
     state.board[r][c].secret.value.isMine = true;

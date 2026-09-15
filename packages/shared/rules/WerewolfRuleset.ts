@@ -1,4 +1,5 @@
 // packages/shared/rules/WerewolfRuleset.ts
+import { requireRng } from "../utils/requireRng";
 import { createSecret, type Secret } from "../GameRules";
 import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
 import type { IGameRNG } from "../utils/IGameRNG";
@@ -128,7 +129,7 @@ function assignRoles(playerIds: string[], rng?: IGameRNG): Record<string, Werewo
 
   // シャッフル（Fisher-Yates）
   for (let i = roles.length - 1; i > 0; i--) {
-    const j = rng ? rng.nextInt(0, i) : Math.floor(Math.random() * (i + 1));
+    const j = requireRng(rng).nextInt(0, i);
     [roles[i], roles[j]] = [roles[j], roles[i]];
   }
 
