@@ -65,9 +65,14 @@ applyWinResult?, getTimeoutAction?              // 任意
 ### エンジンとサーバー
 
 - `UniversalEngine.dispatch(action)` = clone → 組み込み JOIN 着席 → validate → freeze → reduce（不正なら組み込み START のみ）→ RNG 設定の引き継ぎ → checkWinCondition（`WAITING` 中は評価しない）→ version++ → hash。
-- `apps/backend/store/sessionStore.ts`: `sessions: Map<gameId, { server: SocketGameServer, type }>`。`SocketGameServer.handleAction()` が dispatch と broadcast（Socket.io + gRPC ストリーム + JSON Patch 差分）を行う。
-- リポジトリは `RL_MODE=true` で `InMemoryDummyRepository`、それ以外は `HybridGameRepository`（Redis + MongoDB）。
-- 空室は 5 分で自動削除される（`scheduleRoomCleanup`）。長時間セッションを扱う処理は `clearRoomCleanup` / 再スケジュールを忘れない。
+- **バックエンドはステートレス**（複数インスタンス前提。詳細は [apps/backend/README.md](./apps/backend/README.md)）。真実の状態はリポジトリの `SessionRecord { type, state, bots }`、`apps/backend/store/sessionStore.ts` の `sessions` Map はインスタンスごとのキャッシュ。
+  - 着手は必ず `session.server.dispatchAction(playerId, action)`（ロック → ストアより古ければ再読込 → dispatch → 保存 → 配信）。`handleAction` は無効化してある。
+  - エンジンを直接進める処理（JOIN / START / 離席、gRPC `Reset`）は `withSession(gameId, async (session) => { ...; await session.server.commit(); })` の中で行う。ロック外で `engine.dispatch` して保存しないと、別インスタンスの更新を上書きする。
+  - セッションの取得は `ensureSession(gameId)`（なければストアから復元。`sessions.get` を直接使わない）。削除は `destroySession`。
+  - 配信は `commit()` → `broadcastState()`（ローカルソケット + gRPC ストリーム + `serverSideEmit("uge:state-changed")`）。他インスタンスは `onRemoteStateChanged` で自分のクライアントに配り直す。AI の手番は対局を進めたインスタンスだけが起動する。
+  - Socket.IO の在室判定は `io.in(room).fetchSockets()`（クラスタ全体）、自分のソケットだけなら `io.local`（`network/io.ts` の `countRoomSockets` / `fetchLocalSockets`）。`io.sockets.adapter.rooms` はローカルしか見えないので使わない。
+- リポジトリは `useInMemoryStore()`（`RL_MODE=true` または `NODE_ENV=test`）で `InMemoryDummyRepository`、それ以外は `HybridGameRepository`（Redis + MongoDB）+ Socket.IO Redis アダプタ。**インメモリ実装もロック・クリーンアップ予約・一覧を同じ契約で実装しているので、テストは repo をモックせずそのまま使う**（テストごとに `listSessions` → `deleteSession` で掃除する）。
+- 空室は 5 分で自動削除される（`scheduleRoomCleanup` → Redis ZSET に予約、各インスタンスの `startCleanupSweeper` が 15 秒ごとに回収）。長時間セッションを扱う処理は `clearRoomCleanup` / 再スケジュールを忘れない。
 
 ### AI と強化学習
 
@@ -110,6 +115,8 @@ applyWinResult?, getTimeoutAction?              // 任意
 - **`bun test` で gRPC の `expect(...).rejects.toMatchObject(...)`** は `ServiceError` に含まれる `Metadata` のせいでハングする。try/catch で `err.code` を取り出して比較する（`grpc-rl.test.ts` の `grpcErrorCode` を参照）。
 - **`apps/ml/.venv` は eslint/prettier の対象外**にしてある（torch が `.mjs` を同梱するため）。新しい仮想環境を別名で作るなら `eslint.config.mjs` の `ignores` に追加する。
 - テストがプロセスを掴んで終わらない場合は `timeout <sec> bun test ...` で保護する（gRPC サーバーやタイマーを起動するテストは `afterAll` で `forceShutdown()` すること）。
+- backend のテストで Socket.IO をモックするときは `in(room).fetchSockets()` / `local.in(room).fetchSockets()` / `to(room).emit()` を用意する（`sockets.adapter.rooms` は使われない）。
+- `bun test` は全ファイルを 1 プロセスで走らせるので、インメモリリポジトリの中身（セッション・クリーンアップ予約）はファイルをまたいで残る。`beforeEach` で消すこと。
 - **フロントのテストは vitest**（`apps/frontend/vitest.config.ts`、`src/**/*.test.ts`）。ルートの `bun run test` は `bun test packages apps/backend` とパスで絞っているので frontend のテストは走らない（素の `bun test` を打つと拾ってしまい、jsdom 前提のテストが落ちる）。新しいワークスペースに bun:test を追加したらルート `package.json` の `test` スクリプトにパスを足す。
 - Bash ツールで `cd` を含む複合コマンドを実行するとカレントディレクトリがサブパッケージに移ったままになることがある。パスは絶対指定にするか、コマンド先頭でリポジトリルートへ `cd` する。
 

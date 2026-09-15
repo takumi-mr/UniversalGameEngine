@@ -5,12 +5,12 @@ Bun を活用した、低レイテンシ・高並列なゲームサーバーで�
 ## 🏗️ ディレクトリ構造
 
 - `/routes`: HTTP API エンドポイント（認証、マッチメイキングなど）。
-- `/socket`: Socket.io による双方向リアルタイム通信。
+- `/socket`: Socket.io による双方向リアルタイム通信（`index.ts`: ハンドラ、`roomManager.ts`: 在室管理と空室クリーンアップ）。
 - **`grpc-server.ts`**: gRPC (Protocol Buffers) による高精度・低オーバーヘッド通信の実装。
-- `/store`: ゲーム状態のメモリ内管理（`sessionStore.ts`。`RL_MODE` でリポジトリ実装を切り替え）。
+- `/store`: セッション管理（`sessionStore.ts`）。真実の状態はリポジトリにあり、メモリはインスタンスごとのキャッシュ。
 - `/infra`: データベース統合（`HybridGameRepository`: Redis + MongoDB / `InMemoryDummyRepository`: RL 用）。
 - `/ai`: Web Worker で AI の思考を実行する `WorkerAIPlayer`。
-- `/network`: gRPC ストリームの管理（`StreamManager`）。
+- `/network`: gRPC ストリームの管理（`StreamManager`）、Socket.IO インスタンスとクラスタイベント（`io.ts`）。
 - `server.ts`: サーバーエントリーポイント。
 
 ## 🛠️ 開発ガイド
@@ -43,6 +43,19 @@ bun test                # bun:test（ルートからは `bun run test`）
 
 ゲームの更新は `UniversalEngine` を通じて処理され、`/socket` 配下のハンドラーによって全プレイヤーにブロードキャストされます。
 認証が必要なアクションについては、JWTによる保護が適用されます。
+
+## 🧩 ステートレス構成（複数インスタンス）
+
+バックエンドは何台並べても同じ対局を扱えるように作られている（`RL_MODE` / テスト以外では常にこのモード）。
+
+- **真実はストア**: 対局の状態は `SessionRecord { type, state, bots }` として Redis（`game:session:{gameId}`、終局時は MongoDB にも）に保存される。メモリ上の `sessions` Map はキャッシュで、`ensureSession()` がなければストアから復元する（AI ボットも `bots` から再生成）。
+- **着手はロックの中で**: `SocketGameServer.dispatchAction()` が `withSessionLock`（Redis `SET NX PX`）→ ストアより古ければ再読込 → `dispatch` → 保存 → 配信 を行う。Socket.io / HTTP / gRPC / AI のすべての着手がここを通るので、別インスタンスの更新を上書きしない。エンジンを直接進める処理（JOIN / START / 離席）は `withSession()` の中で行い `commit()` する。
+- **配信**: `@socket.io/redis-adapter` により `io.to(room).emit` と `fetchSockets()` はクラスタ全体に効く。状態更新は「保存 → 自分のソケットへ配信 → `serverSideEmit("uge:state-changed")`」で、他のインスタンスは自分に接続しているソケット / gRPC ストリームにだけ配り直す（差分パッチはソケットごとにローカルに管理）。
+- **空室クリーンアップ**: `setTimeout` ではなく Redis の ZSET（`game:cleanup`）に予約し、各インスタンスが 15 秒ごとに期限の来たものを取り出して掃除する（取り出しは Lua で原子的なので二重に消えない。掃除前にクラスタ全体の在室を再確認）。
+- **ルーム一覧**: `/rooms` は Redis の一覧インデックス（`game:sessions`）から返し、在室数はアダプタ越しに数える。
+- **終了**: SIGTERM で接続を閉じて終了する。状態はストアにあるので、クライアントは別のインスタンスへ再接続すれば続きから遊べる。
+
+ローカルで試す: `PORT=3001 bun server.ts` と `PORT=3002 bun server.ts` を同じ Redis に向けて起動し、片方で作った部屋にもう片方から参加する。
 
 ## ⚡ 高度な機能
 

@@ -4,7 +4,7 @@ import * as protoLoader from "@grpc/proto-loader";
 import path from "path";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET, isRlMode } from "./config";
-import { sessions, SocketGameServer } from "./store/sessionStore";
+import { createSession, ensureSession, withSession, normalizeGameType } from "./store/sessionStore";
 import { gameRegistry } from "@engine/shared/GameRegistry";
 import { aiTensorRegistry } from "@engine/shared/ai/AITensorAdapterRegistry";
 // 組み込みテンソルアダプタ（othello 等）を aiTensorRegistry に登録する
@@ -139,7 +139,7 @@ const requireRlMode = (callback: (err: any) => void): boolean => {
 };
 
 const gameServiceHandlers: GameServiceHandlers = {
-  CreateGame: (call, callback) => {
+  CreateGame: async (call, callback) => {
     const userId = authenticate(call);
     if (!userId)
       return callback({
@@ -172,21 +172,18 @@ const gameServiceHandlers: GameServiceHandlers = {
       const gameId = Math.random().toString(36).substring(7);
       const options = JSON.parse(rawOptionsJson || "{}");
       const engine = new UniversalEngine(def.ruleset, options);
-      const io = getIoInstance();
-      const server = new SocketGameServer(gameId, engine, io);
-      sessions.set(gameId, {
-        server,
-        type: rawGameType.toLowerCase().replace(/-/g, "_"),
-      });
+      const { server } = createSession(gameId, engine, normalizeGameType(rawGameType));
+      // 他のインスタンスからも見えるように保存する
+      await server.commit();
 
-      scheduleRoomCleanup(gameId);
+      await scheduleRoomCleanup(gameId);
       callback(null, { gameId: gameId });
     } catch (err: any) {
       callback({ code: grpc.status.INTERNAL, message: err.message } as any);
     }
   },
 
-  DispatchAction: (call, callback) => {
+  DispatchAction: async (call, callback) => {
     const userId = authenticate(call);
     if (!userId)
       return callback({
@@ -195,7 +192,7 @@ const gameServiceHandlers: GameServiceHandlers = {
       });
 
     const { gameId, action } = call.request;
-    const session = sessions.get(gameId);
+    const session = await ensureSession(gameId);
     if (!session)
       return callback({
         code: grpc.status.NOT_FOUND,
@@ -204,7 +201,7 @@ const gameServiceHandlers: GameServiceHandlers = {
 
     try {
       const payload = action?.payloadJson ? JSON.parse(action.payloadJson) : {};
-      const success = session.server.handleAction(userId, {
+      const success = await session.server.dispatchAction(userId, {
         ...payload,
         type: action?.type,
       });
@@ -258,7 +255,7 @@ const gameServiceHandlers: GameServiceHandlers = {
     callback(null, { success: true, message: "Chat sent" });
   },
 
-  StreamEvents: (call) => {
+  StreamEvents: async (call) => {
     const userId = authenticate(call);
     if (!userId) {
       call.destroy({
@@ -271,8 +268,8 @@ const gameServiceHandlers: GameServiceHandlers = {
     const { gameId } = call.request;
     streamManager.addStream(gameId, userId, call);
 
-    // 初回の状態を送信
-    const session = sessions.get(gameId);
+    // 初回の状態を送信（別インスタンスで作られた対局でもストアから復元できる）
+    const session = await ensureSession(gameId);
     if (session) {
       const state = session.server.engine.getState();
       const players = state.players
@@ -300,17 +297,12 @@ const gameServiceHandlers: GameServiceHandlers = {
     });
   },
 
-  Reset: (call, callback) => {
+  Reset: async (call, callback) => {
     if (!requireRlMode(callback)) return;
     const { gameId, playerIds } = call.request;
-    const session = sessions.get(gameId);
-    if (!session)
-      return callback({
-        code: grpc.status.NOT_FOUND,
-        message: "Game session not found",
-      });
 
-    try {
+    // ロックの中で初期化 → 保存する（Step と同じく、どのインスタンスでも同じ結果になる）
+    const handled = await withSession(gameId, async (session) => {
       const def = gameRegistry.getDefinition(session.type);
       const adapter = aiTensorRegistry.getAdapter(session.type);
       if (!def)
@@ -342,11 +334,12 @@ const gameServiceHandlers: GameServiceHandlers = {
           engine.dispatch({ type: "START", playerId: seated[0] } as any);
         }
       }
+      await session.server.commit();
       const started = engine.getState();
 
-      // 3. 学習ループ中に「空室」として掃除されないよう、タイマーを張り直す
-      clearRoomCleanup(gameId);
-      scheduleRoomCleanup(gameId);
+      // 3. 学習ループ中に「空室」として掃除されないよう、予約を張り直す
+      await clearRoomCleanup(gameId);
+      await scheduleRoomCleanup(gameId);
 
       const activePlayers = started.activePlayers || [];
 
@@ -363,15 +356,24 @@ const gameServiceHandlers: GameServiceHandlers = {
         activePlayers: activePlayers,
         stateJson: JSON.stringify(started),
       });
-    } catch (err: any) {
+      return true;
+    }).catch((err: any) => {
       callback({ code: grpc.status.INTERNAL, message: err.message } as any);
+      return true;
+    });
+
+    if (handled === null) {
+      callback({
+        code: grpc.status.NOT_FOUND,
+        message: "Game session not found",
+      });
     }
   },
 
-  Step: (call, callback) => {
+  Step: async (call, callback) => {
     if (!requireRlMode(callback)) return;
     const { gameId, playerId, actionId } = call.request;
-    const session = sessions.get(gameId);
+    const session = await ensureSession(gameId);
     if (!session)
       return callback({
         code: grpc.status.NOT_FOUND,
@@ -392,13 +394,15 @@ const gameServiceHandlers: GameServiceHandlers = {
           message: "AI Tensor Adapter not found for this game type",
         });
 
+      // 別インスタンスが進めた局面に対して decode するため、先にストアと同期する
+      await session.server.refreshFromStore();
       const state = session.server.engine.getState();
 
       // 1. 行動インデックス(actionId)を実際のGameActionオブジェクトに復元する
       const action = adapter.decodeAction(state, actionId, playerId);
 
-      // 2. アクションの適用
-      const success = session.server.handleAction(playerId, action);
+      // 2. アクションの適用（ロック → dispatch → 保存 → 配信）
+      const success = await session.server.dispatchAction(playerId, action);
       if (!success) {
         return callback({
           code: grpc.status.INVALID_ARGUMENT,
@@ -473,9 +477,9 @@ const gameServiceHandlers: GameServiceHandlers = {
     });
   },
 
-  SubmitTurn: (call, callback) => {
+  SubmitTurn: async (call, callback) => {
     const { gameId, playerId, actionId } = call.request;
-    const session = sessions.get(gameId);
+    const session = await ensureSession(gameId);
     if (!session)
       return callback({
         code: grpc.status.NOT_FOUND,

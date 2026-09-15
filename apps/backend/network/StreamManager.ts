@@ -1,5 +1,6 @@
 // apps/backend/network/StreamManager.ts
 import * as grpc from "@grpc/grpc-js";
+import { publishClusterEvent } from "./io";
 
 type GrpcStream = grpc.ServerWritableStream<any, any>;
 
@@ -40,6 +41,11 @@ class StreamManager {
         this.activeStreams.delete(gameId);
       }
     }
+  }
+
+  /** このインスタンスに、そのゲームを購読しているストリームがあるか */
+  public hasStreams(gameId: string): boolean {
+    return (this.activeStreams.get(gameId)?.size ?? 0) > 0;
   }
 
   /**
@@ -135,3 +141,17 @@ class StreamManager {
 }
 
 export const streamManager = new StreamManager();
+
+/**
+ * gRPC ボットへ手番を通知する。ボットの待ち受けストリームは別のインスタンスに繋がっている
+ * かもしれないので、ローカルに配った上でクラスタにも流す。
+ */
+export function notifyBotTurn(
+  gameId: string,
+  playerId: string,
+  stateTensor: number[],
+  legalActionIds: number[],
+): void {
+  streamManager.notifyBotTurn(gameId, playerId, stateTensor, legalActionIds);
+  publishClusterEvent("uge:bot-turn", { gameId, playerId, stateTensor, legalActionIds });
+}

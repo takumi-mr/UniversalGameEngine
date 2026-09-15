@@ -32,3 +32,19 @@ export const JWT_SECRET = resolveJwtSecret();
  * これらの RPC は無認証でセッションを操作し、マスクなしの状態を返すので本番では有効にしない。
  */
 export const isRlMode = (): boolean => process.env.RL_MODE === "true";
+
+/**
+ * リポジトリをインメモリ実装にするか。
+ * - RL_MODE: 学習ループでは Redis / MongoDB を使わない
+ * - NODE_ENV=test（`bun test` が自動で設定する）: 単体テストが外部 DB に接続しないようにする
+ */
+export const useInMemoryStore = (): boolean => isRlMode() || process.env.NODE_ENV === "test";
+
+/**
+ * 複数インスタンス構成（Socket.io の Redis アダプタ + インスタンス間通知）を有効にするか。
+ * インメモリストアのときは常に単一プロセスなので無効。
+ */
+export const isClusterMode = (): boolean => !useInMemoryStore();
+
+export const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
+export const MONGO_URL = process.env.MONGO_URL || "mongodb://localhost:27017";

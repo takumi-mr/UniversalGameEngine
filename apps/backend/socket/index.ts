@@ -1,24 +1,34 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "../config";
-import { sessions, repo, SocketGameServer, ensureSession } from "../store/sessionStore";
+import { JWT_SECRET, isClusterMode } from "../config";
+import {
+  sessions,
+  createSession,
+  withSession,
+  ensureSession,
+  dropLocalSession,
+  onRemoteStateChanged,
+  normalizeGameType,
+} from "../store/sessionStore";
 import { gameRegistry } from "@engine/shared/GameRegistry";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
-import {
-  setIoInstance,
-  scheduleRoomCleanup,
-  clearRoomCleanup,
-  updatePresence,
-} from "./roomManager";
+import { scheduleRoomCleanup, clearRoomCleanup, updatePresence } from "./roomManager";
 import { streamManager } from "../network/StreamManager";
-import { GrpcBotPlayer } from "@engine/shared/ai/AIPlayer/GrpcBotPlayer";
-import { RandomPlayer } from "@engine/shared/ai/AIPlayer/RandomPlayer";
-import { WorkerAIPlayer } from "../ai/WorkerAIPlayer";
-import { aiTensorRegistry } from "@engine/shared/ai/AITensorAdapterRegistry";
-import "@engine/shared/ai/TensorAdapter";
+import { setIoInstance, onClusterEvent } from "../network/io";
+import { isBotType } from "../ai/botFactory";
+
+/** 他インスタンスからのクラスタイベントを購読する（Redis アダプタ使用時のみ届く） */
+const setupClusterHandlers = () => {
+  onClusterEvent("uge:state-changed", ({ gameId }) => onRemoteStateChanged(gameId));
+  onClusterEvent("uge:session-deleted", ({ gameId }) => dropLocalSession(gameId));
+  onClusterEvent("uge:bot-turn", ({ gameId, playerId, stateTensor, legalActionIds }) =>
+    streamManager.notifyBotTurn(gameId, playerId, stateTensor, legalActionIds),
+  );
+};
 
 export const setupSocketIO = (io: Server) => {
-  setIoInstance(io);
+  setIoInstance(io, { cluster: isClusterMode() });
+  setupClusterHandlers();
 
   // Socket.IO ミドルウェア: JWTの検証を行う
   io.use((socket, next) => {
@@ -49,7 +59,7 @@ export const setupSocketIO = (io: Server) => {
     console.log(`User connected: ${socket.id} (User ID: ${userId})`);
 
     // 部屋の作成リクエスト
-    socket.on("request-create-game", ({ type, options }) => {
+    socket.on("request-create-game", async ({ type, options }) => {
       const def = gameRegistry.getDefinition(type.toLowerCase());
       if (!def) {
         console.error(`Unknown game type: ${type}`);
@@ -60,48 +70,9 @@ export const setupSocketIO = (io: Server) => {
       try {
         console.log(`Creating game: ${type} for user ${userId}`);
         const gameId = Math.random().toString(36).substring(7);
-        const normalizedType = type.toLowerCase().replace(/-/g, "_");
+        const normalizedType = normalizeGameType(type);
         const engine = new UniversalEngine(def.ruleset, options);
-        // ★ gameType を渡して broadcastState 内の saveSession が正しく動作するようにする
-        const server = new SocketGameServer(gameId, engine, io, normalizedType);
-        sessions.set(gameId, { server, type: normalizedType });
-
-        // AIボットを生成するヘルパー関数
-        const createBotPlayer = (botId: string, aiType: string, idx: number) => {
-          if (aiType === "grpc_bot") {
-            return new GrpcBotPlayer(botId, `gRPC Bot ${idx}`, (turnState, _legalActions) => {
-              const adapter = aiTensorRegistry.getAdapter(normalizedType);
-              if (adapter) {
-                const stateTensor = adapter.encodeState(turnState, botId);
-                const legalActionIds = turnState.activePlayers?.includes(botId)
-                  ? adapter.encodeLegalActions(turnState, botId)
-                  : [];
-                streamManager.notifyBotTurn(gameId, botId, stateTensor, legalActionIds);
-              }
-            });
-          } else if (aiType === "random") {
-            return new RandomPlayer(botId, `Random AI ${idx}`);
-          } else if (aiType === "minimax") {
-            // WorkerAIPlayer に委譲してメインスレッドをブロックしない
-            return new WorkerAIPlayer(
-              botId,
-              normalizedType,
-              "minimax",
-              { maxDepth: 3 },
-              `Minimax AI ${idx}`,
-            );
-          } else if (aiType === "mcts") {
-            // WorkerAIPlayer に委譲してメインスレッドをブロックしない
-            return new WorkerAIPlayer(
-              botId,
-              normalizedType,
-              "mcts",
-              { iterations: 1000 },
-              `MCTS AI ${idx}`,
-            );
-          }
-          return null;
-        };
+        const { server } = createSession(gameId, engine, normalizedType);
 
         // プレイヤー構成に基づいてスロットを割り当てる
         const state = engine.getState();
@@ -110,35 +81,26 @@ export const setupSocketIO = (io: Server) => {
           // playersConfig: スロットごとの種別配列 (例: ['human', 'random', 'minimax'])
           const playersConfig: string[] | undefined = options?.playersConfig;
 
+          const seatBot = (slotKey: string, aiType: string, idx: number) => {
+            if (!isBotType(aiType)) return;
+            const botId = `bot_${idx}_` + Math.random().toString(36).substring(7);
+            // 着席はエンジンの組み込み JOIN（history に記録される）
+            engine.dispatch({ type: "JOIN", playerId: botId, slot: slotKey } as any);
+            if (server.addBot({ playerId: botId, aiType, name: `${aiType} ${idx}` })) {
+              console.log(`[AI] Spawned ${aiType} ${botId} in slot ${slotKey} for game ${gameId}`);
+            }
+          };
+
           if (playersConfig && playersConfig.length > 0) {
             // カスタム構成: 各スロットに個別のタイプを割り当てる
             for (let i = 0; i < Math.min(playersConfig.length, slotKeys.length); i++) {
               const slotType = playersConfig[i];
-              const slotKey = slotKeys[i] as string;
-              if (slotType && slotType !== "human") {
-                const botId = `bot_${i}_` + Math.random().toString(36).substring(7);
-                // 着席はエンジンの組み込み JOIN（history に記録される）
-                engine.dispatch({ type: "JOIN", playerId: botId, slot: slotKey } as any);
-                const botPlayer = createBotPlayer(botId, slotType, i);
-                if (botPlayer) {
-                  server.aiPlayers.set(botId, botPlayer);
-                  console.log(
-                    `[AI] Spawned ${slotType} ${botId} in slot ${slotKey} for game ${gameId}`,
-                  );
-                }
-              }
+              if (slotType && slotType !== "human") seatBot(slotKeys[i] as string, slotType, i);
             }
           } else if (options?.addAi) {
             // レガシー互換: 最初のスロットを人間用に残し、残りを同じAIで埋める
             for (let i = 1; i < slotKeys.length; i++) {
-              const slotKey = slotKeys[i] as string;
-              const botId = `bot_${i}_` + Math.random().toString(36).substring(7);
-              engine.dispatch({ type: "JOIN", playerId: botId, slot: slotKey } as any);
-              const botPlayer = createBotPlayer(botId, options.addAi, i);
-              if (botPlayer) {
-                server.aiPlayers.set(botId, botPlayer);
-                console.log(`[AI] Spawned ${options.addAi} ${botId} in game ${gameId}`);
-              }
+              seatBot(slotKeys[i] as string, options.addAi, i);
             }
           }
 
@@ -152,18 +114,18 @@ export const setupSocketIO = (io: Server) => {
             if (engine.dispatch({ type: "START", playerId: seated[0] } as any)) {
               console.log(`[AI] All slots filled — game ${gameId} auto-started`);
             }
-
-            // 全員AIなら即座にAIターンを開始
-            setTimeout(() => server.broadcastState(), 100);
           }
         }
+
+        // 他のインスタンスからも見えるように保存する（全員 AI なら配信をきっかけに AI が動き出す）
+        await server.commit();
 
         // 作成した本人に ID を送り返す
         socket.emit("game-created", gameId);
         console.log(`Game ${gameId} created via WebSocket by ${userId}`);
 
         // 誰もいない状態で作成されるため、すぐにクリーンアップ対象にする（参加しなければ5分後に消える）
-        scheduleRoomCleanup(gameId);
+        await scheduleRoomCleanup(gameId);
       } catch (error) {
         console.error(`Failed to create game ${type}:`, error);
         socket.emit("error-message", `Failed to create game: ${(error as Error).message || error}`);
@@ -173,98 +135,95 @@ export const setupSocketIO = (io: Server) => {
     // ルーム（ゲーム）への参加
     socket.on("join-game", async (gameId: string, options?: { asSpectator?: boolean }) => {
       const asSpectator = options?.asSpectator ?? false;
-      clearRoomCleanup(gameId);
+      await clearRoomCleanup(gameId);
       socket.join(gameId);
 
-      // ★ メモリになければ Redis / MongoDB から復元する（ステートレス対応）
-      const session = await ensureSession(gameId, io);
-      if (!session) {
+      // ★ ロックを取り、メモリになければストアから復元する（どのインスタンスでも同じ対局を扱える）
+      const result = await withSession(gameId, async (session) => {
+        const engine = session.server.engine;
+        const state = engine.getState();
+
+        // プレイヤーの自動割り当て（空いている席に座る）。
+        // 着席・開始はエンジンの組み込み JOIN / START で行い、history に記録する（リプレイで再現可能にするため）
+        if (state.players && !asSpectator) {
+          const isAlreadyAssigned = Object.values(state.players).includes(userId);
+          const joined =
+            !isAlreadyAssigned && engine.dispatch({ type: "JOIN", playerId: userId } as any);
+
+          if (joined) {
+            console.log(`User ${userId} joined game ${gameId}`);
+            const current = engine.getState();
+            const uniquePlayersCount = new Set(
+              Object.values(current.players ?? {}).filter((p) => p !== null),
+            ).size;
+            const def = gameRegistry.getDefinition(session.type);
+
+            if (current.status === "WAITING" && def && uniquePlayersCount >= def.minPlayers) {
+              const firstPlayerId = Object.values(current.players ?? {}).find((p) => p !== null)!;
+              if (engine.dispatch({ type: "START", playerId: firstPlayerId } as any)) {
+                console.log(`Game ${gameId} started (by ${firstPlayerId})`);
+              }
+            }
+            await session.server.commit();
+          }
+        }
+        return session;
+      });
+
+      if (!result) {
         socket.emit("error-message", "Game session not found");
         return;
       }
 
-      const state = session.server.engine.getState();
-
-      // プレイヤーの自動割り当て（空いている席に座る）。
-      // 着席・開始はエンジンの組み込み JOIN / START で行い、history に記録する（リプレイで再現可能にするため）
-      if (state.players && !asSpectator) {
-        const engine = session.server.engine;
-        const isAlreadyAssigned = Object.values(state.players).includes(userId);
-        const joined =
-          !isAlreadyAssigned && engine.dispatch({ type: "JOIN", playerId: userId } as any);
-
-        if (joined) {
-          console.log(`User ${userId} joined game ${gameId}`);
-          const current = engine.getState();
-          const uniquePlayersCount = new Set(
-            Object.values(current.players ?? {}).filter((p) => p !== null),
-          ).size;
-          const normalizedType = session.type.toLowerCase().replace(/-/g, "_");
-          const def = gameRegistry.getDefinition(normalizedType);
-
-          if (current.status === "WAITING" && def && uniquePlayersCount >= def.minPlayers) {
-            const firstPlayerId = Object.values(current.players ?? {}).find((p) => p !== null)!;
-            if (engine.dispatch({ type: "START", playerId: firstPlayerId } as any)) {
-              console.log(`Game ${gameId} started (by ${firstPlayerId})`);
-            }
-          }
-          await repo.save(gameId, engine.getState(), false);
-        }
-      }
-
-      // 参加した瞬間に現在の状態を送信
-      console.log(`User ${userId} (socket: ${socket.id}) joined room ${gameId}`);
+      const state = result.server.engine.getState();
       const players = state.players
         ? (Object.values(state.players).filter(Boolean) as string[])
         : [];
-      const isPlayer = players.includes(userId);
-      const targetId = isPlayer ? userId : "SPECTATOR";
-      const maskedState = session.server.engine.getMaskedState(targetId);
-      socket.emit("state-update", maskedState);
 
-      if (state.players && Object.values(state.players).some((p) => p !== null)) {
-        session.server.broadcastState(); // 割り当てがあった場合、全員に通知 (マスク対応)
+      // 参加した瞬間に現在の状態を送信
+      console.log(`User ${userId} (socket: ${socket.id}) joined room ${gameId}`);
+      const targetId = players.includes(userId) ? userId : "SPECTATOR";
+      socket.emit("state-update", result.server.engine.getMaskedState(targetId));
+
+      if (players.length > 0) {
+        // 割り当てがあった場合、全員に通知 (マスク対応)
+        result.server.broadcastLocal();
 
         // プレイヤーとして割り当てられているならプレイヤー専用ルームにも入る
-        if (Object.values(state.players).includes(userId)) {
+        if (players.includes(userId)) {
           socket.join(`${gameId}:players`);
           console.log(`User ${userId} joined players-only room for ${gameId}`);
         }
       }
-      updatePresence(gameId);
+      await updatePresence(gameId);
     });
 
     // ルームからの退出
     socket.on("leave-game", async (gameId: string) => {
       console.log(`User ${userId} requested to leave game ${gameId}`);
-      const session = sessions.get(gameId);
-      if (session) {
+      await withSession(gameId, async (session) => {
         const state = session.server.engine.getState();
-        if (state.players) {
-          // プレイヤーとして割り当てられていた場合、スロットをクリアする
-          let updated = false;
-          for (const [key, val] of Object.entries(state.players)) {
-            if (val === userId) {
-              state.players[key] = null;
-              updated = true;
-              console.log(`Cleared slot "${key}" for user ${userId} in game ${gameId}`);
-            }
-          }
-          if (updated) {
-            await repo.save(gameId, state, false);
-            session.server.broadcastState();
+        if (!state.players) return;
+        // プレイヤーとして割り当てられていた場合、スロットをクリアする
+        let updated = false;
+        for (const [key, val] of Object.entries(state.players)) {
+          if (val === userId) {
+            state.players[key] = null;
+            updated = true;
+            console.log(`Cleared slot "${key}" for user ${userId} in game ${gameId}`);
           }
         }
-      }
+        if (updated) await session.server.commit();
+      });
       socket.leave(gameId);
       socket.leave(`${gameId}:players`);
-      updatePresence(gameId);
+      await updatePresence(gameId);
     });
 
     // チャットメッセージの送信
     socket.on("send-chat", async ({ gameId, message, channel, recipientId }) => {
       if (!message || typeof message !== "string") return;
-      const session = sessions.get(gameId);
+      const session = await ensureSession(gameId);
       if (!session) return;
 
       const chatPayload = {
@@ -288,13 +247,8 @@ export const setupSocketIO = (io: Server) => {
         }
 
         if (recipientId && recipientId !== "all") {
-          // 特定の個人への送信
-          // 送信者と受信者にのみ送信する
-          // Socket.IOでは room への emit が基本だが、個別送信の場合は to(userId) を使う
-          // Note: userId は socket.data.userId に紐付いているので、
-          // サーバー全体のソケットからその userId を持つソケットを探すか、
-          // プレイヤーごとのIDをルーム名として使っている場合はそれを利用する。
-          // ここではシンプルに、全てのソケットから userId が一致するものをフィルタリングして送信する。
+          // 特定の個人への送信: 送信者と受信者にのみ送信する
+          // （fetchSockets はアダプタ越しに他インスタンスのソケットも返す）
           const targetSockets = await io.in(gameId).fetchSockets();
           for (const s of targetSockets) {
             if (s.data.userId === recipientId || s.data.userId === userId) {
@@ -322,7 +276,7 @@ export const setupSocketIO = (io: Server) => {
 
     // 着手アクションの受信
     socket.on("dispatch-action", async ({ gameId, action }) => {
-      const session = sessions.get(gameId);
+      const session = await ensureSession(gameId);
       if (!session) return;
 
       const currentState = session.server.engine.getState();
@@ -339,24 +293,25 @@ export const setupSocketIO = (io: Server) => {
         return;
       }
 
-      // GenericGameServer の handleAction は playerId の強制上書きや broadcastState() を内包する
-      const success = session.server.handleAction(socket.data.userId, action);
-
-      if (success) {
-        const state = session.server.engine.getState();
-        // 状態を永続化（終了フラグをチェックしてMongoDBへの保存判断）
-        await repo.save(gameId, state, state.status === "FINISHED");
-      } else {
-        socket.emit("error-message", "Invalid move or not your turn!");
+      // dispatchAction はロック → 最新化 → dispatch → 保存 → 配信 までを行う
+      try {
+        const success = await session.server.dispatchAction(socket.data.userId, action);
+        if (!success) {
+          socket.emit("error-message", "Invalid move or not your turn!");
+        }
+      } catch (err) {
+        // ロック待ちのタイムアウトやストア障害。クライアントには再試行を促す
+        console.error(`[Socket] dispatch-action failed for game ${gameId}:`, err);
+        socket.emit("error-message", "Failed to apply the action. Please retry.");
       }
     });
 
     // フルデータの再同期リクエスト
-    socket.on("request-full-state", ({ gameId }) => {
-      const session = sessions.get(gameId);
+    socket.on("request-full-state", async ({ gameId }) => {
+      const session = await ensureSession(gameId);
       if (session) {
         console.log(`[Socket] User ${userId} requested full state for game ${gameId}`);
-        session.server.broadcastState(socket.id);
+        session.server.broadcastLocal(socket.id);
       }
     });
 
@@ -370,7 +325,9 @@ export const setupSocketIO = (io: Server) => {
           const session = sessions.get(room);
           if (session) {
             session.server.handleDisconnect(socket.id);
-            updatePresence(room);
+            updatePresence(room).catch((err) =>
+              console.error(`[Presence] Failed to update presence for ${room}:`, err),
+            );
           }
         }
       });

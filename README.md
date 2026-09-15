@@ -194,7 +194,7 @@ sequenceDiagram
 
 - **State Delta (JSON Patch)**: 状態全体ではなく、変更箇所のみを送信することで通信帯域を劇的に削減。
 - **プロトコル・アグノスティック**: `INetworkClient` 抽象化により、WebSocket (低遅延重視) と gRPC (型安全・高スループット重視) を透過的に切り替え可能。
-- **ステートレス設計**: エンジン状態は MongoDB/Redis に永続化され、サーバーを跨いだスケーリングが容易です。
+- **ステートレス設計**: 対局の状態（AI ボット構成を含む）は Redis / MongoDB に永続化され、着手は Redis ロックの中で「読込 → 適用 → 保存」されます。Socket.io は Redis アダプタで束ねられ、空室クリーンアップも Redis 上の予約で動くため、バックエンドはそのまま複数台に並べられます（[apps/backend/README.md](./apps/backend/README.md)）。
 
 ---
 

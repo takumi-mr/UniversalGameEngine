@@ -1,67 +1,89 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config";
-import { sessions } from "../store/sessionStore";
-import { getIoInstance } from "../socket/roomManager";
+import { repo } from "../store/sessionStore";
+import { countRoomSockets } from "../network/io";
 
 const router = Router();
 
+interface RoomSummary {
+  id: string;
+  type: string;
+  playerCount: number;
+}
+
+/**
+ * ルーム一覧はリポジトリ（全インスタンス共通）から取り、在室数はアダプタ越しにクラスタ全体で数える。
+ * このインスタンスのメモリにあるセッションだけを返すと、別インスタンスで作られた部屋が見えない。
+ */
+const listRooms = async (filter?: (type: string) => boolean): Promise<RoomSummary[]> => {
+  const all = await repo.listSessions();
+  const matched = filter ? all.filter((s) => filter(s.type)) : all;
+  return Promise.all(
+    matched.map(async ({ gameId, type }) => ({
+      id: gameId,
+      type,
+      playerCount: await countRoomSockets(gameId),
+    })),
+  );
+};
+
 // アクティブなルーム一覧の取得
-router.get("/", (req, res) => {
-  const io = getIoInstance();
-  const roomList = Array.from(sessions.entries()).map(([id, session]) => ({
-    id,
-    type: session.type,
-    playerCount: io.sockets.adapter.rooms.get(id)?.size ?? 0,
-  }));
-  res.json({ rooms: roomList });
+router.get("/", async (_req, res) => {
+  try {
+    res.json({ rooms: await listRooms() });
+  } catch (err) {
+    console.error("[/rooms] Error:", err);
+    res.status(500).json({ error: "Failed to list rooms" });
+  }
 });
 
 // ログインユーザーが参加しているルーム一覧
-router.get("/my", (req, res) => {
+router.get("/my", async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: "No token" });
 
+  let userId: string;
   try {
     const token = authHeader.split(" ")[1];
     if (!token) return res.status(401).json({ error: "No token" });
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    const userId = decoded.userId;
-    const io = getIoInstance();
-    const myRooms = Array.from(sessions.entries())
-      .filter(([_id, session]) => {
-        const state = session.server.engine.getState();
-        const players = state.players ? Object.values(state.players) : [];
-        // Case-insensitive comparison
-        return players.some(
-          (p) => typeof p === "string" && p.toLowerCase() === userId.toLowerCase(),
-        );
-      })
-      .map(([id, session]) => ({
-        id,
-        type: session.type,
-        playerCount: io.sockets.adapter.rooms.get(id)?.size ?? 0,
-      }));
-
-    res.json({ rooms: myRooms });
+    userId = decoded.userId;
   } catch (err) {
     console.error("[/rooms/my] Error:", err);
-    res.status(401).json({ error: "Invalid token" });
+    return res.status(401).json({ error: "Invalid token" });
+  }
+
+  try {
+    const all = await repo.listSessions();
+    const mine: RoomSummary[] = [];
+    for (const { gameId, type } of all) {
+      const record = await repo.loadSession(gameId);
+      const players = record?.state?.players ? Object.values(record.state.players) : [];
+      // Case-insensitive comparison
+      const isMember = players.some(
+        (p) => typeof p === "string" && p.toLowerCase() === userId.toLowerCase(),
+      );
+      if (isMember) {
+        mine.push({ id: gameId, type, playerCount: await countRoomSockets(gameId) });
+      }
+    }
+    res.json({ rooms: mine });
+  } catch (err) {
+    console.error("[/rooms/my] Error:", err);
+    res.status(500).json({ error: "Failed to list rooms" });
   }
 });
 
 // ゲーム種別ごとのルーム一覧
-router.get("/:gameType", (req, res) => {
+router.get("/:gameType", async (req, res) => {
   const gameType = req.params.gameType.toLowerCase();
-  const io = getIoInstance();
-  const roomList = Array.from(sessions.entries())
-    .filter(([_, session]) => session.type.toLowerCase() === gameType)
-    .map(([id, session]) => ({
-      id,
-      type: session.type,
-      playerCount: io.sockets.adapter.rooms.get(id)?.size ?? 0,
-    }));
-  res.json({ rooms: roomList });
+  try {
+    res.json({ rooms: await listRooms((type) => type.toLowerCase() === gameType) });
+  } catch (err) {
+    console.error(`[/rooms/${gameType}] Error:`, err);
+    res.status(500).json({ error: "Failed to list rooms" });
+  }
 });
 
 export default router;

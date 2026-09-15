@@ -1,10 +1,8 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config";
-import { sessions, repo, SocketGameServer } from "../store/sessionStore";
+import { ensureSession, withSession } from "../store/sessionStore";
 import { getIoInstance, updatePresence } from "../socket/roomManager";
-import { gameRegistry } from "@engine/shared/GameRegistry";
-import { UniversalEngine } from "@engine/shared/UniversalEngine";
 
 const router = Router();
 
@@ -14,45 +12,43 @@ router.post("/:gameId/leave", async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: "No token" });
 
+  let userId: string;
   try {
     const token = authHeader.split(" ")[1];
     if (!token) return res.status(401).json({ error: "No token" });
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    const userId = decoded.userId;
+    userId = decoded.userId;
+  } catch {
+    return res.status(401).json({ error: "Invalid token" });
+  }
 
-    const session = sessions.get(gameId);
-    if (!session) return res.status(404).json({ error: "Game not found" });
-
+  // ロックの中でスロットを空け、保存してから通知する
+  const result = await withSession(gameId, async (session) => {
     const state = session.server.engine.getState();
-    if (state.players) {
-      let found = false;
-      for (const key in state.players) {
-        if (state.players[key] === userId) {
-          state.players[key] = null;
-          found = true;
-          break;
-        }
-      }
-
-      if (found) {
-        // 通知メッセージをセット
-        state.message = `${userId} has left the game`;
-
-        await repo.save(gameId, state, false);
-        session.server.broadcastState();
-
-        // 全員にエラー/通知として送信（フロントエンドのトースト用）
-        const io = getIoInstance();
-        io.to(gameId).emit("error-message", `${userId} has left the game`);
-
-        updatePresence(gameId);
-        return res.json({ success: true });
+    if (!state.players) return false;
+    let found = false;
+    for (const key in state.players) {
+      if (state.players[key] === userId) {
+        state.players[key] = null;
+        found = true;
+        break;
       }
     }
-    res.status(400).json({ error: "User not in game" });
-  } catch {
-    res.status(401).json({ error: "Invalid token" });
-  }
+    if (!found) return false;
+
+    // 通知メッセージをセット
+    state.message = `${userId} has left the game`;
+    await session.server.commit();
+    return true;
+  });
+
+  if (result === null) return res.status(404).json({ error: "Game not found" });
+  if (!result) return res.status(400).json({ error: "User not in game" });
+
+  // 全員にエラー/通知として送信（フロントエンドのトースト用）
+  getIoInstance().to(gameId).emit("error-message", `${userId} has left the game`);
+  await updatePresence(gameId);
+  return res.json({ success: true });
 });
 
 // --- HTTP Polling Endpoints ---
@@ -61,35 +57,23 @@ router.get("/:gameId/state", async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: "No token" });
 
+  let userId: string;
   try {
     const token = authHeader.split(" ")[1];
     if (!token) return res.status(401).json({ error: "No token" });
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    const userId = decoded.userId as string;
-
-    let session = sessions.get(gameId.toLowerCase());
-    if (!session) {
-      const savedData = await repo.load(gameId);
-      if (savedData) {
-        const def = gameRegistry.getDefinition(savedData.type);
-        if (def) {
-          const engine = new UniversalEngine(def.ruleset, {});
-          engine.loadState(savedData.state);
-          const io = getIoInstance();
-          const server = new SocketGameServer(gameId, engine, io);
-          sessions.set(gameId, { server, type: savedData.type });
-          session = sessions.get(gameId);
-        }
-      } else {
-        return res.status(404).json({ error: "Game not found" });
-      }
-    }
-
-    const state = session!.server.getPollingState(userId);
-    res.json({ state });
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    userId = decoded.userId;
   } catch {
-    res.status(401).json({ error: "Invalid token computation" });
+    return res.status(401).json({ error: "Invalid token" });
   }
+
+  // メモリになければストアから復元する（どのインスタンスに当たっても同じ結果になる）
+  const session = await ensureSession(gameId);
+  if (!session) return res.status(404).json({ error: "Game not found" });
+
+  // ポーリングは別インスタンスの更新を見逃しやすいので、返す前にストアと同期する
+  await session.server.refreshFromStore();
+  res.json({ state: session.server.getPollingState(userId) });
 });
 
 router.post("/:gameId/action", async (req, res) => {
@@ -98,25 +82,24 @@ router.post("/:gameId/action", async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: "No token" });
 
+  let userId: string;
   try {
     const token = authHeader.split(" ")[1];
     if (!token) return res.status(401).json({ error: "No token" });
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    const userId = decoded.userId as string;
-
-    const session = sessions.get(gameId);
-    if (!session) return res.status(404).json({ error: "Game not found" });
-
-    const success = session.server.handleAction(userId, action);
-    if (success) {
-      const state = session.server.engine.getState();
-      await repo.save(gameId, state, state.status === "FINISHED");
-      res.json({ success: true, state: session.server.getPollingState(userId) });
-    } else {
-      res.status(400).json({ error: "Invalid action or not your turn" });
-    }
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    userId = decoded.userId;
   } catch {
-    res.status(401).json({ error: "Invalid token" });
+    return res.status(401).json({ error: "Invalid token" });
+  }
+
+  const session = await ensureSession(gameId);
+  if (!session) return res.status(404).json({ error: "Game not found" });
+
+  const success = await session.server.dispatchAction(userId, action);
+  if (success) {
+    res.json({ success: true, state: session.server.getPollingState(userId) });
+  } else {
+    res.status(400).json({ error: "Invalid action or not your turn" });
   }
 });
 
