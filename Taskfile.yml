@@ -39,10 +39,23 @@ tasks:
       # Other variables from .env are automatically loaded by Task
 
   rl:
+    desc: Run the backend in RL mode (in-memory, no Redis/MongoDB) for gRPC Reset/Step training
     env:
       RL_MODE: "true"
     cmds:
       - bun run apps/backend/server.ts
+
+  ml:train:
+    desc: Train the Othello DQN against a running RL-mode backend (see apps/ml/README.md)
+    dir: apps/ml
+    cmds:
+      - python -m uge_rl.train --game othello --out ../../models/othello_dqn.pt {{.CLI_ARGS}}
+
+  ml:eval:
+    desc: Evaluate a trained model vs random player
+    dir: apps/ml
+    cmds:
+      - python -m uge_rl.evaluate --checkpoint ../../models/othello_dqn.pt {{.CLI_ARGS}}
 
   clean:
     desc: Stop infrastructure and remove volumes

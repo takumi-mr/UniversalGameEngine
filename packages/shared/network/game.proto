@@ -73,8 +73,12 @@ message StepRequest {
 }
 
 message StepResponse {
+    // 次に行動権を持つプレイヤー（active_players[0]）視点の状態テンソルと合法手。
+    // 自己対戦ループでは 1 つのクライアントが全プレイヤーを操作するため、
+    // 「次に手を指す側」の観測をそのまま返す。ゲーム終了時は player_id 視点。
     repeated float next_state_tensor = 1;
     repeated int32 legal_action_ids = 2;
+    // player_id（この Step で手を指したプレイヤー）視点の報酬。終局時のみ非ゼロ。
     float reward = 3;
     bool is_finished = 4;
     // この状態において行動権があるプレイヤーのID（自分以外ならAIは待機する）
@@ -82,8 +86,11 @@ message StepResponse {
 }
 
 // ゲームを初期状態にリセットする（AIの自己対戦ループ用）
+// リセット後は全席にプレイヤーを着席させ、status を PLAYING にして即座に Step 可能な状態にする。
 message ResetGameRequest {
     string game_id = 1;
+    // 着席させるプレイヤーIDのリスト。省略時は "player_1", "player_2", ... が自動生成される。
+    repeated string player_ids = 2;
 }
 
 message ResetGameResponse {

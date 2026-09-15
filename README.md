@@ -52,6 +52,7 @@ bun run dev  # または task dev
 - **[`apps/frontend`](./apps/frontend/README.md)**: Vue 3 + Vite + TypeScript。Three.jsを利用した3D表示をサポート。ブラウザ版に加え、**Electron** によるデスクトップアプリも提供。
 - **[`apps/backend`](./apps/backend/README.md)**: Bunベース。Socket.io、gRPC (Node gRPC JS) の両方を搭載。
 - **[`packages/shared`](./packages/shared/README.md)**: コアエンジン、AIプレイヤー、および各ゲームのルールセット定義。
+- **[`apps/ml`](./apps/ml/README.md)**: Python (PyTorch)。gRPC の `Reset`/`Step` を使った強化学習クライアントと Google Colab ノートブック。
 
 ---
 

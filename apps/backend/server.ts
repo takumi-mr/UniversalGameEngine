@@ -42,4 +42,4 @@ httpServer.listen(PORT, () => {
 });
 
 const GRPC_PORT = process.env.GRPC_PORT || 50051;
-startGrpcServer(GRPC_PORT);
+startGrpcServer(GRPC_PORT).catch((err) => console.error("[gRPC] startup failed:", err));

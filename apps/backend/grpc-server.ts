@@ -7,9 +7,11 @@ import { JWT_SECRET } from "./config";
 import { sessions, SocketGameServer } from "./store/sessionStore";
 import { gameRegistry } from "@engine/shared/GameRegistry";
 import { aiTensorRegistry } from "@engine/shared/ai/AITensorAdapterRegistry";
+// 組み込みテンソルアダプタ（othello 等）を aiTensorRegistry に登録する
+import "@engine/shared/ai/adapters";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import type { GameServiceHandlers } from "@engine/shared/network/generated/universal_game_engine/GameService";
-import { getIoInstance, scheduleRoomCleanup } from "./socket/roomManager";
+import { getIoInstance, scheduleRoomCleanup, clearRoomCleanup } from "./socket/roomManager";
 import { streamManager } from "./network/StreamManager";
 
 const PROTO_PATH = path.resolve(__dirname, "../../packages/shared/network/game.proto");
@@ -203,7 +205,7 @@ const gameServiceHandlers: GameServiceHandlers = {
   },
 
   Reset: (call, callback) => {
-    const { gameId } = call.request;
+    const { gameId, playerIds } = call.request;
     const session = sessions.get(gameId);
     if (!session)
       return callback({
@@ -225,18 +227,42 @@ const gameServiceHandlers: GameServiceHandlers = {
           message: "AI Tensor Adapter not found for this game type",
         });
 
-      // 1. エンジンの状態をリセットする
-      if (typeof (session.server.engine as any).reset === "function") {
-        (session.server.engine as any).reset();
-      } else {
-        const initialState = def.ruleset.getInitialState(session.server.engine.options);
-        session.server.engine.loadState(initialState);
+      // 1. エンジンの状態を初期状態に戻す
+      const engine = session.server.engine;
+      engine.loadState(def.ruleset.getInitialState(engine.options));
+      const state = engine.getState();
+
+      // 2. 全席にプレイヤーを着席させ、即座に Step 可能な PLAYING 状態にする
+      //    （Socket.io の join-game を経由しない RL クライアント向け）
+      if (state.players) {
+        const slotKeys = Object.keys(state.players);
+        const seated: string[] = [];
+        slotKeys.forEach((slotKey, i) => {
+          const pid = playerIds?.[i] || `player_${i + 1}`;
+          state.players![slotKey] = pid;
+          seated.push(pid);
+        });
+
+        for (const pid of seated) {
+          engine.dispatch({ type: "JOIN", playerId: pid } as any);
+        }
+        if (state.status === "WAITING") {
+          if (!engine.dispatch({ type: "START", playerId: seated[0] } as any)) {
+            state.status = "PLAYING";
+          }
+        }
+        if (!state.activePlayers || state.activePlayers.length === 0) {
+          state.activePlayers = seated.filter((pid) => engine.getLegalActions(pid).length > 0);
+        }
       }
 
-      const state = session.server.engine.getState();
+      // 3. 学習ループ中に「空室」として掃除されないよう、タイマーを張り直す
+      clearRoomCleanup(gameId);
+      scheduleRoomCleanup(gameId);
+
       const activePlayers = state.activePlayers || [];
 
-      // 2. 状態をAI用テンソル（数値配列）に変換
+      // 4. 状態をAI用テンソル（数値配列）に変換
       const perspectivePlayerId = activePlayers.length > 0 ? activePlayers[0] : "";
 
       const stateTensor = adapter.encodeState(state, perspectivePlayerId);
@@ -310,10 +336,11 @@ const gameServiceHandlers: GameServiceHandlers = {
       const activePlayers = nextState.activePlayers || [];
 
       // 5. 次の状態のテンソルと合法手リストを取得
-      const stateTensor = adapter.encodeState(nextState, playerId);
-      const legalActionIds = activePlayers.includes(playerId)
-        ? adapter.encodeLegalActions(nextState, playerId)
-        : [];
+      //    自己対戦ループでは 1 クライアントが全員を操作するため、
+      //    「次に行動するプレイヤー」の視点で観測を返す（終局時は手を指した本人の視点）
+      const observerId = !isFinished && activePlayers.length > 0 ? activePlayers[0] : playerId;
+      const stateTensor = adapter.encodeState(nextState, observerId);
+      const legalActionIds = isFinished ? [] : adapter.encodeLegalActions(nextState, observerId);
 
       callback(null, {
         nextStateTensor: stateTensor,
@@ -380,14 +407,23 @@ const gameServiceHandlers: GameServiceHandlers = {
   },
 };
 
-export const startGrpcServer = (port: number | string) => {
+export const startGrpcServer = (
+  port: number | string,
+): Promise<{ server: grpc.Server; port: number }> => {
   const server = new grpc.Server();
   server.addService(universal_game_engine.GameService.service, gameServiceHandlers as any);
-  server.bindAsync(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure(), (err, port) => {
-    if (err) {
-      console.error(`[gRPC] Failed to bind: ${err.message}`);
-      return;
-    }
-    console.log(`🚀 gRPC Server running on port ${port}`);
+  return new Promise((resolve, reject) => {
+    server.bindAsync(
+      `0.0.0.0:${port}`,
+      grpc.ServerCredentials.createInsecure(),
+      (err, boundPort) => {
+        if (err) {
+          console.error(`[gRPC] Failed to bind: ${err.message}`);
+          return reject(err);
+        }
+        console.log(`🚀 gRPC Server running on port ${boundPort}`);
+        resolve({ server, port: boundPort });
+      },
+    );
   });
 };
