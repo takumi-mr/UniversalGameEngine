@@ -83,6 +83,8 @@ message StepResponse {
     bool is_finished = 4;
     // この状態において行動権があるプレイヤーのID（自分以外ならAIは待機する）
     repeated string active_players = 5;
+    // 次の局面の完全な状態（マスクなし）。Simulate の親局面として使う
+    string state_json = 6;
 }
 
 // ゲームを初期状態にリセットする（AIの自己対戦ループ用）
@@ -97,6 +99,38 @@ message ResetGameResponse {
     repeated float initial_state_tensor = 1;
     repeated int32 initial_legal_action_ids = 2;
     repeated string active_players = 3;
+    // 初期局面の完全な状態（マスクなし）。Simulate の親局面として使う
+    string state_json = 4;
+}
+
+// 任意の局面に 1 手適用する（セッション不要・副作用なし）。
+// 木探索（MCTS 等）で「この局面からこの手を指したらどうなるか」を試すために使う。
+// state_json はサーバーが返した完全な状態をそのまま渡す（クライアントは中身を解釈しなくてよい）。
+message SimulateRequest {
+    string game_type = 1;
+    string state_json = 2;
+    string player_id = 3;
+    int32 action_id = 4;
+}
+
+message SimulateResponse {
+    string state_json = 1;               // 適用後の局面
+    repeated float state_tensor = 2;     // 次に行動するプレイヤー視点（終局時は player_id 視点）
+    repeated int32 legal_action_ids = 3;
+    float reward = 4;                    // player_id 視点。終局時のみ非ゼロ
+    bool is_finished = 5;
+    repeated string active_players = 6;
+    // 不正な手などで適用できなかった場合のメッセージ（空なら成功）。Batch で個別に失敗を返すために使う
+    string error = 7;
+}
+
+// RPC オーバーヘッド削減用。items は互いに独立で、順序どおりに結果を返す
+message BatchSimulateRequest {
+    repeated SimulateRequest items = 1;
+}
+
+message BatchSimulateResponse {
+    repeated SimulateResponse items = 1;
 }
 
 // 実際のプレイでAIボットがターンを待避・送信するためのリクエスト
@@ -128,6 +162,9 @@ service GameService {
     // AI学習ループ専用のエンドポイント
     rpc Step(StepRequest) returns (StepResponse);
     rpc Reset(ResetGameRequest) returns (ResetGameResponse);
+    // 木探索用のステートレスなシミュレーション
+    rpc Simulate(SimulateRequest) returns (SimulateResponse);
+    rpc BatchSimulate(BatchSimulateRequest) returns (BatchSimulateResponse);
 
     // AIプレイ用のエンドポイント
     rpc WaitForTurn(WaitForTurnRequest) returns (stream WaitForTurnResponse);

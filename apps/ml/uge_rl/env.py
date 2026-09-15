@@ -4,6 +4,7 @@
   - Reset: 全席に player_ids を着席させ PLAYING にし、active_players[0] 視点の観測を返す
   - Step : player_id が action_id を指す。戻り値の観測・合法手は「次に行動するプレイヤー」視点、
            reward は手を指した player_id 視点（終局時のみ非ゼロ。勝=1, 負=-1, 引分=0.5）
+  - Simulate / BatchSimulate: セッションに触れず、渡した state_json に 1 手適用した結果を返す（木探索用）
 """
 
 from __future__ import annotations
@@ -25,10 +26,18 @@ class StepResult:
     reward: float  # 手を指したプレイヤー視点の報酬
     done: bool
     active_players: list[str] = field(default_factory=list)
+    # 局面の完全な状態（サーバーが返す JSON 文字列）。Simulate の親局面としてそのまま渡す。中身は解釈しない
+    state_json: str = ""
+    # Simulate 専用: 空文字なら成功。不正な手などの場合にメッセージが入る
+    error: str = ""
 
     @property
     def next_player(self) -> str | None:
         return self.active_players[0] if self.active_players else None
+
+    @property
+    def ok(self) -> bool:
+        return self.error == ""
 
 
 class GrpcGameEnv:
@@ -58,6 +67,8 @@ class GrpcGameEnv:
         self.game_id: str | None = None
         self.n_actions: int | None = None
         self.obs_dim: int | None = None
+        # 直近の reset / step が返した局面（Simulate のルートに使う）
+        self.state_json: str = ""
 
     # ------------------------------------------------------------------ 接続
     def connect(self, wait_ready_sec: float = 30.0) -> "GrpcGameEnv":
@@ -112,6 +123,7 @@ class GrpcGameEnv:
 
         obs = np.asarray(res.initial_state_tensor, dtype=np.float32)
         legal = np.asarray(res.initial_legal_action_ids, dtype=np.int64)
+        self.state_json = res.state_json
         self.obs_dim = obs.shape[0]
         if self.n_actions is None:
             # 行動空間の大きさはアダプタの定義次第。盤面ゲームでは obs_dim == n_actions が基本
@@ -131,17 +143,62 @@ class GrpcGameEnv:
             game_pb2.StepRequest(game_id=self.game_id, player_id=player_id, action_id=int(action_id)),
             timeout=self.rpc_timeout,
         )
-        reward = float(res.reward)
-        # エンジンは引き分けを 0.5 で返すが、ゼロサム学習では 0 の方が扱いやすい
-        if res.is_finished and abs(reward - 0.5) < 1e-6:
-            reward = self.draw_reward
+        self.state_json = res.state_json
         return StepResult(
             obs=np.asarray(res.next_state_tensor, dtype=np.float32),
             legal_actions=np.asarray(res.legal_action_ids, dtype=np.int64),
-            reward=reward,
+            reward=self._normalize_reward(res.reward, res.is_finished),
             done=bool(res.is_finished),
             active_players=list(res.active_players),
+            state_json=res.state_json,
         )
+
+    def _normalize_reward(self, reward: float, is_finished: bool) -> float:
+        # エンジンは引き分けを 0.5 で返すが、ゼロサム学習では 0 の方が扱いやすい
+        reward = float(reward)
+        if is_finished and abs(reward - 0.5) < 1e-6:
+            return self.draw_reward
+        return reward
+
+    # ------------------------------------------------------------------ 木探索用（セッション非依存）
+    def _simulate_request(self, state_json: str, player_id: str, action_id: int):
+        return game_pb2.SimulateRequest(
+            game_type=self.game_type,
+            state_json=state_json,
+            player_id=player_id,
+            action_id=int(action_id),
+        )
+
+    def _to_sim_result(self, res) -> StepResult:
+        return StepResult(
+            obs=np.asarray(res.state_tensor, dtype=np.float32),
+            legal_actions=np.asarray(res.legal_action_ids, dtype=np.int64),
+            reward=self._normalize_reward(res.reward, res.is_finished),
+            done=bool(res.is_finished),
+            active_players=list(res.active_players),
+            state_json=res.state_json,
+            error=res.error,
+        )
+
+    def simulate(self, state_json: str, player_id: str, action_id: int) -> StepResult:
+        """任意の局面に 1 手適用した結果を返す。セッションの実局面は変化しない。
+
+        失敗（不正な手など）は例外ではなく result.error に入る。
+        """
+        res = self.stub.Simulate(
+            self._simulate_request(state_json, player_id, action_id), timeout=self.rpc_timeout
+        )
+        return self._to_sim_result(res)
+
+    def simulate_batch(self, items: Sequence[tuple[str, str, int]]) -> list[StepResult]:
+        """(state_json, player_id, action_id) のリストをまとめて適用する。結果は入力と同じ順序。"""
+        if not items:
+            return []
+        req = game_pb2.BatchSimulateRequest(
+            items=[self._simulate_request(s, p, a) for s, p, a in items]
+        )
+        res = self.stub.BatchSimulate(req, timeout=self.rpc_timeout)
+        return [self._to_sim_result(r) for r in res.items]
 
 
 def wait_for_server(address: str, timeout_sec: float = 60.0, interval: float = 1.0) -> None:

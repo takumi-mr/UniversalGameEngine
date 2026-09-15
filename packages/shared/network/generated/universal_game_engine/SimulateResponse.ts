@@ -1,19 +1,21 @@
 // Original file: network/game.proto
 
-export interface StepResponse {
-  nextStateTensor?: (number | string)[];
+export interface SimulateResponse {
+  stateJson?: string;
+  stateTensor?: (number | string)[];
   legalActionIds?: number[];
   reward?: number | string;
   isFinished?: boolean;
   activePlayers?: string[];
-  stateJson?: string;
+  error?: string;
 }
 
-export interface StepResponse__Output {
-  nextStateTensor: number[];
+export interface SimulateResponse__Output {
+  stateJson: string;
+  stateTensor: number[];
   legalActionIds: number[];
   reward: number;
   isFinished: boolean;
   activePlayers: string[];
-  stateJson: string;
+  error: string;
 }

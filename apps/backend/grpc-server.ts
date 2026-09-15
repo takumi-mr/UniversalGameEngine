@@ -9,8 +9,10 @@ import { gameRegistry } from "@engine/shared/GameRegistry";
 import { aiTensorRegistry } from "@engine/shared/ai/AITensorAdapterRegistry";
 // 組み込みテンソルアダプタ（othello 等）を aiTensorRegistry に登録する
 import "@engine/shared/ai/TensorAdapter";
-import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { UniversalEngine, type UniversalEngineOptions } from "@engine/shared/UniversalEngine";
 import type { GameServiceHandlers } from "@engine/shared/network/generated/universal_game_engine/GameService";
+import type { SimulateRequest } from "@engine/shared/network/generated/universal_game_engine/SimulateRequest";
+import type { SimulateResponse } from "@engine/shared/network/generated/universal_game_engine/SimulateResponse";
 import { getIoInstance, scheduleRoomCleanup, clearRoomCleanup } from "./socket/roomManager";
 import { streamManager } from "./network/StreamManager";
 
@@ -40,6 +42,90 @@ const authenticate = (
   } catch {
     return null;
   }
+};
+
+// Simulate 用のエンジンをゲームタイプごとに使い回す。
+// 生成コストが 1 回あたり約 25µs と大きく、ハンドラは同期実行なので共有しても安全。
+// ハッシュ計算は探索には不要なので autoHash を切っておく。
+type SimulationEngine = UniversalEngine<any, any, UniversalEngineOptions>;
+const simulationEngines = new Map<string, SimulationEngine>();
+const getSimulationEngine = (gameType: string, ruleset: any): SimulationEngine => {
+  const cached = simulationEngines.get(gameType);
+  if (cached) return cached;
+  const options: UniversalEngineOptions = { autoHash: false };
+  const engine: SimulationEngine = new UniversalEngine(ruleset, options);
+  simulationEngines.set(gameType, engine);
+  return engine;
+};
+
+/**
+ * 任意の局面に 1 手適用する（木探索用・セッション不要）。
+ * 使い捨ての UniversalEngine に局面を載せて dispatch するため、RNG や終局処理はエンジンと同じ挙動になる。
+ * 失敗は例外ではなく response.error で返す（BatchSimulate で個別に失敗を伝えるため）。
+ */
+const simulateOnce = (req: SimulateRequest): SimulateResponse => {
+  const gameType = (req.gameType ?? "").toLowerCase().replace(/-/g, "_");
+  const playerId = req.playerId ?? "";
+  const actionId = req.actionId ?? 0;
+  const fail = (error: string): SimulateResponse => ({
+    stateJson: "",
+    stateTensor: [],
+    legalActionIds: [],
+    reward: 0,
+    isFinished: false,
+    activePlayers: [],
+    error,
+  });
+
+  const def = gameRegistry.getDefinition(gameType);
+  if (!def) return fail(`Unknown game type: ${req.gameType}`);
+  const adapter = aiTensorRegistry.getAdapter(gameType);
+  if (!adapter) return fail("AI Tensor Adapter not found for this game type");
+  if (!req.stateJson) return fail("state_json is required");
+
+  let state: any;
+  try {
+    state = JSON.parse(req.stateJson);
+  } catch {
+    return fail("state_json is not valid JSON");
+  }
+
+  const engine = getSimulationEngine(gameType, def.ruleset);
+  engine.loadState(state);
+
+  let action: any;
+  try {
+    action = adapter.decodeAction(engine.getState(), actionId, playerId);
+  } catch (err: any) {
+    return fail(err.message);
+  }
+  action.playerId = playerId;
+  if (!engine.dispatch(action)) return fail("Invalid action or not your turn");
+
+  const nextState = engine.getState();
+  const winResult = def.ruleset.checkWinCondition(nextState);
+  const isFinished = winResult.isFinished;
+  const activePlayers = nextState.activePlayers || [];
+
+  let reward = 0;
+  if (isFinished) {
+    if (winResult.winnerIds?.includes(playerId)) reward = 1.0;
+    else if (winResult.winnerIds && winResult.winnerIds.length > 0) reward = -1.0;
+    else reward = 0.5;
+    // 終局時はエンジンがハッシュ履歴に追記する。使い回しで無限に増えないよう切り詰める
+    engine.takeSnapshot();
+  }
+
+  const observerId = !isFinished && activePlayers.length > 0 ? activePlayers[0] : playerId;
+  return {
+    stateJson: JSON.stringify(nextState),
+    stateTensor: adapter.encodeState(nextState, observerId),
+    legalActionIds: isFinished ? [] : adapter.encodeLegalActions(nextState, observerId),
+    reward,
+    isFinished,
+    activePlayers,
+    error: "",
+  };
 };
 
 const gameServiceHandlers: GameServiceHandlers = {
@@ -273,6 +359,7 @@ const gameServiceHandlers: GameServiceHandlers = {
         initialStateTensor: stateTensor,
         initialLegalActionIds: legalActionIds,
         activePlayers: activePlayers,
+        stateJson: JSON.stringify(state),
       });
     } catch (err: any) {
       callback({ code: grpc.status.INTERNAL, message: err.message } as any);
@@ -348,7 +435,25 @@ const gameServiceHandlers: GameServiceHandlers = {
         reward: reward,
         isFinished: isFinished,
         activePlayers: activePlayers,
+        stateJson: JSON.stringify(nextState),
       });
+    } catch (err: any) {
+      callback({ code: grpc.status.INTERNAL, message: err.message } as any);
+    }
+  },
+
+  Simulate: (call, callback) => {
+    try {
+      callback(null, simulateOnce(call.request));
+    } catch (err: any) {
+      callback({ code: grpc.status.INTERNAL, message: err.message } as any);
+    }
+  },
+
+  BatchSimulate: (call, callback) => {
+    try {
+      const items = (call.request.items ?? []).map((req) => simulateOnce(req));
+      callback(null, { items });
     } catch (err: any) {
       callback({ code: grpc.status.INTERNAL, message: err.message } as any);
     }
