@@ -15,25 +15,25 @@
 
 ゲームの状態をニューラルネットワーク等に入力可能なテンソル形式に変換するためのアダプターインターフェースです。
 
-## 実装済みAIプレイヤー
+## 実装済みAIプレイヤー ([AIPlayer/](./AIPlayer/))
 
-### [RandomPlayer.ts](./RandomPlayer.ts)
+### [RandomPlayer.ts](./AIPlayer/RandomPlayer.ts)
 
 合法手の中からランダムに手を選択するシンプルなAIです。ベースラインやテスト用に使用されます。
 
-### [MinimaxPlayer.ts](./MinimaxPlayer.ts)
+### [MinimaxPlayer.ts](./AIPlayer/MinimaxPlayer.ts)
 
 ミニマックス法（およびαβ枝刈り）を用いた探索型AIです。確定完全情報ゲームに適しています。
 
-### [MCTSPlayer.ts](./MCTSPlayer.ts)
+### [MCTSPlayer.ts](./AIPlayer/MCTSPlayer.ts)
 
 モンテカルロ木探索 (MCTS) を用いた探索型AIです。盤面評価関数を定義しにくいゲームや、探索空間が広いゲームに適しています。
 
-### [GrpcBotPlayer.ts](./GrpcBotPlayer.ts)
+### [GrpcBotPlayer.ts](./AIPlayer/GrpcBotPlayer.ts)
 
 決定権を外部のgRPCサーバーに委譲するAIプレイヤーです。Python (PyTorch/TensorFlow) 等で実装されたモデルと連携する際に使用します。
 
-### [LLMPlayer.ts](./LLMPLayer.ts)
+### [LLMPlayer.ts](./AIPlayer/LLMPLayer.ts)
 
 LLM（Large Language Model）を使用してゲームの指し手を決定するAIプレイヤーです。プロンプトエンジニアリングを用いてゲーム状態を言語化し、LLMの推論能力を活用します。
 
@@ -43,7 +43,7 @@ LLM（Large Language Model）を使用してゲームの指し手を決定する
 
 各ゲームに応じた `IAITensorAdapter` を管理するためのレジストリです。
 
-### [adapters/](./adapters/)
+### [TensorAdapter/](./TensorAdapter/)
 
 組み込みの `IAITensorAdapter` 実装（現在は `OthelloTensorAdapter`）と、それらを `aiTensorRegistry` に登録する `index.ts`。gRPC の `Reset`/`Step`（強化学習ループ）はここに登録されたゲームでのみ使えます。学習側のコードは [`apps/ml`](../../../apps/ml/README.md) を参照。
 

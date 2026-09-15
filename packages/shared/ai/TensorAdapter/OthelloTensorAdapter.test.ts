@@ -1,6 +1,7 @@
-// packages/shared/ai/adapters/OthelloTensorAdapter.test.ts
+// packages/shared/ai/TensorAdapter/OthelloTensorAdapter.test.ts
 import { describe, it, expect } from "bun:test";
 import { OthelloRuleset } from "../../rules/OthelloRuleset";
+import type { OthelloState, OthelloAction } from "../../rules/OthelloRuleset";
 import { OthelloTensorAdapter } from "./OthelloTensorAdapter";
 import { aiTensorRegistry } from "../AITensorAdapterRegistry";
 import "./index";
@@ -15,8 +16,9 @@ function playingState() {
 
 describe("OthelloTensorAdapter", () => {
   it("レジストリに 'othello' として登録されていること", () => {
-    expect(aiTensorRegistry.getAdapter("othello")).toBe(OthelloTensorAdapter);
-    expect(aiTensorRegistry.getAdapter("OTHELLO")).toBe(OthelloTensorAdapter);
+    const get = (t: string) => aiTensorRegistry.getAdapter<OthelloState, OthelloAction>(t);
+    expect(get("othello")).toBe(OthelloTensorAdapter);
+    expect(get("OTHELLO")).toBe(OthelloTensorAdapter);
   });
 
   it("encodeState は size*size 個の数値を自分視点（自分=+1, 相手=-1）で返すこと", () => {

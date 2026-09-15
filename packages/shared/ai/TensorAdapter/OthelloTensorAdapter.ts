@@ -1,4 +1,4 @@
-// packages/shared/ai/adapters/OthelloTensorAdapter.ts
+// packages/shared/ai/TensorAdapter/OthelloTensorAdapter.ts
 import type { IAITensorAdapter } from "../IAITensorAdapter";
 import { OthelloRuleset } from "../../rules/OthelloRuleset";
 import type { OthelloState, OthelloAction, PlayerColor } from "../../rules/OthelloRuleset";

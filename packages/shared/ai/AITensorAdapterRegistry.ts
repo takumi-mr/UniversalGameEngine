@@ -14,10 +14,15 @@ class AITensorAdapterRegistry {
     this.adapters.set(gameType.toLowerCase(), adapter);
   }
 
-  public getAdapter(gameType: string): IAITensorAdapter<any, any> | undefined {
-    return this.adapters.get(gameType.toLowerCase());
+  public getAdapter<TState extends BaseGameState, TAction extends BaseGameAction>(
+    gameType: string,
+  ): IAITensorAdapter<TState, TAction> | undefined {
+    return this.adapters.get(gameType.toLowerCase()) as
+      | IAITensorAdapter<TState, TAction>
+      | undefined;
   }
 }
 
 // シングルトンとしてエクスポート
+// 組み込みアダプタの登録は ./TensorAdapter/index.ts で行う
 export const aiTensorRegistry = new AITensorAdapterRegistry();

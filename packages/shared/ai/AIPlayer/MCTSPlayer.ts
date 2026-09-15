@@ -1,6 +1,6 @@
 // packages/shared/ai/MCTSPlayer.ts
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
-import type { IAIPlayer } from "./IAIPlayer";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "../../GameRules";
+import type { IAIPlayer } from "../IAIPlayer";
 
 export interface MCTSOptions {
   iterations?: number;

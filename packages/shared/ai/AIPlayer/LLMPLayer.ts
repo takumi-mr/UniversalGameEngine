@@ -1,6 +1,6 @@
 // packages/shared/ai/LLMPLayer.ts
-import type { BaseGameState, BaseGameAction } from "../GameRules";
-import type { IAIPlayer } from "./IAIPlayer";
+import type { BaseGameState, BaseGameAction } from "../../GameRules";
+import type { IAIPlayer } from "../IAIPlayer";
 
 /**
  * LLMとの通信を担当するサービスインターフェース
@@ -87,7 +87,7 @@ export class LLMPlayer<
       ? `Game Description: ${this.options.gameDescription}\n`
       : "";
 
-    let prompt = `You are a professional game player AI. 
+    let prompt = `You are a professional game player AI.
 ${gameDesc}
 Current Game State (JSON):
 ${JSON.stringify(state, null, 2)}
