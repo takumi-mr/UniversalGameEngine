@@ -91,8 +91,12 @@ export interface GameRuleset<
    */
   maskState?: (state: TState, playerId: string) => TState;
 
-  // 制限時間切れの際に自動実行されるアクションを返す関数 (オプショナル)
-  getTimeoutAction?: (state: TState) => TAction | null;
+  /**
+   * 制限時間切れ（state.turnDeadline 経過）の際に、playerId の代わりに自動実行するアクションを返す (オプショナル)。
+   * エンジンは組み込みの TIMEOUT アクションを受け取るとこれを呼び、null なら RESIGN（受け付けなければ強制終了）にする。
+   * 純粋関数であること（時刻は action.timestamp で渡される）
+   */
+  getTimeoutAction?: (state: TState, playerId: string) => TAction | null;
 
   // 特定のプレイヤーが現在実行可能な合法手の完全なリストを返す関数（AI用）
   getLegalActions: (state: TState, playerId: string) => TAction[];

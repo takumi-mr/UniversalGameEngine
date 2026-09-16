@@ -34,6 +34,7 @@ export interface CaveDiveState extends BaseGameState {
   playerIds: string[]; // 参加者（START 時点で確定）
   round: number; // 1 始まり。0 は未開始
   totalRounds: number;
+  decisionTimeMs: number; // 分岐点ごとの制限時間（0 なら無制限）。締切は turnDeadline に入る
 
   deck: Secret<CaveCard[]>; // このラウンドの残り山札（誰にも見えない）
   path: CaveCard[]; // このラウンドでめくられたカード（公開）
@@ -52,7 +53,7 @@ export interface CaveDiveState extends BaseGameState {
 }
 
 export interface CaveDiveAction extends BaseGameAction {
-  type: "JOIN" | "START" | "CHOOSE" | "TORCH"; // JOIN はエンジンの組み込み（着席）
+  type: "JOIN" | "START" | "CHOOSE" | "TORCH" | "TIMEOUT"; // JOIN / TIMEOUT はエンジンの組み込み
   choice?: CaveChoice;
 }
 
@@ -61,6 +62,7 @@ export interface CaveDiveAction extends BaseGameAction {
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 8;
 export const TOTAL_ROUNDS = 5;
+export const DEFAULT_DECISION_TIME_MS = 30_000;
 export const TRAP_TYPES: TrapType[] = ["SNAKE", "SPIDER", "ROCKFALL", "FLOOD", "FIRE"];
 const TRAP_COPIES = 3;
 export const TREASURE_VALUES = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 7, 7, 9, 11, 14];
@@ -85,8 +87,18 @@ const hiddenDeck = (cards: CaveCard[]) => createSecret(cards, [], { remaining: c
 const seatedPlayers = (state: BaseGameState): string[] =>
   Object.values(state.players ?? {}).filter((p): p is string => typeof p === "string");
 
+/** 分岐点の締切。時刻が分からない（テスト等）か制限時間 0 なら締切なし */
+function deadlineFrom(state: CaveDiveState, now?: number): number | undefined {
+  return now !== undefined && state.decisionTimeMs > 0 ? now + state.decisionTimeMs : undefined;
+}
+
 /** ラウンドを開始し、最初の 1 枚をめくる */
-function beginRound(state: CaveDiveState, round: number, rng?: IGameRNG): CaveDiveState {
+function beginRound(
+  state: CaveDiveState,
+  round: number,
+  rng?: IGameRNG,
+  now?: number,
+): CaveDiveState {
   const inCave = [...state.playerIds];
   const reset: CaveDiveState = {
     ...state,
@@ -104,12 +116,12 @@ function beginRound(state: CaveDiveState, round: number, rng?: IGameRNG): CaveDi
       ? `${state.lastEvent} → ラウンド ${round} 開始`
       : `ラウンド ${round} 開始`,
   };
-  return drawCard(reset, rng);
+  return drawCard(reset, rng, now);
 }
 
 /** 次の 1 枚をめくって精算し、分岐点（全員の選択待ち）に入る。ラウンドが終われば次へ */
-function drawCard(state: CaveDiveState, rng?: IGameRNG): CaveDiveState {
-  if (state.inCave.length === 0) return finishRound(state, rng);
+function drawCard(state: CaveDiveState, rng?: IGameRNG, now?: number): CaveDiveState {
+  if (state.inCave.length === 0) return finishRound(state, rng, now);
 
   const deck = [...state.deck.value];
   if (deck.length === 0) {
@@ -125,6 +137,7 @@ function drawCard(state: CaveDiveState, rng?: IGameRNG): CaveDiveState {
         lastEvent: "山札が尽きた。残っていた全員が宝を持ち帰った",
       },
       rng,
+      now,
     );
   }
 
@@ -148,6 +161,7 @@ function drawCard(state: CaveDiveState, rng?: IGameRNG): CaveDiveState {
       roundStash,
       pathLeftover: state.pathLeftover + remainder,
       activePlayers: state.inCave,
+      turnDeadline: deadlineFrom(state, now),
       lastEvent: `宝 ${card.value}: 1 人 ${share}（端数 ${remainder} は道端へ）`,
     };
   }
@@ -165,6 +179,7 @@ function drawCard(state: CaveDiveState, rng?: IGameRNG): CaveDiveState {
         lastEvent: `${card.trapType} が 2 枚目！ 崩落。残っていた ${state.inCave.length} 人は手ぶらで脱出`,
       },
       rng,
+      now,
     );
   }
 
@@ -172,12 +187,13 @@ function drawCard(state: CaveDiveState, rng?: IGameRNG): CaveDiveState {
     ...next,
     trapsSeenThisRound: [...state.trapsSeenThisRound, card.trapType],
     activePlayers: state.inCave,
+    turnDeadline: deadlineFrom(state, now),
     lastEvent: `罠 ${card.trapType}（1 枚目）。次に同じ罠が出たら崩落`,
   };
 }
 
 /** 全員の選択が揃った: 一斉公開して逃げた人を精算し、続きをめくる */
-function resolveChoices(state: CaveDiveState, rng?: IGameRNG): CaveDiveState {
+function resolveChoices(state: CaveDiveState, rng?: IGameRNG, now?: number): CaveDiveState {
   const revealed: Record<string, CaveChoice> = {};
   for (const p of state.inCave) revealed[p] = state.choices[p].value;
 
@@ -208,21 +224,31 @@ function resolveChoices(state: CaveDiveState, rng?: IGameRNG): CaveDiveState {
     revealedChoices: revealed,
     lastEvent: event,
   };
-  return drawCard(resolved, rng);
+  return drawCard(resolved, rng, now);
 }
 
 /** ラウンド終了。最終ラウンドなら終局（checkWinCondition が拾う）、そうでなければ次のラウンドへ */
-function finishRound(state: CaveDiveState, rng?: IGameRNG): CaveDiveState {
+function finishRound(state: CaveDiveState, rng?: IGameRNG, now?: number): CaveDiveState {
   if (state.round >= state.totalRounds) {
-    return { ...state, inCave: [], activePlayers: [], choices: {}, peek: {} };
+    return {
+      ...state,
+      inCave: [],
+      activePlayers: [],
+      choices: {},
+      peek: {},
+      turnDeadline: undefined,
+    };
   }
-  return beginRound(state, state.round + 1, rng);
+  return beginRound(state, state.round + 1, rng, now);
 }
 
 // --- 4. ルールセット本体 ---
 
 export const CaveDiveRuleset: GameRuleset<CaveDiveState, CaveDiveAction> = {
-  getInitialState: (options?: { playerIds?: string[] }, _rng?: IGameRNG): CaveDiveState => {
+  getInitialState: (
+    options?: { playerIds?: string[]; decisionTimeMs?: number },
+    _rng?: IGameRNG,
+  ): CaveDiveState => {
     const playerIds = (options?.playerIds ?? []).filter(Boolean).slice(0, MAX_PLAYERS);
     const players: Record<string, string | null> = {};
     for (let i = 0; i < MAX_PLAYERS; i++) players[String(i)] = playerIds[i] ?? null;
@@ -235,6 +261,10 @@ export const CaveDiveRuleset: GameRuleset<CaveDiveState, CaveDiveAction> = {
       playerIds: [],
       round: 0,
       totalRounds: TOTAL_ROUNDS,
+      decisionTimeMs:
+        typeof options?.decisionTimeMs === "number" && options.decisionTimeMs >= 0
+          ? options.decisionTimeMs
+          : DEFAULT_DECISION_TIME_MS,
       deck: hiddenDeck([]),
       path: [],
       trapsSeenThisRound: [],
@@ -289,6 +319,7 @@ export const CaveDiveRuleset: GameRuleset<CaveDiveState, CaveDiveAction> = {
         },
         1,
         rng,
+        action.timestamp,
       );
     }
 
@@ -311,7 +342,7 @@ export const CaveDiveRuleset: GameRuleset<CaveDiveState, CaveDiveAction> = {
       if (waiting.length > 0) {
         return { ...state, choices, activePlayers: waiting };
       }
-      return resolveChoices({ ...state, choices }, rng);
+      return resolveChoices({ ...state, choices }, rng, action.timestamp);
     }
 
     return state;
@@ -333,6 +364,12 @@ export const CaveDiveRuleset: GameRuleset<CaveDiveState, CaveDiveAction> = {
           : `${winnerIds[0]} の勝利！（${summary}）`,
     };
   },
+
+  // 制限時間切れ: まだ選んでいない人は「逃げる」扱い（安全側）
+  getTimeoutAction: (state, playerId) =>
+    state.inCave.includes(playerId) && !state.choices[playerId]
+      ? { type: "CHOOSE", playerId, choice: "LEAVE" }
+      : null,
 
   getLegalActions: (state, playerId) => {
     if (state.status === "WAITING") {

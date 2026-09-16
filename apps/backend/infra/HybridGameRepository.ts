@@ -13,6 +13,7 @@ import type { GameRecord, BaseGameState, BaseGameAction } from "@engine/shared/G
 const SESSION_TTL_SEC = 86400;
 const SESSIONS_INDEX_KEY = "game:sessions";
 const CLEANUP_ZSET_KEY = "game:cleanup";
+const DEADLINE_ZSET_KEY = "game:deadline";
 const LOCK_TTL_MS = 5000;
 const LOCK_WAIT_MS = 5000;
 
@@ -154,6 +155,7 @@ export class HybridGameRepository<TState extends BaseGameState> implements IGame
       .del(`game:session:${gameId}`)
       .hdel(SESSIONS_INDEX_KEY, gameId)
       .zrem(CLEANUP_ZSET_KEY, gameId)
+      .zrem(DEADLINE_ZSET_KEY, gameId)
       .exec();
     await this.delete(gameId);
   }
@@ -212,6 +214,22 @@ export class HybridGameRepository<TState extends BaseGameState> implements IGame
 
   async claimDueCleanups(now: number): Promise<string[]> {
     const due = (await this.redis.eval(CLAIM_CLEANUPS_SCRIPT, 1, CLEANUP_ZSET_KEY, now)) as
+      | string[]
+      | null;
+    return due ?? [];
+  }
+
+  async scheduleDeadline(gameId: string, at: number): Promise<void> {
+    // 上書き（着手のたびに締切は更新される）
+    await this.redis.zadd(DEADLINE_ZSET_KEY, at, gameId);
+  }
+
+  async cancelDeadline(gameId: string): Promise<void> {
+    await this.redis.zrem(DEADLINE_ZSET_KEY, gameId);
+  }
+
+  async claimDueDeadlines(now: number): Promise<string[]> {
+    const due = (await this.redis.eval(CLAIM_CLEANUPS_SCRIPT, 1, DEADLINE_ZSET_KEY, now)) as
       | string[]
       | null;
     return due ?? [];

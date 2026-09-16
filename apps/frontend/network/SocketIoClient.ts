@@ -22,11 +22,18 @@ export class SocketIoClient<TState extends BaseGameState, TAction> implements IN
   public onError: (message: string) => void = () => {};
   public onMetadataUpdate: (metadata: GameMetadata) => void = () => {};
   public onChatMessage: (chat: ChatMessage) => void = () => {};
+  /** クライアント時計 − サーバー時計（ms）。turnDeadline のカウントダウン補正用 */
+  public clockSkew = 0;
 
   constructor(url: string, authToken?: string) {
     this.socket = io(url, {
       autoConnect: false,
       auth: { token: authToken }, // JWTトークンをセット
+    });
+
+    // サーバー時刻（締切のカウントダウン補正用）
+    this.socket.on("server-time", (serverTime: number) => {
+      if (typeof serverTime === "number") this.clockSkew = Date.now() - serverTime;
     });
 
     // サーバーからのプッシュ通知イベント

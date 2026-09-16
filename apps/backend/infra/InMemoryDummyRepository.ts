@@ -18,6 +18,7 @@ export class InMemoryDummyRepository<
   private locks = new Map<string, Promise<void>>();
   // gameId → 掃除予定時刻（epoch ms）
   private cleanups = new Map<string, number>();
+  private deadlines = new Map<string, number>();
 
   async save(gameId: string, state: TState, isFinished = false): Promise<void> {
     this.store.set(gameId, state);
@@ -55,6 +56,7 @@ export class InMemoryDummyRepository<
     this.sessionStore.delete(gameId);
     this.store.delete(gameId);
     this.cleanups.delete(gameId);
+    this.deadlines.delete(gameId);
   }
 
   async listSessions(): Promise<{ gameId: string; type: string }[]> {
@@ -97,6 +99,28 @@ export class InMemoryDummyRepository<
     }
     for (const gameId of due) this.cleanups.delete(gameId);
     return due;
+  }
+
+  async scheduleDeadline(gameId: string, at: number): Promise<void> {
+    this.deadlines.set(gameId, at);
+  }
+
+  async cancelDeadline(gameId: string): Promise<void> {
+    this.deadlines.delete(gameId);
+  }
+
+  async claimDueDeadlines(now: number): Promise<string[]> {
+    const due: string[] = [];
+    for (const [gameId, at] of this.deadlines) {
+      if (at <= now) due.push(gameId);
+    }
+    for (const gameId of due) this.deadlines.delete(gameId);
+    return due;
+  }
+
+  /** テスト用: 予約されている締切（無ければ undefined） */
+  getScheduledDeadline(gameId: string): number | undefined {
+    return this.deadlines.get(gameId);
   }
 
   /** テスト用: 予約されている掃除の有無 */
