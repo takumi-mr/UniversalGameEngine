@@ -18,7 +18,9 @@ const W = "white";
 
 function position(rows: string[], turn: 1 | -1 = 1): OthelloState {
   const size = rows.length;
-  const state = OthelloRuleset.getInitialState({ size });
+  // 奇数サイズの図も使うので、正規化される getInitialState の size は上書きする
+  const state = OthelloRuleset.getInitialState();
+  state.size = size;
   state.board = rows.map((row) =>
     [...row.replace(/\s/g, "")].map((c) => (c === "X" ? 1 : c === "O" ? -1 : 0)),
   );
@@ -138,10 +140,12 @@ describe("OthelloRuleset: 着手", () => {
 
 describe("OthelloRuleset: パスと終局", () => {
   test("相手に合法手が無ければ自動でパスされ、手番が戻る", () => {
-    // 白 (2,0) を黒が挟んで取ると、白はどこにも置けない
-    const state = position(["X O . . .", ". . . . .", ". . . . .", ". . . . .", ". . . . ."]);
-    const next = OthelloRuleset.reduce(state, place(2, 0));
-    expect(next.board[0]).toEqual([1, 1, 1, 0, 0]);
+    // 黒が (3,0) で (2,0) を取ると、残る白 (1,2) は端の黒 (0,2) を挟めず白に手が無い。黒は (2,2) で挟める
+    const state = position([". X O . .", ". . . . .", "X O . . .", ". . . . .", ". . . . ."]);
+    const next = OthelloRuleset.reduce(state, place(3, 0));
+    expect(next.board[0]).toEqual([0, 1, 1, 1, 0]);
+    expect(OthelloRuleset.getLegalActions(next, W)).toEqual([]);
+    expect(OthelloRuleset.getLegalActions(next, B).map((a) => `${a.x},${a.y}`)).toEqual(["2,2"]);
     expect(next.currentTurn).toBe(1); // 白はパス → 黒の手番のまま
     expect(next.message).toContain("パス");
     expect(next.activePlayers).toEqual([B]);
