@@ -190,6 +190,8 @@ export interface ShogiState extends BaseGameState {
     1: Record<number, number>;
     "-1": Record<number, number>;
   };
+  /** 投了した側（1: 先手 / -1: 後手） */
+  resignedBy?: number;
 }
 
 export type ShogiActionType = "MOVE" | "DROP" | "RESIGN";
@@ -202,9 +204,11 @@ export interface ShogiAction extends BaseGameAction {
   promote?: boolean;
 }
 
-// 盤面上の駒の移動可能範囲を生成（疑似合法手）
-function generateMoves(state: ShogiState, fromIndex: number): number[] {
-  const pieceVal = state.board[fromIndex];
+type Side = 1 | -1;
+
+// 盤面上の駒の移動可能範囲を生成（疑似合法手。自玉への王手は考慮しない）
+function generateMoves(board: number[], fromIndex: number): number[] {
+  const pieceVal = board[fromIndex];
   if (pieceVal === 0) return [];
 
   const turn = Math.sign(pieceVal);
@@ -220,7 +224,7 @@ function generateMoves(state: ShogiState, fromIndex: number): number[] {
       const nx = x + dx;
       const ny = y + dy * turn;
       if (inBounds(nx, ny)) {
-        const target = state.board[toI(nx, ny)];
+        const target = board[toI(nx, ny)];
         // 空のマスか、敵の駒なら移動可能
         if (target === 0 || Math.sign(target) !== turn) {
           moves.push(toI(nx, ny));
@@ -235,7 +239,7 @@ function generateMoves(state: ShogiState, fromIndex: number): number[] {
       let nx = x + dx;
       let ny = y + dy * turn;
       while (inBounds(nx, ny)) {
-        const target = state.board[toI(nx, ny)];
+        const target = board[toI(nx, ny)];
         if (target === 0) {
           moves.push(toI(nx, ny));
         } else {
@@ -253,6 +257,134 @@ function generateMoves(state: ShogiState, fromIndex: number): number[] {
   return moves;
 }
 
+/** side の玉がいる位置（無ければ -1） */
+function findKing(board: number[], side: Side): number {
+  return board.indexOf(PIECES.OU * side);
+}
+
+/** index のマスが bySide の駒に利いているか */
+function isAttacked(board: number[], index: number, bySide: Side): boolean {
+  for (let i = 0; i < 81; i++) {
+    const v = board[i];
+    if (v === 0 || Math.sign(v) !== bySide) continue;
+    if (generateMoves(board, i).includes(index)) return true;
+  }
+  return false;
+}
+
+/** side の玉に王手がかかっているか（玉が無い場合は false） */
+export function isInCheck(board: number[], side: Side): boolean {
+  const king = findKing(board, side);
+  return king !== -1 && isAttacked(board, king, -side as Side);
+}
+
+/** 手を盤面に適用した結果の盤面（手番は変えない） */
+function applyToBoard(board: number[], action: ShogiAction, turn: Side): number[] {
+  const next = [...board];
+  if (action.type === "MOVE") {
+    const pieceVal = next[action.from!];
+    next[action.from!] = 0;
+    next[action.to!] = action.promote ? PROMOTE_MAP[Math.abs(pieceVal)] * turn : pieceVal;
+  } else if (action.type === "DROP") {
+    next[action.to!] = turn * action.piece!;
+  }
+  return next;
+}
+
+/** 行き所のない駒になるか（歩・香は最終段、桂は最終 2 段） */
+function isDeadSquare(pieceType: number, toY: number, turn: Side): boolean {
+  if (pieceType === PIECES.FU || pieceType === PIECES.KY) return turn === 1 ? toY === 0 : toY === 8;
+  if (pieceType === PIECES.KE) return turn === 1 ? toY <= 1 : toY >= 7;
+  return false;
+}
+
+/** 二歩になるか */
+function isNifu(board: number[], x: number, turn: Side): boolean {
+  for (let y = 0; y < 9; y++) {
+    if (board[toI(x, y)] === PIECES.FU * turn) return true;
+  }
+  return false;
+}
+
+/**
+ * turn 側の疑似合法手（王手放置・打ち歩詰めは除外しない）。
+ * 成れる場合は「成る」「成らない」の両方を生成し、強制成りは成る手だけ生成する。
+ */
+function generatePseudoActions(state: ShogiState, turn: Side): ShogiAction[] {
+  const actions: ShogiAction[] = [];
+  const { board } = state;
+
+  // 1. 盤上の駒の移動 (MOVE)
+  for (let i = 0; i < 81; i++) {
+    const pieceVal = board[i];
+    if (pieceVal === 0 || Math.sign(pieceVal) !== turn) continue;
+
+    const type = Math.abs(pieceVal);
+    const [, fromY] = toXY(i);
+
+    for (const to of generateMoves(board, i)) {
+      const [, toY] = toXY(to);
+      const canPromote =
+        !!PROMOTE_MAP[type] && (isPromotionZone(fromY, turn) || isPromotionZone(toY, turn));
+      const mustPromote = isDeadSquare(type, toY, turn);
+
+      if (canPromote) actions.push({ type: "MOVE", from: i, to, promote: true });
+      if (!mustPromote) actions.push({ type: "MOVE", from: i, to, promote: false });
+    }
+  }
+
+  // 2. 持ち駒の打つ手 (DROP)
+  for (const [pieceStr, count] of Object.entries(state.hands[turn])) {
+    if (!count) continue;
+    const pieceType = parseInt(pieceStr, 10);
+
+    for (let i = 0; i < 81; i++) {
+      if (board[i] !== 0) continue;
+      const [x, y] = toXY(i);
+      if (isDeadSquare(pieceType, y, turn)) continue;
+      if (pieceType === PIECES.FU && isNifu(board, x, turn)) continue;
+      actions.push({ type: "DROP", to: i, piece: pieceType });
+    }
+  }
+
+  return actions;
+}
+
+/** 指した後に自玉が取られる形（王手放置・自殺手）になるか */
+function leavesKingInCheck(state: ShogiState, action: ShogiAction, turn: Side): boolean {
+  return isInCheck(applyToBoard(state.board, action, turn), turn);
+}
+
+/** turn 側に合法手が 1 つでもあるか（打ち歩詰めの再帰判定用に、打ち歩詰め自体は考慮しない） */
+function hasLegalMove(state: ShogiState, turn: Side): boolean {
+  return generatePseudoActions(state, turn).some((a) => !leavesKingInCheck(state, a, turn));
+}
+
+/** 打ち歩詰め: 歩を打って王手し、相手に合法手が無い */
+function isUchifuzume(state: ShogiState, action: ShogiAction, turn: Side): boolean {
+  if (action.type !== "DROP" || action.piece !== PIECES.FU) return false;
+  const board = applyToBoard(state.board, action, turn);
+  const opponent = -turn as Side;
+  if (!isInCheck(board, opponent)) return false;
+  return !hasLegalMove({ ...state, board }, opponent);
+}
+
+/** turn 側の完全な合法手 */
+export function generateLegalActions(state: ShogiState, turn: Side): ShogiAction[] {
+  return generatePseudoActions(state, turn).filter(
+    (a) => !leavesKingInCheck(state, a, turn) && !isUchifuzume(state, a, turn),
+  );
+}
+
+/** action.playerId がどちらの側か（着席していなければ null。誰も着席していないテスト用の状態では手番側） */
+function sideOf(state: ShogiState, playerId?: string): Side | null {
+  const players = state.players ?? {};
+  if (playerId !== undefined && players[1] === playerId) return 1;
+  if (playerId !== undefined && players[-1] === playerId) return -1;
+  if (players[1] == null && players[-1] == null) return state.turn as Side;
+  return null;
+}
+
 export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
   getInitialState: (_options?: any, _rng?: IGameRNG): ShogiState => ({
     status: "WAITING",
@@ -265,67 +397,43 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
 
   isValidAction: (state, action) => {
     if (state.status !== "PLAYING") return false;
-    if (action.type === "RESIGN") return true;
+    const turn = state.turn as Side;
 
-    // プレイヤーの番かどうかをチェック
-    if (state.players && state.players[state.turn as 1 | -1] !== action.playerId) return false;
+    if (action.type === "RESIGN") return sideOf(state, action.playerId) !== null;
+
+    // 手番のプレイヤーか
+    if (sideOf(state, action.playerId) !== turn) return false;
 
     if (action.type === "MOVE") {
       if (action.from === undefined || action.to === undefined) return false;
       const pieceVal = state.board[action.from];
-      if (pieceVal === 0 || Math.sign(pieceVal) !== state.turn) return false;
+      if (pieceVal === 0 || Math.sign(pieceVal) !== turn) return false;
 
       // 移動範囲のチェック
-      const validMoves = generateMoves(state, action.from);
-      if (!validMoves.includes(action.to)) return false;
+      if (!generateMoves(state.board, action.from).includes(action.to)) return false;
 
-      // 成りのバリデーション
+      // 成りのバリデーション（行き所のない駒は強制成り）
       const type = Math.abs(pieceVal);
-      const [_, fromY] = toXY(action.from);
-      const [__, toY] = toXY(action.to);
+      const [, fromY] = toXY(action.from);
+      const [, toY] = toXY(action.to);
       const canPromote =
-        !!PROMOTE_MAP[type] &&
-        (isPromotionZone(fromY, state.turn) || isPromotionZone(toY, state.turn));
-
-      // 行き所のない駒の判定（強制成り）
-      // 歩・香は1段目、桂馬は2段目に進むと成らなければならない
-      let mustPromote = false;
-      if (type === PIECES.FU || type === PIECES.KY)
-        mustPromote = state.turn === 1 ? toY === 0 : toY === 8;
-      if (type === PIECES.KE) mustPromote = state.turn === 1 ? toY <= 1 : toY >= 7;
-
+        !!PROMOTE_MAP[type] && (isPromotionZone(fromY, turn) || isPromotionZone(toY, turn));
       if (action.promote && !canPromote) return false;
-      if (!action.promote && mustPromote) return false;
+      if (!action.promote && isDeadSquare(type, toY, turn)) return false;
 
-      return true;
+      // 王手放置・自殺手
+      return !leavesKingInCheck(state, action, turn);
     }
 
     if (action.type === "DROP") {
-      if (!action.piece || !state.hands[state.turn as 1 | -1][action.piece]) return false;
+      if (!action.piece || !state.hands[turn][action.piece]) return false;
       if (action.to === undefined || state.board[action.to] !== 0) return false;
 
       const [toX, toY] = toXY(action.to);
-
-      // 二歩（にふ）のチェック
-      if (action.piece === PIECES.FU) {
-        for (let y = 0; y < 9; y++) {
-          if (state.board[toI(toX, y)] === PIECES.FU * state.turn) return false;
-        }
-      }
-
-      // 打ち歩詰めは今回は簡略化のため省略（本格実装時は王手判定ロジックが必要）
-
-      // 行き所のない駒のチェック
-      if (action.piece === PIECES.FU || action.piece === PIECES.KY) {
-        if (state.turn === 1 && toY === 0) return false;
-        if (state.turn === -1 && toY === 8) return false;
-      }
-      if (action.piece === PIECES.KE) {
-        if (state.turn === 1 && toY <= 1) return false;
-        if (state.turn === -1 && toY >= 7) return false;
-      }
-
-      return true;
+      if (action.piece === PIECES.FU && isNifu(state.board, toX, turn)) return false;
+      if (isDeadSquare(action.piece, toY, turn)) return false;
+      if (leavesKingInCheck(state, action, turn)) return false;
+      return !isUchifuzume(state, action, turn);
     }
 
     return false;
@@ -340,157 +448,73 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
         "-1": { ...state.hands["-1"] },
       },
     };
+    const turn = state.turn as Side;
 
     if (action.type === "RESIGN") {
+      const side = sideOf(state, action.playerId) ?? turn;
+      newState.resignedBy = side;
       newState.status = "FINISHED";
-      newState.message = `${state.turn === 1 ? "Sente" : "Gote"} Resigned`;
+      newState.message = `${side === 1 ? "Sente" : "Gote"} Resigned`;
+      newState.activePlayers = [];
       return newState;
     }
 
     if (action.type === "MOVE") {
-      const pieceVal = newState.board[action.from!];
       const targetVal = newState.board[action.to!];
-
-      // 駒を取る処理
+      // 駒を取る処理（成り駒は元の駒に降格させる）
       if (targetVal !== 0) {
-        const owner = newState.turn as 1 | -1;
         const capturedType = Math.abs(targetVal);
-        // 成り駒は元の駒に降格させる
         const demoted = DEMOTE_MAP[capturedType] || capturedType;
-        newState.hands[owner][demoted] = (newState.hands[owner][demoted] || 0) + 1;
+        newState.hands[turn][demoted] = (newState.hands[turn][demoted] || 0) + 1;
       }
-
-      newState.board[action.from!] = 0;
-
-      // 成る処理
-      if (action.promote) {
-        newState.board[action.to!] = PROMOTE_MAP[Math.abs(pieceVal)] * newState.turn;
-      } else {
-        newState.board[action.to!] = pieceVal;
-      }
-
-      newState.turn *= -1;
+      newState.board = applyToBoard(newState.board, action, turn);
+      newState.turn = -turn;
     }
 
     if (action.type === "DROP") {
-      const owner = newState.turn as 1 | -1;
-      newState.board[action.to!] = owner * action.piece!;
-      newState.hands[owner][action.piece!]--;
-      newState.turn *= -1;
+      newState.board = applyToBoard(newState.board, action, turn);
+      newState.hands[turn][action.piece!]--;
+      newState.turn = -turn;
     }
 
-    newState.activePlayers = newState.players?.[newState.turn as 1 | -1]
-      ? [newState.players[newState.turn as 1 | -1]!]
+    newState.activePlayers = newState.players?.[newState.turn as Side]
+      ? [newState.players[newState.turn as Side]!]
       : [];
     return newState;
   },
 
   checkWinCondition: (state) => {
-    // 簡易的な勝敗判定（王が取られたら終了）。
-    // 厳密な将棋は「王を取る合法手が存在する状態（詰み）」で判定しますが、
-    // エンジンとして動かす分にはこの疑似判定でも十分に機能します。
-    const king1 = state.board.includes(PIECES.OU);
-    const king2 = state.board.includes(-PIECES.OU);
+    const winnerOf = (side: Side, message: string) => {
+      const winnerId = state.players?.[side];
+      return { isFinished: true, winnerIds: winnerId ? [winnerId] : [], message };
+    };
 
-    if (!king1) {
-      const winnerId = state.players?.["-1"];
-      return {
-        isFinished: true,
-        winnerIds: winnerId ? [winnerId] : [],
-        message: "Gote Wins",
-      };
+    // 投了
+    if (state.resignedBy) {
+      const winner = -state.resignedBy as Side;
+      return winnerOf(winner, `${winner === 1 ? "Sente" : "Gote"} Wins by resignation`);
     }
-    if (!king2) {
-      const winnerId = state.players?.["1"];
-      return {
-        isFinished: true,
-        winnerIds: winnerId ? [winnerId] : [],
-        message: "Sente Wins",
-      };
+
+    // 玉が取られている（合法手のみを通していれば起きないが、保険として）
+    if (!state.board.includes(PIECES.OU)) return winnerOf(-1, "Gote Wins");
+    if (!state.board.includes(-PIECES.OU)) return winnerOf(1, "Sente Wins");
+
+    // 手番側に合法手が無ければ負け（詰み。将棋ではステイルメイトも負け）
+    if (state.status === "PLAYING") {
+      const turn = state.turn as Side;
+      if (!hasLegalMove(state, turn)) {
+        const winner = -turn as Side;
+        const how = isInCheck(state.board, turn) ? "Checkmate" : "No legal moves";
+        return winnerOf(winner, `${winner === 1 ? "Sente" : "Gote"} Wins (${how})`);
+      }
     }
     return { isFinished: false };
   },
 
   getLegalActions: (state, playerId) => {
     if (state.status !== "PLAYING") return [];
-
-    // 手番チェック
-    if (state.players) {
-      const current = state.players[state.turn as 1 | -1];
-      if (current && current !== playerId) return [];
-    }
-
-    const actions: ShogiAction[] = [];
-    const turn = state.turn as 1 | -1;
-
-    // 1. 盤上の駒の移動 (MOVE)
-    for (let i = 0; i < 81; i++) {
-      const pieceVal = state.board[i];
-      if (pieceVal === 0 || Math.sign(pieceVal) !== turn) continue;
-
-      const type = Math.abs(pieceVal);
-      const moves = generateMoves(state, i);
-      const [_, fromY] = toXY(i);
-
-      for (const to of moves) {
-        const [__, toY] = toXY(to);
-        const canPromote =
-          !!PROMOTE_MAP[type] && (isPromotionZone(fromY, turn) || isPromotionZone(toY, turn));
-
-        let mustPromote = false;
-        if (type === PIECES.FU || type === PIECES.KY)
-          mustPromote = turn === 1 ? toY === 0 : toY === 8;
-        if (type === PIECES.KE) mustPromote = turn === 1 ? toY <= 1 : toY >= 7;
-
-        // 成れる場合は「成る手」と「成らない手」両方を生成
-        if (canPromote && !mustPromote) {
-          actions.push({ type: "MOVE", from: i, to, promote: true, playerId });
-          actions.push({ type: "MOVE", from: i, to, promote: false, playerId });
-        } else if (mustPromote) {
-          actions.push({ type: "MOVE", from: i, to, promote: true, playerId });
-        } else {
-          actions.push({ type: "MOVE", from: i, to, promote: false, playerId });
-        }
-      }
-    }
-
-    // 2. 持ち駒の打つ手 (DROP)
-    for (const [pieceStr, count] of Object.entries(state.hands[turn])) {
-      if (count === 0) continue;
-      const pieceType = parseInt(pieceStr, 10);
-
-      for (let i = 0; i < 81; i++) {
-        if (state.board[i] !== 0) continue;
-
-        const [x, y] = toXY(i);
-
-        // 行き所のないマスの除外
-        if (
-          (pieceType === PIECES.FU || pieceType === PIECES.KY) &&
-          (turn === 1 ? y === 0 : y === 8)
-        )
-          continue;
-        if (pieceType === PIECES.KE && (turn === 1 ? y <= 1 : y >= 7)) continue;
-
-        // 二歩の除外
-        if (pieceType === PIECES.FU) {
-          let nifu = false;
-          for (let cy = 0; cy < 9; cy++) {
-            if (state.board[toI(x, cy)] === PIECES.FU * turn) {
-              nifu = true;
-              break;
-            }
-          }
-          if (nifu) continue;
-        }
-
-        actions.push({ type: "DROP", to: i, piece: pieceType, playerId });
-      }
-    }
-
-    // （厳密にはここで「自玉に王手がかかる手」をフィルタリングする処理が入りますが、
-    // ボリュームが膨大になるため、AI・エンジン用として疑似合法手として返しています）
-
-    return actions;
+    const turn = state.turn as Side;
+    if (sideOf(state, playerId) !== turn) return [];
+    return generateLegalActions(state, turn).map((a) => ({ ...a, playerId }));
   },
 };
