@@ -6,7 +6,9 @@
     "types": ["bun"],
     "baseUrl": ".",
     "paths": {
-      "@engine/shared/*": ["packages/shared/*"]
+      "@engine/shared/*": ["packages/shared/*"],
+      "@engine/input-prediction": ["packages/input-prediction/index.ts"],
+      "@engine/input-prediction/*": ["packages/input-prediction/*"]
     }
   },
   "include": ["apps/**/*.ts", "apps/**/*.vue", "packages/**/*.ts"]

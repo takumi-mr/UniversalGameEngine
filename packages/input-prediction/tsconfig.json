@@ -1,0 +1,10 @@
+{
+  // 厳しさは ../../tsconfig.base.json に統一。
+  // ブラウザ（クライアント側の予測）と Bun（オフライン評価）の両方から使うので lib に DOM を含める。
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "types": ["bun"]
+  },
+  "include": ["."]
+}
