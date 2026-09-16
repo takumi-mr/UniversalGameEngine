@@ -169,6 +169,7 @@ import type {
   LogicCircuitAction,
 } from "@engine/shared/rules/LogicCircuitRuleset";
 import type { LogicLabState, LogicLabAction } from "@engine/shared/rules/LogicLabRuleset";
+import type { CyberStrikeState, CyberStrikeAction } from "@engine/shared/rules/CyberStrikeRuleset";
 
 // 共用体型の定義
 type GameState =
@@ -190,7 +191,8 @@ type GameState =
   | HakoiriMusumeState
   | TowerOfHanoiState
   | LogicCircuitState
-  | LogicLabState;
+  | LogicLabState
+  | CyberStrikeState;
 type GameAction =
   | TicTacToeAction
   | OthelloAction
@@ -210,7 +212,8 @@ type GameAction =
   | HakoiriMusumeAction
   | TowerOfHanoiAction
   | LogicCircuitAction
-  | LogicLabAction;
+  | LogicLabAction
+  | CyberStrikeAction;
 
 const props = defineProps<{
   gameType: string;
@@ -277,6 +280,7 @@ const components: Record<string, Component> = {
   tower_of_hanoi: defineAsyncComponent(() => import("./game/TowerOfHanoi.vue")),
   logic_circuit: defineAsyncComponent(() => import("./game/LogicLab.vue")),
   logic_lab: defineAsyncComponent(() => import("./game/LogicLab.vue")),
+  cyber_strike: defineAsyncComponent(() => import("./game/CyberStrike.vue")),
 };
 
 const gameComponent = computed(() => components[props.gameType] || null);
