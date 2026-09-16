@@ -1,5 +1,5 @@
 // packages/shared/rules/mahjong/MahjongHandEvaluator.ts
-import type { MahjongState, Tile } from "./MahjongRuleset";
+import type { MahjongState, Meld, Tile } from "./MahjongRuleset";
 import Riichi from "riichi";
 
 export interface EvaluatedHand {
@@ -15,6 +15,7 @@ export interface EvaluatedHand {
  * npm `riichi` パッケージを使って点数計算を行うラッパー
  */
 export class MahjongHandEvaluator {
+  private static readonly cache = new Map<string, EvaluatedHand>();
   /**
    * 手牌配列から riichi パッケージが解釈可能な文字列 (例: "123m456p789s1122z") に変換する
    */
@@ -48,30 +49,14 @@ export class MahjongHandEvaluator {
    * 鳴き（ポン等）は riichi に追加の文字として渡すルールがある（例: チーは "123m", ポンは "111p" など）
    * 仕様上、単純結合で "+111p" のように連結させる（riichi仕様次第だが簡易実装）
    */
-  private static formatMeldsToRiichiString(melds: any[]): string {
+  private static formatMeldsToRiichiString(melds: Meld[]): string {
     if (!melds || melds.length === 0) return "";
 
     let meldStr = "";
     for (const meld of melds) {
-      // ※簡易化: 本来はチーやカンの細かい表現が必要
-      // 鳴きを意味する "+" やポン等の文字をriichiの仕様に従ってつなぐ必要があるが、
-      // 今回は便宜上、単純に手牌の延長として扱うか（メンゼンが崩れるのみ）、
-      // `riichi`の機能 "123m+111p" を使用する。
-      if (meld.type === "PON") {
-        const num = meld.tile.charAt(0);
-        const suit = meld.tile.charAt(1);
-        meldStr += `+${num}${num}${num}${suit}`;
-      } else if (meld.type === "CHI") {
-        // 本来は正確な構成情報が必要（例 "2m" を鳴いて "123m" を作った）
-        // 簡略化のため、ここでは仮実装
-        const num = parseInt(meld.tile.charAt(0));
-        const suit = meld.tile.charAt(1);
-        meldStr += `+${num - 1}${num}${num + 1}${suit}`; // 雑な仮定（実用では不十分）
-      } else if (meld.type === "KAN") {
-        const num = meld.tile.charAt(0);
-        const suit = meld.tile.charAt(1);
-        meldStr += `+${num}${num}${num}${num}${suit}`;
-      }
+      const tiles = [...meld.consumed, meld.tile];
+      const grouped = this.formatTilesToRiichiString(tiles);
+      meldStr += `+${grouped}`;
     }
     return meldStr;
   }
@@ -86,7 +71,7 @@ export class MahjongHandEvaluator {
    */
   public static evaluate(
     hand: Tile[],
-    melds: any[],
+    melds: Meld[],
     winTile: Tile,
     isTsumo: boolean,
     _state?: MahjongState, // 将来的に場風やドラの計算に使用
@@ -116,13 +101,15 @@ export class MahjongHandEvaluator {
     } else {
       query += "+" + winTileStr; // ロンの場合は + をつける
     }
-    console.log(`[MahjongHandEvaluator] Evaluating: ${query}`);
+
+    const cached = this.cache.get(query);
+    if (cached) return cached;
 
     try {
       // riichiライブラリで計算
       const result = new Riichi(query).calc();
 
-      return {
+      const evaluated = {
         isAgari: Boolean(result.isAgari),
         yaku: result.yaku || {},
         han: result.han || 0,
@@ -130,9 +117,10 @@ export class MahjongHandEvaluator {
         ten: result.ten || 0,
         text: result.text || "",
       };
-    } catch (e) {
-      console.error("[MahjongHandEvaluator] Error evaluating hand", e);
-      return {
+      this.cache.set(query, evaluated);
+      return evaluated;
+    } catch {
+      const evaluated = {
         isAgari: false,
         yaku: {},
         han: 0,
@@ -140,6 +128,8 @@ export class MahjongHandEvaluator {
         ten: 0,
         text: "Error",
       };
+      this.cache.set(query, evaluated);
+      return evaluated;
     }
   }
 }
