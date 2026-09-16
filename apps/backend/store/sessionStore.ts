@@ -94,6 +94,13 @@ export class SocketGameServer extends GenericGameServer<any, any> {
     const finished = state.status === "FINISHED";
     await repo.saveSession(this.roomId, this.toRecord(), finished);
 
+    // 手番の締切があれば予約する（期限が来たら deadlineSweeper が TIMEOUT を dispatch する）
+    if (state.status === "PLAYING" && state.turnDeadline !== undefined) {
+      await repo.scheduleDeadline(this.roomId, state.turnDeadline);
+    } else {
+      await repo.cancelDeadline(this.roomId);
+    }
+
     // ゲーム終了時に1度だけリプレイ（GameRecord）を保存する
     if (finished && !this.isRecordSaved) {
       this.isRecordSaved = true;
@@ -185,6 +192,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
 
               // パッチの方が明らかに小さい場合のみ差分送信
               if (patchPayload.length < statePayload.length * 0.8) {
+                socket.emit("server-time", Date.now());
                 socket.emit("state-patch", {
                   patch,
                   baseVersion: previousState.version,
@@ -198,6 +206,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
           }
 
           // 初回送信、パッチの方が大きい場合、または強制フル更新の場合はフルデータを送信
+          socket.emit("server-time", Date.now());
           socket.emit("state-update", maskedState);
           this.lastSentState.set(socketId, JSON.parse(JSON.stringify(maskedState)));
         }

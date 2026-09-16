@@ -58,4 +58,11 @@ export interface IGameRepository<TState extends BaseGameState> {
    * （＝呼び出したインスタンスが掃除の責任を持つ）。
    */
   claimDueCleanups(now: number): Promise<string[]>;
+
+  // --- 手番の締切（state.turnDeadline）の予約。期限が来たら組み込みの TIMEOUT を dispatch する ---
+  /** at（epoch ms）に締切を予約する。既存の予約は上書き */
+  scheduleDeadline(gameId: string, at: number): Promise<void>;
+  cancelDeadline(gameId: string): Promise<void>;
+  /** 期限（now 以前）を迎えた予約を取り出す。取り出した gameId は他のインスタンスには返らない */
+  claimDueDeadlines(now: number): Promise<string[]>;
 }

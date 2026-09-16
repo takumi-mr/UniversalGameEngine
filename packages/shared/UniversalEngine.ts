@@ -282,11 +282,28 @@ export class UniversalEngine<
     }
 
     // 1. 合法手チェック
-    const valid = this.rules.isValidAction(base, action);
+    let valid = this.rules.isValidAction(base, action);
+
+    //    TIMEOUT: 制限時間切れ。ルールセットが自前で扱わなければ組み込みで解決する
+    //    （getTimeoutAction → RESIGN → 強制終了）。履歴には TIMEOUT 自体が残り、リプレイでも同じ解決になる
+    let timeoutResolution: TAction | "FORFEIT" | null = null;
+    if (action.type === "TIMEOUT") {
+      if (!this.isTimeoutDue(base, action)) return false;
+      if (!valid) {
+        timeoutResolution = this.resolveTimeout(base, action);
+        valid = timeoutResolution !== "FORFEIT";
+      }
+    }
+
     if (!valid) {
       if (action.type === "START" && base.status === "WAITING") {
         base.status = "PLAYING";
         builtinApplied = true;
+      } else if (timeoutResolution === "FORFEIT") {
+        // 時間切れを解決する手段が無い: 手番の側の負けとして終了する
+        base.status = "FINISHED";
+        base.message = `${action.playerId} timed out`;
+        base.activePlayers = [];
       } else if (!builtinApplied) {
         return false;
       }
@@ -302,7 +319,9 @@ export class UniversalEngine<
       if (process.env.NODE_ENV !== "production") {
         deepFreeze(base);
       }
-      this.state = this.rules.reduce(base, action, rng);
+      const applied =
+        timeoutResolution && timeoutResolution !== "FORFEIT" ? timeoutResolution : action;
+      this.state = this.rules.reduce(base, applied, rng);
     } else {
       this.state = base;
     }
@@ -396,6 +415,31 @@ export class UniversalEngine<
    */
   public getLegalActions(playerId: string): TAction[] {
     return this.rules.getLegalActions(this.state, playerId);
+  }
+
+  /**
+   * TIMEOUT が有効か: 対局中で、締切が設定されていて、締切を過ぎた時刻で、手番のプレイヤーに対するもの。
+   * 古いタイマーの誤爆（既に手が進んで手番が変わった等）はここで弾かれる
+   */
+  private isTimeoutDue(state: TState, action: TAction): boolean {
+    if (state.status !== "PLAYING") return false;
+    if (state.turnDeadline === undefined || action.timestamp === undefined) return false;
+    if (action.timestamp < state.turnDeadline) return false;
+    return !!action.playerId && !!state.activePlayers?.includes(action.playerId);
+  }
+
+  /** TIMEOUT を実際のアクションに解決する: getTimeoutAction → RESIGN → 強制終了 */
+  private resolveTimeout(state: TState, action: TAction): TAction | "FORFEIT" {
+    const playerId = action.playerId!;
+    const stamp = (a: TAction): TAction => ({ ...a, playerId, timestamp: action.timestamp });
+    const fromRules = this.rules.getTimeoutAction?.(state, playerId);
+    if (fromRules) {
+      const candidate = stamp(fromRules);
+      if (this.rules.isValidAction(state, candidate)) return candidate;
+    }
+    const resign = stamp({ type: "RESIGN" } as TAction);
+    if (this.rules.isValidAction(state, resign)) return resign;
+    return "FORFEIT";
   }
 
   /**

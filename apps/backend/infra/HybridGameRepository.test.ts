@@ -294,4 +294,19 @@ describe("HybridGameRepository", () => {
       expect(mockRedisEval.mock.calls[0]?.slice(1)).toEqual([1, "game:cleanup", 999]);
     });
   });
+
+  describe("deadline queue", () => {
+    it("scheduleDeadline は上書きの ZADD、cancelDeadline は ZREM を使うこと", async () => {
+      await repo.scheduleDeadline("g1", 777);
+      expect(mockRedisZadd).toHaveBeenCalledWith("game:deadline", 777, "g1");
+      await repo.cancelDeadline("g1");
+      expect(mockRedisZrem).toHaveBeenCalledWith("game:deadline", "g1");
+    });
+
+    it("claimDueDeadlines は Lua で取り出した gameId を返すこと", async () => {
+      mockRedisEval.mockResolvedValueOnce(["g9"]);
+      expect(await repo.claimDueDeadlines(500)).toEqual(["g9"]);
+      expect(mockRedisEval.mock.calls[0]?.slice(1)).toEqual([1, "game:deadline", 500]);
+    });
+  });
 });

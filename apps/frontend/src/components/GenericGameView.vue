@@ -56,6 +56,15 @@
           <pre class="json-view">{{ prettyState }}</pre>
         </div>
 
+        <!-- 手番の締切カウントダウン -->
+        <div
+          v-if="remainingSeconds !== null && gameState.status === 'PLAYING'"
+          class="deadline-badge"
+          :class="{ urgent: remainingSeconds <= 5 }"
+        >
+          ⏱ {{ remainingSeconds }}s
+        </div>
+
         <!-- Your Turn Notification -->
         <Transition name="slide-fade">
           <div v-if="isMyTurn && gameState.status === 'PLAYING'" class="turn-notification">
@@ -219,6 +228,15 @@ const API_BASE = "http://127.0.0.1:3000";
 const roomId = ref(props.roomId);
 const errorMsg = ref("");
 const gameState = ref<GameState | null>(null);
+// 締切カウントダウン（サーバー時計との差を補正）
+const now = ref(Date.now());
+let clockTimer: ReturnType<typeof setInterval> | null = null;
+const remainingSeconds = computed(() => {
+  const deadline = gameState.value?.turnDeadline;
+  if (deadline === undefined || !client) return null;
+  const serverNow = now.value - client.clockSkew;
+  return Math.max(0, Math.ceil((deadline - serverNow) / 1000));
+});
 const connectionStatus = ref("Connecting");
 const showSnackbar = ref(false);
 const snackbarMsg = ref("");
@@ -328,11 +346,15 @@ onMounted(() => {
   };
 
   client.connect(props.roomId, { asSpectator: !!props.spectate });
+  clockTimer = setInterval(() => {
+    now.value = Date.now();
+  }, 250);
 });
 
 // Removed joinAsSpectator as it is now handled in RoomListView
 
 onUnmounted(() => {
+  if (clockTimer) clearInterval(clockTimer);
   client?.disconnect();
 });
 
@@ -700,6 +722,24 @@ function onSendChat({
 }
 
 /* === Turn Notification === */
+.deadline-badge {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-surface), 0.9);
+  color: rgb(var(--v-theme-on-surface));
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  pointer-events: none;
+}
+.deadline-badge.urgent {
+  background: rgb(var(--v-theme-error));
+  color: rgb(var(--v-theme-on-error));
+}
+
 .turn-notification {
   position: absolute;
   top: 20px;

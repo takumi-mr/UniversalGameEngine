@@ -13,6 +13,7 @@ import gameRoutes from "./routes/game";
 import replaysRoutes from "./routes/replays";
 import { setupSocketIO } from "./socket";
 import { startCleanupSweeper } from "./socket/roomManager";
+import { startDeadlineSweeper } from "./store/deadlineSweeper";
 import { startGrpcServer } from "./grpc-server";
 import { INSTANCE_ID } from "./network/io";
 
@@ -58,6 +59,8 @@ setupSocketIO(io);
 
 // 空室クリーンアップ（予約はストアにあるので、どのインスタンスが拾ってもよい）
 const stopCleanupSweeper = startCleanupSweeper();
+// 手番の締切（予約はストアにあるので、どのインスタンスが拾ってもよい）
+const stopDeadlineSweeper = startDeadlineSweeper();
 
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
@@ -79,6 +82,7 @@ const shutdown = async (signal: string) => {
   shuttingDown = true;
   console.log(`[Shutdown] ${signal} received — closing connections`);
   stopCleanupSweeper();
+  stopDeadlineSweeper();
   try {
     (await grpcServer)?.server.forceShutdown();
     await io.close();
