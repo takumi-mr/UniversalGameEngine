@@ -8,6 +8,7 @@ import { Othello3DRuleset } from "./rules/Othello3DRuleset";
 import { HighLowRuleset } from "./rules/HighLowRuleset";
 import { TexasHoldemRuleset } from "./rules/TexasHoldemRuleset";
 import { MahjongRuleset } from "./rules/mahjong/MahjongRuleset";
+import { MahjongMatchRuleset } from "./rules/mahjong/MahjongMatchRuleset";
 import { DaifugoRuleset } from "./rules/DaifugoRuleset";
 import { RubiksRuleset } from "./rules/RubicCubeRuleset";
 import { GoRuleset } from "./rules/GoRuleset";
@@ -152,6 +153,16 @@ class GameRegistry {
       description: "4人麻雀。役・符・点数計算対応。",
       emoji: "🀄",
       rules: "4つの面子（メンツ）と1つの雀頭（ジャントウ）を揃えて和了（あがり）を目指します。",
+    });
+    this.register({
+      type: "mahjong_match",
+      name: "Riichi Mahjong Match",
+      ruleset: MahjongMatchRuleset,
+      minPlayers: 4,
+      maxPlayers: 4,
+      description: "東風戦・半荘戦に対応したリーチ麻雀の対局。",
+      emoji: "🀄",
+      rules: "局を順番に進め、親・本場・連荘と最終順位を管理します。",
     });
     this.register({
       type: "daifugo",
