@@ -48,3 +48,9 @@ export const isClusterMode = (): boolean => !useInMemoryStore();
 
 export const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 export const MONGO_URL = process.env.MONGO_URL || "mongodb://localhost:27017";
+
+/**
+ * 対局中にリプレイ記録（MongoDB）へ履歴を追記し、メモリ / Redis の履歴を切り詰める間隔（手数）。
+ * 小さいほど 1 手あたりの保存サイズが小さくなるが、MongoDB への書き込みが増える。
+ */
+export const REPLAY_FLUSH_SIZE = Math.max(1, Number(process.env.REPLAY_FLUSH_SIZE) || 100);

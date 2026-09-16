@@ -4,23 +4,36 @@
 //
 // 真実の状態はリポジトリ（Redis / インメモリ）にある SessionRecord で、
 // sessions Map はこのインスタンス内のキャッシュにすぎない。どのインスタンスも
-//   withSession(gameId): ロック → キャッシュ（なければ復元） → ストアより古ければ再読込 → 処理 → commit（保存 + 配信）
+//   withSession(gameId): ロック → キャッシュ（なければ復元） → ストアより古ければ再読込 → 処理 → commit（配信 + 保存）
 // の手順で対局を進めるので、クライアントがどのインスタンスに接続していても同じ結果になる。
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import { InMemoryDummyRepository } from "../infra/InMemoryDummyRepository";
 import { HybridGameRepository } from "../infra/HybridGameRepository";
 import { GenericGameServer } from "@engine/shared/network/GenericGameServer";
-import { compare } from "fast-json-patch";
+import { compare, type Operation } from "fast-json-patch";
 import { calculateStateHash } from "@engine/shared";
 import { streamManager } from "../network/StreamManager";
 import type { IAIPlayer } from "@engine/shared/ai/IAIPlayer";
 import { gameRegistry } from "@engine/shared/GameRegistry";
 import type { IGameRepository, BotSpec, SessionRecord } from "@engine/shared/stores/repository";
-import { useInMemoryStore, REDIS_URL, MONGO_URL } from "../config";
+import { useInMemoryStore, REDIS_URL, MONGO_URL, REPLAY_FLUSH_SIZE } from "../config";
 import { createBotPlayer } from "../ai/botFactory";
 import { fetchLocalSockets, publishClusterEvent } from "../network/io";
 
 export const normalizeGameType = (type: string) => type.toLowerCase().replace(/-/g, "_");
+
+/** broadcastLocal で targetId（プレイヤー / SPECTATOR）ごとに 1 回だけ用意する配信用データ */
+interface PreparedState {
+  targetId: string;
+  /** マスク済み状態（version / hash 付与済み） */
+  maskedState: any;
+  /** maskedState の JSON */
+  json: string;
+  /** クライアントが受け取る形（JSON 経由）の状態。lastSentState に共有で保持する */
+  sent: any;
+  /** 基準バージョン → その版からの差分（同じ targetId のソケットで共有） */
+  patches: Map<number, { patch: Operation[]; payload: string }>;
+}
 
 export class SocketGameServer extends GenericGameServer<any, any> {
   // ソケットごとに最後に送信した「マスク済み状態」を記録する（差分送信用。インスタンスローカル）
@@ -34,8 +47,11 @@ export class SocketGameServer extends GenericGameServer<any, any> {
   public aiPlayers: Map<string, IAIPlayer<any, any>> = new Map();
   private computingAIPlayers: Set<string> = new Set();
 
-  // リプレイの重複保存を避けるためのフラグ
+  // 終局時のリプレイ記録の追記が済んだか（重複追記を避けるためのフラグ）
   private isRecordSaved: boolean = false;
+
+  /** 何手溜まったらリプレイ記録へ追記して履歴を切り詰めるか（テストで差し替え可能） */
+  public static replayFlushSize = REPLAY_FLUSH_SIZE;
 
   constructor(roomId: string, engine: UniversalEngine<any, any>, gameType: string) {
     super(roomId, engine);
@@ -86,37 +102,72 @@ export class SocketGameServer extends GenericGameServer<any, any> {
   }
 
   /**
-   * 現在の状態を保存してから配信する。エンジンを直接進めた後（JOIN / START / 離席など）は必ずこれを呼ぶ。
+   * 配信してから保存する（write-behind）。エンジンを直接進めた後（JOIN / START / 離席など）は必ずこれを呼ぶ。
    * withSession の中で呼ぶこと（ロック外で呼ぶと他インスタンスの更新を上書きしうる）。
+   *
+   * このインスタンスのクライアントには保存を待たせずに配る。保存はロック内で完了させ、
+   * 他インスタンスへの通知（ストアを読み直させる）は保存が終わってから行うので、
+   * 「真実はストア」の契約は変わらない。
    */
   public async commit(): Promise<void> {
     const state = this.engine.getState();
     const finished = state.status === "FINISHED";
-    await repo.saveSession(this.roomId, this.toRecord(), finished);
 
-    // 手番の締切があれば予約する（期限が来たら deadlineSweeper が TIMEOUT を dispatch する）
-    if (state.status === "PLAYING" && state.turnDeadline !== undefined) {
-      await repo.scheduleDeadline(this.roomId, state.turnDeadline);
-    } else {
-      await repo.cancelDeadline(this.roomId);
-    }
+    // 1. まずこのインスタンスに接続しているクライアントへ配る
+    this.broadcastLocal();
 
-    // ゲーム終了時に1度だけリプレイ（GameRecord）を保存する
-    if (finished && !this.isRecordSaved) {
-      this.isRecordSaved = true;
-      const record = this.engine.getGameRecord(this.roomId);
-      repo
-        .saveGameRecord(this.roomId, record)
-        .catch((err) =>
-          console.error(`[Replay] Failed to save game record for ${this.roomId}:`, err),
-        );
-    }
+    // 2. 溜まった履歴をリプレイ記録へ追記し、メモリから切り詰める（セッション記録が手数に比例して肥大しないように）
+    await this.persistReplay(finished);
 
-    this.broadcastState();
+    // 3. 保存と締切予約（期限が来たら deadlineSweeper が TIMEOUT を dispatch する）
+    await Promise.all([
+      repo.saveSession(this.roomId, this.toRecord(), finished),
+      state.status === "PLAYING" && state.turnDeadline !== undefined
+        ? repo.scheduleDeadline(this.roomId, state.turnDeadline)
+        : repo.cancelDeadline(this.roomId),
+    ]);
+
+    // 4. 保存済みになったので他インスタンスへ知らせ、AI の手番があれば進める
+    this.notifySaved();
   }
 
   /**
-   * アクションを 1 手適用する。ロック → 最新化 → dispatch → 保存 → 配信 までを行う。
+   * エンジンに溜まった履歴をリプレイ記録（完全な履歴を持つ永続ログ）へ追記する。
+   * 対局中は REPLAY_FLUSH_SIZE 手ごとに追記して、追記できた分はエンジン（＝セッション記録）から切り詰める。
+   * 終局時は残りをすべて追記し、サーバーシードを開示する。
+   * 追記に失敗しても対局は止めない。履歴はメモリ / セッション記録に残るので次の機会に再試行される
+   * （記録済みの分はリポジトリ側が version で重複排除する）。
+   */
+  private async persistReplay(finished: boolean): Promise<void> {
+    if (this.isRecordSaved) return;
+    if (!finished && this.engine.history.length < SocketGameServer.replayFlushSize) return;
+
+    const record = this.engine.getGameRecord(this.roomId);
+    const fromVersion = (this.engine.getState().version ?? 0) - record.actions.length;
+    try {
+      await repo.appendGameRecord(this.roomId, {
+        initialState: record.initialState,
+        serverSeedHash: record.serverSeedHash,
+        clientSeed: record.clientSeed,
+        fromVersion,
+        actions: record.actions,
+        stateHashes: record.stateHashes ?? [],
+        finalServerSeed: record.finalServerSeed,
+      });
+    } catch (err) {
+      console.error(`[Replay] Failed to append game record for ${this.roomId}:`, err);
+      return;
+    }
+
+    if (finished) {
+      this.isRecordSaved = true;
+    } else {
+      this.engine.flushHistory();
+    }
+  }
+
+  /**
+   * アクションを 1 手適用する。ロック → 最新化 → dispatch → 配信 → 保存 までを行う。
    * Socket.io / HTTP / gRPC / AI のすべての着手はここを通る。
    */
   public async dispatchAction(playerId: string, action: any): Promise<boolean> {
@@ -142,6 +193,11 @@ export class SocketGameServer extends GenericGameServer<any, any> {
    */
   public override broadcastState(): void {
     this.broadcastLocal();
+    this.notifySaved();
+  }
+
+  /** 保存が完了した後の後処理: 他インスタンスへの通知と AI の手番の自動実行 */
+  private notifySaved(): void {
     publishClusterEvent("uge:state-changed", {
       gameId: this.roomId,
       version: this.engine.getState().version ?? 0,
@@ -152,6 +208,8 @@ export class SocketGameServer extends GenericGameServer<any, any> {
 
   /**
    * このインスタンスに接続しているソケット・gRPC ストリームへ現在の状態を送る。
+   * マスク・ハッシュ・シリアライズは配信先ごとではなく targetId（各プレイヤー / SPECTATOR）ごとに 1 回だけ行い、
+   * 差分（パッチ）も同じ targetId・同じ基準バージョンなら使い回す（観戦者が多いときに効く）。
    * @param targetSocketId 指定するとそのソケットにだけフル状態を送る（再同期要求）
    */
   public broadcastLocal(targetSocketId?: string): void {
@@ -159,19 +217,32 @@ export class SocketGameServer extends GenericGameServer<any, any> {
     const players = state.players ? (Object.values(state.players).filter(Boolean) as string[]) : [];
     const isForceFull = !!targetSocketId;
 
+    const prepared = new Map<string, PreparedState>();
+    const prepare = (userId: string): PreparedState => {
+      const targetId = players.includes(userId) ? userId : "SPECTATOR";
+      let entry = prepared.get(targetId);
+      if (!entry) {
+        const maskedState = this.engine.getMaskedState(targetId);
+        // version と hash を付与
+        maskedState.version = state.version;
+        maskedState.hash = calculateStateHash(maskedState);
+        const json = JSON.stringify(maskedState);
+        // 「最後に送った状態」はクライアントが受け取ったものと同じ（JSON を経由した）形で持つ。
+        // 同じ targetId のソケットで共有するので変更しないこと
+        entry = { targetId, maskedState, json, sent: JSON.parse(json), patches: new Map() };
+        prepared.set(targetId, entry);
+      }
+      return entry;
+    };
+
     fetchLocalSockets(this.roomId)
       .then((sockets) => {
         for (const socket of sockets) {
           // targetSocketId が指定されている場合はそのソケットのみ処理、そうでなければ全員
           if (targetSocketId && socket.id !== targetSocketId) continue;
 
-          const userId = socket.data.userId;
-          const targetId = players.includes(userId) ? userId : "SPECTATOR";
-          const maskedState = this.engine.getMaskedState(targetId);
-
-          // version と hash を付与
-          maskedState.version = state.version;
-          maskedState.hash = calculateStateHash(maskedState);
+          const entry = prepare(socket.data.userId);
+          const { maskedState, json: statePayload } = entry;
 
           const socketId = socket.id;
           const previousState = this.lastSentState.get(socketId);
@@ -183,32 +254,32 @@ export class SocketGameServer extends GenericGameServer<any, any> {
             previousState.version !== undefined &&
             previousState.version < maskedState.version
           ) {
-            // 差分（パッチ）を生成
-            const patch = compare(previousState, maskedState);
+            // 差分（パッチ）を生成（同じ基準バージョンのソケット同士では共有）
+            let cached = entry.patches.get(previousState.version);
+            if (!cached) {
+              const patch = compare(previousState, maskedState);
+              cached = { patch, payload: JSON.stringify(patch) };
+              entry.patches.set(previousState.version, cached);
+            }
 
-            if (patch.length > 0) {
-              const patchPayload = JSON.stringify(patch);
-              const statePayload = JSON.stringify(maskedState);
-
-              // パッチの方が明らかに小さい場合のみ差分送信
-              if (patchPayload.length < statePayload.length * 0.8) {
-                socket.emit("server-time", Date.now());
-                socket.emit("state-patch", {
-                  patch,
-                  baseVersion: previousState.version,
-                  targetVersion: maskedState.version,
-                  hash: maskedState.hash,
-                });
-                this.lastSentState.set(socketId, JSON.parse(statePayload));
-                continue;
-              }
+            // パッチの方が明らかに小さい場合のみ差分送信
+            if (cached.patch.length > 0 && cached.payload.length < statePayload.length * 0.8) {
+              socket.emit("server-time", Date.now());
+              socket.emit("state-patch", {
+                patch: cached.patch,
+                baseVersion: previousState.version,
+                targetVersion: maskedState.version,
+                hash: maskedState.hash,
+              });
+              this.lastSentState.set(socketId, entry.sent);
+              continue;
             }
           }
 
           // 初回送信、パッチの方が大きい場合、または強制フル更新の場合はフルデータを送信
           socket.emit("server-time", Date.now());
           socket.emit("state-update", maskedState);
-          this.lastSentState.set(socketId, JSON.parse(JSON.stringify(maskedState)));
+          this.lastSentState.set(socketId, entry.sent);
         }
       })
       .catch((err) => console.error("Broadcast error:", err));
@@ -216,22 +287,15 @@ export class SocketGameServer extends GenericGameServer<any, any> {
     if (targetSocketId) return;
 
     // gRPC ストリームへの通知（ストリームはインスタンスローカル）
-    streamManager.notify(this.roomId, (userId) => {
-      const targetId = players.includes(userId) ? userId : "SPECTATOR";
-      const maskedState = this.engine.getMaskedState(targetId);
-      maskedState.version = state.version;
-      maskedState.hash = calculateStateHash(maskedState);
-
-      return {
-        stateUpdate: {
-          stateJson: JSON.stringify(maskedState),
-          metadata: {
-            playerCount: players.length,
-            activePlayers: players,
-          },
+    streamManager.notify(this.roomId, (userId) => ({
+      stateUpdate: {
+        stateJson: prepare(userId).json,
+        metadata: {
+          playerCount: players.length,
+          activePlayers: players,
         },
-      };
-    });
+      },
+    }));
   }
 
   private checkAndExecuteAiTurns() {

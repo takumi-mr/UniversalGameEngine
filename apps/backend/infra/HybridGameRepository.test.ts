@@ -42,6 +42,7 @@ mock.module("ioredis", () => ({
 // MongoDBのメソッドのモック
 const mockMongoUpdateOne = mock();
 const mockMongoFindOne = mock();
+const mockMongoFindOneAndUpdate = mock();
 const mockMongoDeleteOne = mock();
 
 mock.module("mongodb", () => ({
@@ -51,6 +52,7 @@ mock.module("mongodb", () => ({
         collection: () => ({
           updateOne: mockMongoUpdateOne,
           findOne: mockMongoFindOne,
+          findOneAndUpdate: mockMongoFindOneAndUpdate,
           deleteOne: mockMongoDeleteOne,
         }),
       };
@@ -85,6 +87,7 @@ describe("HybridGameRepository", () => {
     mockRedisDel.mockClear();
     mockMongoUpdateOne.mockClear();
     mockMongoFindOne.mockClear();
+    mockMongoFindOneAndUpdate.mockClear();
     mockMongoDeleteOne.mockClear();
 
     // ダミーのURLでリポジトリを初期化（モックされるため実際には接続されません）
@@ -163,40 +166,92 @@ describe("HybridGameRepository", () => {
   });
 
   describe("appendGameRecord", () => {
-    it("最初の保存時に $setOnInsert で初期情報をセットし, $push でアクションを追記すること", async () => {
-      const record = {
-        gameId: "game-123",
-        initialState: { status: "PLAYING", score: 0 } as any,
-        actions: [{ type: "INCREMENT" }] as any,
-        stateHashes: ["hash0", "hash1"],
-        snapshotState: { status: "PLAYING", score: 1 } as any,
-        snapshotVersion: 1,
-      };
+    const chunk = {
+      initialState: { status: "PLAYING", score: 0 } as any,
+      serverSeedHash: "ssh",
+      clientSeed: "cs",
+      fromVersion: 0,
+      actions: [{ type: "A" }, { type: "B" }] as any,
+      stateHashes: ["h0", "h1", "h2"],
+    };
 
-      await repo.appendGameRecord("game-123", record);
+    it("記録が無ければ $setOnInsert で器を作り、CAS でアクションとハッシュを追記すること", async () => {
+      mockMongoFindOneAndUpdate.mockResolvedValueOnce({ persistedVersion: 0 });
+      mockMongoUpdateOne.mockResolvedValueOnce({ matchedCount: 1 });
 
-      expect(mockMongoUpdateOne).toHaveBeenCalledWith(
+      await repo.appendGameRecord("game-123", chunk);
+
+      expect(mockMongoFindOneAndUpdate).toHaveBeenCalledWith(
         { _id: "game-123" },
         {
-          $set: {
-            "record.snapshotState": record.snapshotState,
-            "record.snapshotVersion": 1,
-            // "record.finalServerSeed" は undefined なので omitted
+          $setOnInsert: {
+            record: {
+              gameId: "game-123",
+              initialState: chunk.initialState,
+              actions: [],
+              serverSeedHash: "ssh",
+              clientSeed: "cs",
+              stateHashes: ["h0"],
+            },
+            persistedVersion: 0,
             createdAt: expect.any(Date),
           },
+        },
+        { upsert: true, returnDocument: "after", projection: { persistedVersion: 1 } },
+      );
+      expect(mockMongoUpdateOne).toHaveBeenCalledWith(
+        { _id: "game-123", persistedVersion: 0 },
+        {
+          $set: { persistedVersion: 2 },
           $push: {
-            "record.actions": { $each: record.actions },
-            "record.stateHashes": { $each: record.stateHashes.slice(1) },
-          },
-          $setOnInsert: {
-            "record.initialState": record.initialState,
-            "record.gameId": "game-123",
-            // serverSeedHash, clientSeed は undefined なので omitted
-            "record.stateHashes": [record.stateHashes[0]],
+            "record.actions": { $each: chunk.actions },
+            "record.stateHashes": { $each: ["h1", "h2"] },
           },
         },
-        { upsert: true },
       );
+    });
+
+    it("記録済みの version までのアクションは捨て、finalServerSeed をセットすること", async () => {
+      // 既に v1 まで記録済み → actions[0] と h1 は重複なので捨てる
+      mockMongoFindOneAndUpdate.mockResolvedValueOnce({ persistedVersion: 1 });
+      mockMongoUpdateOne.mockResolvedValueOnce({ matchedCount: 1 });
+
+      await repo.appendGameRecord("game-123", { ...chunk, finalServerSeed: "seed" });
+
+      expect(mockMongoUpdateOne).toHaveBeenCalledWith(
+        { _id: "game-123", persistedVersion: 1 },
+        {
+          $set: { persistedVersion: 2, "record.finalServerSeed": "seed" },
+          $push: {
+            "record.actions": { $each: [{ type: "B" }] },
+            "record.stateHashes": { $each: ["h2"] },
+          },
+        },
+      );
+    });
+
+    it("全て記録済みなら $push せず、ハッシュが各手に対応していなければ追記しないこと", async () => {
+      mockMongoFindOneAndUpdate.mockResolvedValueOnce({ persistedVersion: 2 });
+      mockMongoUpdateOne.mockResolvedValueOnce({ matchedCount: 1 });
+      await repo.appendGameRecord("game-123", chunk);
+      expect(mockMongoUpdateOne).toHaveBeenLastCalledWith(
+        { _id: "game-123", persistedVersion: 2 },
+        { $set: { persistedVersion: 2 } },
+      );
+
+      mockMongoFindOneAndUpdate.mockResolvedValueOnce({ persistedVersion: 0 });
+      mockMongoUpdateOne.mockResolvedValueOnce({ matchedCount: 1 });
+      await repo.appendGameRecord("game-123", { ...chunk, stateHashes: ["h0"] });
+      expect(mockMongoUpdateOne).toHaveBeenLastCalledWith(
+        { _id: "game-123", persistedVersion: 0 },
+        { $set: { persistedVersion: 2 }, $push: { "record.actions": { $each: chunk.actions } } },
+      );
+    });
+
+    it("CAS に失敗したら例外を投げること", async () => {
+      mockMongoFindOneAndUpdate.mockResolvedValueOnce({ persistedVersion: 0 });
+      mockMongoUpdateOne.mockResolvedValueOnce({ matchedCount: 0 });
+      await expect(repo.appendGameRecord("game-123", chunk)).rejects.toThrow(/Concurrent/);
     });
   });
 
