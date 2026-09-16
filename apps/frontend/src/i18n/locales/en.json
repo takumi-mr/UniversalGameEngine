@@ -261,6 +261,11 @@
       "description": "Push your luck: everyone secretly decides at once whether to keep digging or get out.",
       "rules": "Each time a card is turned over in the cave, everyone secretly and simultaneously chooses to stay or leave. Treasure is split among those still inside (leftovers stay on the path); a second copy of the same trap collapses the cave and everyone still inside loses that round's haul. If exactly one player leaves, they also scoop the leftovers on the path. Highest total after 5 rounds wins. Once per game your torch lets you peek at the next card (everyone sees that you peeked)."
     },
+    "decathlon": {
+      "name": "Decathlon",
+      "description": "A multi-game tournament: whoever is behind picks the next event.",
+      "rules": "Compete over 5 events drawn from the game library. Before each event the last-placed player picks from 3 offered games, and every contestant secretly declares BOLD or SAFE. Win 2 / draw 1. BOLD doubles a win but scores 0 otherwise and hands the opponent +1. Two-player events pair the leader with the last place; an odd player out sits out for 1 point. A 3+ point gap unlocks an underdog bonus, and the final event is worth double."
+    },
     "equilibrium": {
       "name": "Equilibrium",
       "description": "AI-designed psychological warfare.",

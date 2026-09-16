@@ -1,76 +1,93 @@
 // packages/shared/rules/__tests__/MetaGameRuleset.test.ts
 import { describe, it, expect } from "bun:test";
-import { MetaGameRuleset, type MetaGameAction } from "../MetaGameRuleset";
-import { TicTacToeRuleset, type TicTacToeAction } from "../TicTacToeRuleset";
+import "../../GameRegistry"; // サブゲームのリゾルバを登録する
+import { UniversalEngine } from "../../UniversalEngine";
+import {
+  MetaGameRuleset,
+  createSubGame,
+  applySubGameAction,
+  type MetaGameAction,
+  type MetaGameState,
+} from "../MetaGameRuleset";
+import type { TicTacToeAction } from "../TicTacToeRuleset";
+import { ProvablyFairRNG } from "../../utils/ProvablyFairRNG";
+
+// playerA: 0, 1, 2 (Win) / playerB: 3, 4
+const winningMoves: TicTacToeAction[] = [
+  { type: "PLACE", index: 0, playerId: "playerA" },
+  { type: "PLACE", index: 3, playerId: "playerB" },
+  { type: "PLACE", index: 1, playerId: "playerA" },
+  { type: "PLACE", index: 4, playerId: "playerB" },
+  { type: "PLACE", index: 2, playerId: "playerA" },
+];
 
 describe("MetaGameRuleset", () => {
-  it("複数のサブゲーム（○×ゲーム）を管理し、その結果を集約できる", () => {
-    // 1. メタゲームの初期化 (2つの○×ゲームを開始)
+  it("createSubGame は着席・開始まで済ませ、applySubGameAction は終局で result を返す", () => {
+    let entry = createSubGame("tictactoe", ["playerA", "playerB"]);
+    expect(entry.state.status).toBe("PLAYING");
+    expect(entry.state.players).toEqual({ 1: "playerA", [-1]: "playerB" });
+    expect(entry.state.activePlayers).toEqual(["playerA"]);
+
+    for (const a of winningMoves) entry = applySubGameAction(entry, a);
+    expect(entry.state.status).toBe("FINISHED");
+    expect(entry.result?.winnerIds).toEqual(["playerA"]);
+
+    // START を自前で扱うゲーム（HighLow）も開始状態になる
+    const hl = createSubGame("high_low", ["x", "y"], new ProvablyFairRNG("s", "c", 0));
+    expect(hl.state.status).toBe("PLAYING");
+    expect(hl.state.activePlayers).toEqual(["x"]);
+  });
+
+  it("複数のサブゲームを管理し、結果を集約してメタゲームを終える（エンジン経由）", () => {
     const players = { "1": "playerA", "-1": "playerB" };
-    const options = {
+    const engine = new UniversalEngine<MetaGameState, MetaGameAction>(MetaGameRuleset, {
+      clientSeed: "meta",
+      serverSeed: "meta",
       players,
-      activePlayers: ["playerA"],
       initialSubGames: [
-        { id: "game1", type: "tictactoe", options: { players } },
-        { id: "game2", type: "tictactoe", options: { players } },
+        { id: "game1", type: "tictactoe" },
+        { id: "game2", type: "tictactoe" },
       ],
-      // 初期化時のリゾルバ
-      rulesetResolver: (type: string) => (type === "tictactoe" ? TicTacToeRuleset : null),
-    };
-
-    let state = MetaGameRuleset.getInitialState(options);
+    });
+    let state = engine.getState();
     expect(Object.keys(state.subGames)).toHaveLength(2);
-    expect(state.subGames["game1"].type).toBe("tictactoe");
-    expect(state.subGames["game2"].type).toBe("tictactoe");
+    expect(state.activePlayers).toEqual(["playerA"]);
 
-    // 2. game1 にアクションを送って勝利させる
-    // playerA: 0, 1, 2 (Win)
-    // playerB: 3, 4
-    const moves: TicTacToeAction[] = [
-      { type: "PLACE", index: 0, playerId: "playerA" },
-      { type: "PLACE", index: 3, playerId: "playerB" },
-      { type: "PLACE", index: 1, playerId: "playerA" },
-      { type: "PLACE", index: 4, playerId: "playerB" },
-      { type: "PLACE", index: 2, playerId: "playerA" },
-    ];
-
-    for (const subAction of moves) {
-      const metaAction: MetaGameAction & { _resolvedRuleset: any } = {
+    // 手番でない人・不正な手は弾かれる
+    expect(
+      engine.dispatch({
         type: "SUBGAME_ACTION",
+        playerId: "playerB",
         subGameId: "game1",
-        subAction,
-        _resolvedRuleset: TicTacToeRuleset,
-      };
-      state = MetaGameRuleset.reduce(state, metaAction);
-    }
+        subAction: { type: "PLACE", index: 0 } as TicTacToeAction,
+      }),
+    ).toBe(false);
 
-    // 3. 状態の確認
-    // game1 は終了しているはず
-    expect(state.subGames["game1"].state.status).toBe("FINISHED");
-    // playerA のメタスコアが 1 になっているはず
-    expect(state.metaScores["playerA"]).toBe(1);
+    const play = (subGameId: string) => {
+      for (const subAction of winningMoves) {
+        expect(
+          engine.dispatch({
+            type: "SUBGAME_ACTION",
+            playerId: subAction.playerId!,
+            subGameId,
+            subAction,
+          }),
+        ).toBe(true);
+      }
+    };
+    play("game1");
+    state = engine.getState();
+    expect(state.subGames.game1.state.status).toBe("FINISHED");
+    expect(state.metaScores.playerA).toBe(1);
+    expect(state.subGames.game2.state.status).toBe("PLAYING");
+    expect(state.message).toContain("Sub-game game1 finished.");
+    // 終わった盤の手は合法手に出てこない
+    expect(engine.getLegalActions("playerA").every((a) => a.subGameId === "game2")).toBe(true);
 
-    // game2 はまだ進行中（または開始状態）
-    expect(state.subGames["game2"].state.status).toBe("PLAYING");
-
-    // 4. メタゲームの勝利条件（ここではスコア3だが、全ゲーム終了時もチェック）
-    // game2 も playerA に勝たせる
-    for (const subAction of moves) {
-      const metaAction: MetaGameAction & { _resolvedRuleset: any } = {
-        type: "SUBGAME_ACTION",
-        subGameId: "game2",
-        subAction,
-        _resolvedRuleset: TicTacToeRuleset,
-      };
-      state = MetaGameRuleset.reduce(state, metaAction);
-    }
-
-    expect(state.metaScores["playerA"]).toBe(2);
-
-    // 全てのサブゲームが終了したので、メタゲームも終了するかチェック
-    const winResult = MetaGameRuleset.checkWinCondition(state);
-    expect(winResult.isFinished).toBe(true);
-    expect(winResult.winnerIds).toContain("playerA");
-    expect(state.message).toContain("Sub-game game2 finished.");
+    play("game2");
+    state = engine.getState();
+    expect(state.metaScores.playerA).toBe(2);
+    expect(state.status).toBe("FINISHED");
+    expect(MetaGameRuleset.checkWinCondition(state).winnerIds).toEqual(["playerA"]);
   });
 });
