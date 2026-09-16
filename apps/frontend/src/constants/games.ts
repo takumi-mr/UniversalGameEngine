@@ -134,6 +134,17 @@ export const availableGames = [
     rules: "9x9のマス目に1から9の数字を、各行・各列・3x3ブロックで重複しないように配置します。",
   },
   {
+    type: "cave_dive",
+    name: "掘るか、逃げるか",
+    description: "欲張るか、降りるか。全員同時に秘密で決めるプッシュ・ユア・ラック。",
+    emoji: "⛏️",
+    minPlayers: 2,
+    maxPlayers: 8,
+    category: "Card Games",
+    rules:
+      "洞窟でカードをめくるたびに、残るか逃げるかを全員同時に秘密で選びます。宝は残っている人で山分け、同じ罠が2枚出たら崩落。逃げたのが1人だけなら道端の端数も独り占め。5ラウンドの合計が最多の人が勝ち。",
+  },
+  {
     type: "equilibrium",
     name: "Equilibrium",
     description: "AIが考案した、魂を削り合う究極の心理戦ボードゲーム。",
