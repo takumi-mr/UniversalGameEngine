@@ -19,14 +19,23 @@ export interface ChessState extends BaseGameState {
   enPassant: number | null; // アンパッサンのターゲットマスのインデックス
   halfMoves: number; // 50手ルール用（ポーンの移動または捕獲でリセット）
   fullMoves: number; // ターン数
+  /** 三回同形判定用の局面履歴（盤面・手番・キャスリング権・アンパッサン）。初期局面を含む */
+  positionHistory?: string[];
+  /** 投了した側 */
+  resignedBy?: 1 | -1;
 }
 
 export interface ChessAction extends BaseGameAction {
-  type: "MOVE";
-  from: number;
-  to: number;
-  promotion?: number; // 昇格する場合の駒種（通常は 5: Queen）
+  type: "MOVE" | "RESIGN";
+  from?: number;
+  to?: number;
+  promotion?: number; // 昇格する場合の駒種（N/B/R/Q のいずれか。通常は 5: Queen）
 }
+
+/** 昇格できる駒種 */
+export const PROMOTION_PIECES = [PIECES.Q, PIECES.R, PIECES.B, PIECES.N];
+/** 同一局面がこの回数現れたら引き分け */
+export const REPETITION_LIMIT = 3;
 
 // 初期配置 (白は正の数、黒は負の数。上が黒陣、下が白陣)
 const INITIAL_BOARD = [
@@ -301,6 +310,51 @@ function isStrictlyLegal(state: ChessState, from: number, to: number): boolean {
   return !isAttacked(tempState.board, kingIndex, state.turn * -1);
 }
 
+/** 局面（盤面・手番・キャスリング権・アンパッサン）を同一性判定用の文字列にする */
+export function positionKey(
+  state: Pick<ChessState, "board" | "turn" | "castling" | "enPassant">,
+): string {
+  const c = state.castling;
+  const rights = `${c.wK ? "K" : ""}${c.wQ ? "Q" : ""}${c.bK ? "k" : ""}${c.bQ ? "q" : ""}`;
+  return `${state.board.join(",")}|${state.turn}|${rights}|${state.enPassant ?? "-"}`;
+}
+
+/** side のキングがチェックされているか */
+export function isInCheck(board: number[], side: 1 | -1): boolean {
+  const king = board.indexOf(PIECES.K * side);
+  return king !== -1 && isAttacked(board, king, -side);
+}
+
+/**
+ * どちらもメイトできない駒構成（デッドポジション）か。
+ * K vs K / K+B vs K / K+N vs K / K+B vs K+B（同色マスのビショップ）を引き分けとする
+ */
+export function isInsufficientMaterial(board: number[]): boolean {
+  const minors: { type: number; squareColor: number }[] = [];
+  for (let i = 0; i < 64; i++) {
+    const v = board[i];
+    if (v === 0) continue;
+    const type = Math.abs(v);
+    if (type === PIECES.K) continue;
+    if (type === PIECES.P || type === PIECES.R || type === PIECES.Q) return false;
+    minors.push({ type, squareColor: (toX(i) + toY(i)) % 2 });
+  }
+  if (minors.length <= 1) return true;
+  if (minors.length === 2 && minors.every((m) => m.type === PIECES.B)) {
+    return minors[0].squareColor === minors[1].squareColor;
+  }
+  return false;
+}
+
+/** action.playerId がどちらの側か（着席していなければ null。誰も着席していなければ手番側） */
+function sideOf(state: ChessState, playerId?: string): 1 | -1 | null {
+  const players = state.players ?? {};
+  if (playerId !== undefined && players[1] === playerId) return 1;
+  if (playerId !== undefined && players[-1] === playerId) return -1;
+  if (players[1] == null && players[-1] == null) return state.turn;
+  return null;
+}
+
 // --- ルールセット本体 ---
 
 export const ChessRuleset: GameRuleset<ChessState, ChessAction> = {
@@ -314,18 +368,27 @@ export const ChessRuleset: GameRuleset<ChessState, ChessAction> = {
     fullMoves: 1,
     players: { 1: null, "-1": null },
     activePlayers: [],
+    positionHistory: [
+      positionKey({
+        board: INITIAL_BOARD,
+        turn: 1,
+        castling: { wK: true, wQ: true, bK: true, bQ: true },
+        enPassant: null,
+      }),
+    ],
   }),
 
   isValidAction: (state, action) => {
     if (state.status !== "PLAYING") return false;
+    if (action.type === "RESIGN") return sideOf(state, action.playerId) !== null;
     if (action.type !== "MOVE") return false;
+    if (action.from === undefined || action.to === undefined) return false;
 
     const piece = state.board[action.from];
     if (piece === 0 || Math.sign(piece) !== state.turn) return false;
 
     // 手番プレイヤーチェック
-    const currentPlayerId = state.players![state.turn];
-    if (currentPlayerId && action.playerId !== currentPlayerId) return false;
+    if (sideOf(state, action.playerId) !== state.turn) return false;
 
     // 1. 疑似合法手の中に含まれているか
     const pseudoMoves = generatePseudoMoves(state, action.from);
@@ -339,13 +402,26 @@ export const ChessRuleset: GameRuleset<ChessState, ChessAction> = {
     const toYloc = toY(action.to);
     const isPromotionRank =
       (state.turn === 1 && toYloc === 0) || (state.turn === -1 && toYloc === 7);
-    if (isPawn && isPromotionRank && !action.promotion) return false;
+    if (isPawn && isPromotionRank) {
+      return action.promotion !== undefined && PROMOTION_PIECES.includes(action.promotion);
+    }
 
     return true;
   },
 
   reduce: (state, action, _rng?: IGameRNG) => {
-    const newState = JSON.parse(JSON.stringify(state));
+    const newState: ChessState = JSON.parse(JSON.stringify(state));
+
+    if (action.type === "RESIGN") {
+      const side = sideOf(state, action.playerId) ?? state.turn;
+      newState.resignedBy = side;
+      newState.status = "FINISHED";
+      newState.message = `${side === 1 ? "White" : "Black"} resigned`;
+      newState.activePlayers = [];
+      return newState;
+    }
+    if (action.from === undefined || action.to === undefined) return newState;
+
     const piece = newState.board[action.from];
     const target = newState.board[action.to];
     const isPawn = Math.abs(piece) === PIECES.P;
@@ -419,11 +495,23 @@ export const ChessRuleset: GameRuleset<ChessState, ChessAction> = {
     newState.activePlayers = newState.players?.[newState.turn]
       ? [newState.players[newState.turn]!]
       : [];
+    newState.positionHistory = [...(state.positionHistory ?? []), positionKey(newState)];
 
     return newState;
   },
 
   checkWinCondition: (state) => {
+    // 投了
+    if (state.resignedBy) {
+      const winner = -state.resignedBy as 1 | -1;
+      const winnerId = state.players?.[winner];
+      return {
+        isFinished: true,
+        winnerIds: winnerId ? [winnerId] : [],
+        message: `${winner === 1 ? "White" : "Black"} wins by resignation.`,
+      };
+    }
+
     // 全合法手を生成し、1つでもあればまだプレイ続行
     const hasLegalMoves = (() => {
       for (let i = 0; i < 64; i++) {
@@ -454,15 +542,28 @@ export const ChessRuleset: GameRuleset<ChessState, ChessAction> = {
     }
 
     // 50手ルールによる引き分け
-    if (state.halfMoves >= 100) return { isFinished: true, message: "Draw by 50-move rule." };
+    if (state.halfMoves >= 100) {
+      return { isFinished: true, winnerIds: [], message: "Draw by 50-move rule." };
+    }
+
+    // 三回同形
+    const history = state.positionHistory ?? [];
+    const current = history[history.length - 1];
+    if (current && history.filter((k) => k === current).length >= REPETITION_LIMIT) {
+      return { isFinished: true, winnerIds: [], message: "Draw by threefold repetition." };
+    }
+
+    // メイトできない駒構成
+    if (isInsufficientMaterial(state.board)) {
+      return { isFinished: true, winnerIds: [], message: "Draw by insufficient material." };
+    }
 
     return { isFinished: false };
   },
 
   getLegalActions: (state, playerId) => {
     if (state.status !== "PLAYING") return [];
-    const currentPlayerId = state.players![state.turn];
-    if (currentPlayerId && playerId !== currentPlayerId) return [];
+    if (sideOf(state, playerId) !== state.turn) return [];
 
     const actions: ChessAction[] = [];
     for (let i = 0; i < 64; i++) {
@@ -477,7 +578,7 @@ export const ChessRuleset: GameRuleset<ChessState, ChessAction> = {
               ((state.turn === 1 && toY(to) === 0) || (state.turn === -1 && toY(to) === 7));
             if (isPromotion) {
               // プロモーションは4種類の駒を選択可能
-              [PIECES.Q, PIECES.R, PIECES.B, PIECES.N].forEach((promo) => {
+              PROMOTION_PIECES.forEach((promo) => {
                 actions.push({
                   type: "MOVE",
                   from: i,
