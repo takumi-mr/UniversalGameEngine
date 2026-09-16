@@ -192,6 +192,8 @@ export interface ShogiState extends BaseGameState {
   };
   /** 投了した側（1: 先手 / -1: 後手） */
   resignedBy?: number;
+  /** 入玉宣言（持将棋）の結果 */
+  declaration?: { side: number; success: boolean; points: number; reason?: string };
   /**
    * 千日手判定用の局面履歴（初期局面を含む、各手の後の局面）。
    * key は盤面・持ち駒・手番、check はその局面で手番側に王手がかかっているか
@@ -202,7 +204,7 @@ export interface ShogiState extends BaseGameState {
 /** 同一局面がこの回数出現したら千日手 */
 export const REPETITION_LIMIT = 4;
 
-export type ShogiActionType = "MOVE" | "DROP" | "RESIGN";
+export type ShogiActionType = "MOVE" | "DROP" | "RESIGN" | "DECLARE_WIN";
 
 export interface ShogiAction extends BaseGameAction {
   type: ShogiActionType;
@@ -440,6 +442,58 @@ function checkRepetition(
   return { repeated: true, loser: null };
 }
 
+/** 入玉宣言（27 点法）に必要な点数。先手 28 点、後手 27 点 */
+export const DECLARATION_POINTS: Record<Side, number> = { 1: 28, "-1": 27 };
+const BIG_PIECES = new Set([PIECES.KA, PIECES.HI, PIECES.UM, PIECES.RY]);
+const pieceValue = (type: number) => (BIG_PIECES.has(type) ? 5 : 1);
+
+/**
+ * 入玉宣言（持将棋）の判定。日本将棋連盟の入玉宣言法（27 点法）:
+ *   1. 宣言側の玉が敵陣（3 段目以内）にいる
+ *   2. 宣言側に王手がかかっていない
+ *   3. 敵陣内の駒（玉を除く）が 10 枚以上
+ *   4. 敵陣内の駒 + 持ち駒 の点数（飛角馬龍 5 点、他 1 点）が先手 28 点 / 後手 27 点以上
+ * すべて満たせば宣言側の勝ち、1 つでも欠ければ宣言側の負け。
+ */
+export function evaluateDeclaration(
+  state: ShogiState,
+  side: Side,
+): { success: boolean; points: number; reason?: string } {
+  let points = 0;
+  let inZone = 0;
+  let kingInZone = false;
+  for (let i = 0; i < 81; i++) {
+    const v = state.board[i];
+    if (v === 0 || Math.sign(v) !== side) continue;
+    const [, y] = toXY(i);
+    if (!isPromotionZone(y, side)) continue;
+    const type = Math.abs(v);
+    if (type === PIECES.OU) {
+      kingInZone = true;
+      continue;
+    }
+    inZone++;
+    points += pieceValue(type);
+  }
+  for (const [pieceStr, count] of Object.entries(state.hands[side])) {
+    points += pieceValue(parseInt(pieceStr, 10)) * (count ?? 0);
+  }
+
+  if (!kingInZone) return { success: false, points, reason: "King is not in the enemy camp" };
+  if (isInCheck(state.board, side)) return { success: false, points, reason: "King is in check" };
+  if (inZone < 10) {
+    return { success: false, points, reason: `Only ${inZone} pieces in the enemy camp (need 10)` };
+  }
+  if (points < DECLARATION_POINTS[side]) {
+    return {
+      success: false,
+      points,
+      reason: `${points} points (need ${DECLARATION_POINTS[side]})`,
+    };
+  }
+  return { success: true, points };
+}
+
 export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
   getInitialState: (_options?: any, _rng?: IGameRNG): ShogiState => {
     const state: ShogiState = {
@@ -459,6 +513,8 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
     const turn = state.turn as Side;
 
     if (action.type === "RESIGN") return sideOf(state, action.playerId) !== null;
+    // 入玉宣言は自分の手番に行う
+    if (action.type === "DECLARE_WIN") return sideOf(state, action.playerId) === turn;
 
     // 手番のプレイヤーか
     if (sideOf(state, action.playerId) !== turn) return false;
@@ -518,6 +574,18 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
       return newState;
     }
 
+    if (action.type === "DECLARE_WIN") {
+      const side = sideOf(state, action.playerId) ?? turn;
+      const result = evaluateDeclaration(state, side);
+      newState.declaration = { side, ...result };
+      newState.status = "FINISHED";
+      newState.message = result.success
+        ? `${side === 1 ? "Sente" : "Gote"} declared a win (${result.points} points)`
+        : `${side === 1 ? "Sente" : "Gote"} made an invalid declaration: ${result.reason}`;
+      newState.activePlayers = [];
+      return newState;
+    }
+
     if (action.type === "MOVE") {
       const targetVal = newState.board[action.to!];
       // 駒を取る処理（成り駒は元の駒に降格させる）
@@ -553,6 +621,18 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
     if (state.resignedBy) {
       const winner = -state.resignedBy as Side;
       return winnerOf(winner, `${winner === 1 ? "Sente" : "Gote"} Wins by resignation`);
+    }
+
+    // 入玉宣言（成立なら宣言側の勝ち、不成立なら宣言側の負け）
+    if (state.declaration) {
+      const { side, success, points, reason } = state.declaration;
+      const winner = (success ? side : -side) as Side;
+      return winnerOf(
+        winner,
+        success
+          ? `${side === 1 ? "Sente" : "Gote"} Wins by declaration (${points} points)`
+          : `${winner === 1 ? "Sente" : "Gote"} Wins (invalid declaration: ${reason})`,
+      );
     }
 
     // 玉が取られている（合法手のみを通していれば起きないが、保険として）

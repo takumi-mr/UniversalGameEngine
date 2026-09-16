@@ -8,6 +8,7 @@ import {
   isInCheck,
   positionKey,
   REPETITION_LIMIT,
+  evaluateDeclaration,
   type ShogiState,
   type ShogiAction,
 } from "../ShogiRuleset";
@@ -419,6 +420,83 @@ describe("ShogiRuleset: 千日手", () => {
     expect(fin.status).toBe("FINISHED");
     expect(fin.message).toContain("Sennichite");
     expect(engine.history.length).toBe(3 + 12);
+  });
+});
+
+describe("ShogiRuleset: 入玉宣言（持将棋）", () => {
+  // 先手玉が 5一に入玉。敵陣に 10 枚（飛・角 + と金 8 枚 = 18 点）+ 持ち駒 で点数を組む
+  const entered = (extra: Record<number, number> = {}, hands: Record<number, number> = {}) =>
+    position(
+      {
+        [I(4, 0)]: 8, // 先手玉（敵陣）
+        [I(8, 8)]: -8, // 後手玉（遠く）
+        [I(0, 1)]: 7, // 飛 5 点
+        [I(8, 1)]: 6, // 角 5 点
+        [I(0, 2)]: 9,
+        [I(1, 2)]: 9,
+        [I(2, 2)]: 9,
+        [I(3, 2)]: 9,
+        [I(5, 2)]: 9,
+        [I(6, 2)]: 9,
+        [I(7, 2)]: 9,
+        [I(8, 2)]: 9, // と金 8 枚 = 8 点
+        ...extra,
+      },
+      { hands: { 1: hands } },
+    );
+
+  test("条件を満たせば宣言側の勝ち（先手 28 点）", () => {
+    const state = entered({}, { 5: 4, 4: 4, 1: 2 }); // 18 + 10 = 28
+    expect(evaluateDeclaration(state, 1)).toEqual({ success: true, points: 28 });
+    expect(ShogiRuleset.isValidAction(state, { type: "DECLARE_WIN", playerId: P1 })).toBe(true);
+    expect(ShogiRuleset.isValidAction(state, { type: "DECLARE_WIN", playerId: P2 })).toBe(false); // 手番外
+    const next = ShogiRuleset.reduce(state, { type: "DECLARE_WIN", playerId: P1 });
+    expect(next.status).toBe("FINISHED");
+    const result = ShogiRuleset.checkWinCondition(next);
+    expect(result.winnerIds).toEqual([P1]);
+    expect(result.message).toContain("declaration");
+  });
+
+  test("点数不足・枚数不足・玉が敵陣外・王手中 の宣言は宣言側の負け", () => {
+    const short = entered({}, { 5: 4, 4: 4, 1: 1 }); // 27 点
+    expect(evaluateDeclaration(short, 1).success).toBe(false);
+    expect(evaluateDeclaration(short, 1).reason).toContain("27 points");
+    const next = ShogiRuleset.reduce(short, { type: "DECLARE_WIN", playerId: P1 });
+    expect(ShogiRuleset.checkWinCondition(next).winnerIds).toEqual([P2]);
+
+    const few = entered({ [I(8, 2)]: 0 }, { 5: 4, 4: 4, 1: 3 }); // 敵陣 9 枚（点数は 28）
+    expect(evaluateDeclaration(few, 1).reason).toContain("9 pieces");
+
+    const outside = entered({ [I(4, 0)]: 0, [I(4, 3)]: 8 }, { 5: 4, 4: 4, 1: 2 });
+    expect(evaluateDeclaration(outside, 1).reason).toContain("not in the enemy camp");
+
+    const checked = entered({ [I(4, 4)]: -7 }, { 5: 4, 4: 4, 1: 2 }); // 後手飛車が 5 筋から王手
+    expect(evaluateDeclaration(checked, 1).reason).toContain("in check");
+  });
+
+  test("後手は 27 点で成立し、大駒は 5 点で数える", () => {
+    // 後手玉 5九に入玉。敵陣（7〜9 段目）に 龍・馬（10 点）+ と金 8 枚 = 18 点、持ち駒 9 点
+    const state = position(
+      {
+        [I(4, 8)]: -8,
+        [I(0, 0)]: 8,
+        [I(0, 7)]: -14,
+        [I(8, 7)]: -13,
+        [I(0, 6)]: -9,
+        [I(1, 6)]: -9,
+        [I(2, 6)]: -9,
+        [I(3, 6)]: -9,
+        [I(5, 6)]: -9,
+        [I(6, 6)]: -9,
+        [I(7, 6)]: -9,
+        [I(8, 6)]: -9,
+      },
+      { turn: -1, hands: { "-1": { 1: 9 } } },
+    );
+    expect(evaluateDeclaration(state, -1)).toEqual({ success: true, points: 27 });
+    expect(evaluateDeclaration({ ...state, hands: { 1: {}, "-1": { 1: 8 } } }, -1).success).toBe(
+      false,
+    );
   });
 });
 
