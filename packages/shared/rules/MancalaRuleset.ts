@@ -6,11 +6,30 @@ export interface MancalaState extends BaseGameState {
   board: number[]; // 長さ14の配列（0~5: P1陣地, 6: P1ストア, 7~12: P2陣地, 13: P2ストア）
   turn: 1 | -1; // 1: P1(下側), -1: P2(上側)
   scores: Record<number, number>;
+  resignedBy?: 1 | -1; // 投了した側
 }
 
 export interface MancalaAction extends BaseGameAction {
-  type: "SOW";
-  pitIndex: number; // 0~5 または 7~12
+  type: "SOW" | "RESIGN";
+  pitIndex?: number; // SOW: 0~5 または 7~12
+}
+
+export const P1_STORE = 6;
+export const P2_STORE = 13;
+export const TOTAL_STONES = 48;
+
+/** side の陣地のポケット（ストアを除く） */
+export function pitsOf(side: 1 | -1): number[] {
+  return side === 1 ? [0, 1, 2, 3, 4, 5] : [7, 8, 9, 10, 11, 12];
+}
+
+/** action.playerId がどちらの側か（着席していなければ null。誰も着席していなければ手番側） */
+function sideOf(state: MancalaState, playerId?: string): 1 | -1 | null {
+  const players = state.players ?? {};
+  if (playerId !== undefined && players[1] === playerId) return 1;
+  if (playerId !== undefined && players[-1] === playerId) return -1;
+  if (players[1] == null && players[-1] == null) return state.turn;
+  return null;
 }
 
 export const MancalaRuleset: GameRuleset<MancalaState, MancalaAction> = {
@@ -31,28 +50,34 @@ export const MancalaRuleset: GameRuleset<MancalaState, MancalaAction> = {
 
   isValidAction: (state, action) => {
     if (state.status !== "PLAYING") return false;
+    if (action.type === "RESIGN") return sideOf(state, action.playerId) !== null;
     if (action.type !== "SOW") return false;
 
     // 手番プレイヤーの検証
-    const expectedPlayer = state.players?.[state.turn];
-    if (expectedPlayer && action.playerId !== expectedPlayer) return false;
+    if (sideOf(state, action.playerId) !== state.turn) return false;
 
     const { pitIndex } = action;
+    if (pitIndex === undefined || !Number.isInteger(pitIndex)) return false;
 
-    // 自分の陣地のポケットかチェック
-    const isP1 = state.turn === 1;
-    if (isP1 && (pitIndex < 0 || pitIndex > 5)) return false;
-    if (!isP1 && (pitIndex < 7 || pitIndex > 12)) return false;
-
-    // 空のポケットからは種まきできない
-    if (state.board[pitIndex] === 0) return false;
-
-    return true;
+    // 自分の陣地のポケットで、石があること
+    if (!pitsOf(state.turn).includes(pitIndex)) return false;
+    return state.board[pitIndex] > 0;
   },
 
   reduce: (state, action, _rng?: IGameRNG) => {
     const newState = structuredClone(state);
-    const { pitIndex } = action;
+
+    if (action.type === "RESIGN") {
+      const side = sideOf(state, action.playerId) ?? state.turn;
+      newState.resignedBy = side;
+      newState.status = "FINISHED";
+      newState.message = `Player ${side === 1 ? 1 : 2} resigned`;
+      newState.activePlayers = [];
+      return newState;
+    }
+    if (action.pitIndex === undefined) return newState;
+
+    const pitIndex = action.pitIndex;
     const isP1 = newState.turn === 1;
 
     const ownStore = isP1 ? 6 : 13;
@@ -132,6 +157,15 @@ export const MancalaRuleset: GameRuleset<MancalaState, MancalaAction> = {
   },
 
   checkWinCondition: (state) => {
+    if (state.resignedBy) {
+      const winner = -state.resignedBy as 1 | -1;
+      const winnerId = state.players?.[winner];
+      return {
+        isFinished: true,
+        winnerIds: winnerId ? [winnerId] : [],
+        message: `Game Over. Player ${winner === 1 ? 1 : 2} Wins by resignation!`,
+      };
+    }
     if (state.status === "FINISHED") {
       const p1Score = state.board[6];
       const p2Score = state.board[13];
@@ -153,18 +187,10 @@ export const MancalaRuleset: GameRuleset<MancalaState, MancalaAction> = {
 
   getLegalActions: (state, playerId) => {
     if (state.status !== "PLAYING") return [];
-    const expectedPlayer = state.players?.[state.turn];
-    if (expectedPlayer && playerId !== expectedPlayer) return [];
+    if (sideOf(state, playerId) !== state.turn) return [];
 
-    const actions: MancalaAction[] = [];
-    const startIndex = state.turn === 1 ? 0 : 7;
-    const endIndex = state.turn === 1 ? 5 : 12;
-
-    for (let i = startIndex; i <= endIndex; i++) {
-      if (state.board[i] > 0) {
-        actions.push({ type: "SOW", pitIndex: i, playerId });
-      }
-    }
-    return actions;
+    return pitsOf(state.turn)
+      .filter((i) => state.board[i] > 0)
+      .map((pitIndex) => ({ type: "SOW", pitIndex, playerId }) as MancalaAction);
   },
 };
