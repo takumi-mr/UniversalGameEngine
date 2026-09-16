@@ -3,7 +3,14 @@
 // 盤の座標: index = y * 9 + x。x=0 が先手から見て左（9 筋）、y=0 が後手側の最上段（一段目）。
 // 駒の値: 1 歩 2 香 3 桂 4 銀 5 金 6 角 7 飛 8 玉 / 9 と 10 成香 11 成桂 12 成銀 13 馬 14 龍。正が先手、負が後手。
 import { expect, test, describe } from "bun:test";
-import { ShogiRuleset, isInCheck, type ShogiState, type ShogiAction } from "../ShogiRuleset";
+import {
+  ShogiRuleset,
+  isInCheck,
+  positionKey,
+  REPETITION_LIMIT,
+  type ShogiState,
+  type ShogiAction,
+} from "../ShogiRuleset";
 import { UniversalEngine } from "../../UniversalEngine";
 
 const I = (x: number, y: number) => y * 9 + x;
@@ -23,6 +30,9 @@ function position(
   state.status = "PLAYING";
   state.players = { 1: P1, "-1": P2 };
   state.activePlayers = [state.turn === 1 ? P1 : P2];
+  state.positionHistory = [
+    { key: positionKey(state), check: isInCheck(state.board, state.turn as 1 | -1) },
+  ];
   return state;
 }
 
@@ -328,6 +338,87 @@ describe("ShogiRuleset: 打ち歩詰め", () => {
   test("王手になる歩打ちでも、相手に逃げ場があれば合法", () => {
     const state = position({ ...base, [I(6, 1)]: 0 }, { hands: { 1: { 1: 1 } } }); // 3二の金を外す
     expect(ShogiRuleset.isValidAction(state, drop(1, I(4, 1)))).toBe(true);
+  });
+});
+
+describe("ShogiRuleset: 千日手", () => {
+  /** 手順を順に指して各局面の勝敗判定を返す */
+  const play = (state: ShogiState, actions: ShogiAction[]) => {
+    let s = state;
+    const results = [];
+    for (const a of actions) {
+      expect(ShogiRuleset.isValidAction(s, a), JSON.stringify(a)).toBe(true);
+      s = ShogiRuleset.reduce(s, a);
+      results.push(ShogiRuleset.checkWinCondition(s));
+    }
+    return { state: s, results };
+  };
+
+  test("同一局面が 4 回現れたら引き分け（王手が絡まない場合）", () => {
+    // 玉と離れた金だけの局面で、両者が玉を往復させる
+    const state = position({ [I(4, 8)]: 8, [I(4, 0)]: -8, [I(0, 5)]: 5, [I(8, 3)]: -5 });
+    const cycle: ShogiAction[] = [
+      move(I(4, 8), I(5, 8)),
+      move(I(4, 0), I(5, 0), false, P2),
+      move(I(5, 8), I(4, 8)),
+      move(I(5, 0), I(4, 0), false, P2),
+    ];
+    const { state: end, results } = play(state, [...cycle, ...cycle, ...cycle]);
+    // 3 周目の最後で初期局面が 4 回目 → 成立。それまでは続行
+    expect(results.slice(0, -1).every((r) => !r.isFinished)).toBe(true);
+    const last = results[results.length - 1];
+    expect(last.isFinished).toBe(true);
+    expect(last.winnerIds).toEqual([]);
+    expect(last.message).toContain("Sennichite");
+    expect(end.positionHistory!.filter((p) => p.key === positionKey(end)).length).toBe(
+      REPETITION_LIMIT,
+    );
+  });
+
+  test("持ち駒が違えば同一局面ではない", () => {
+    const a = position({ [I(4, 8)]: 8, [I(4, 0)]: -8 }, { hands: { 1: { 1: 1 } } });
+    const b = position({ [I(4, 8)]: 8, [I(4, 0)]: -8 }, { hands: { 1: { 1: 2 } } });
+    const c = position({ [I(4, 8)]: 8, [I(4, 0)]: -8 }, { hands: { 1: { 1: 1, 4: 0 } } });
+    expect(positionKey(a)).not.toBe(positionKey(b));
+    expect(positionKey(a)).toBe(positionKey(c)); // 0 枚の駒は無視
+    expect(positionKey(a)).not.toBe(positionKey({ ...a, turn: -1 })); // 手番も含む
+  });
+
+  test("連続王手の千日手は王手をかけていた側の負け", () => {
+    // 後手玉 1一。先手の飛車が 5一/5二 を往復して横から王手し続け、後手玉は 1一/1二 を往復するしかない
+    // （銀 3三 が 2二 を押さえ、飛車が 2一 / 2二 のどちらかを常に押さえる）
+    const state = position({ [I(8, 0)]: -8, [I(4, 1)]: 7, [I(6, 2)]: 4, [I(0, 8)]: 8 });
+    const cycle: ShogiAction[] = [
+      move(I(4, 1), I(4, 0)), // 王手
+      move(I(8, 0), I(8, 1), false, P2),
+      move(I(4, 0), I(4, 1)), // 王手
+      move(I(8, 1), I(8, 0), false, P2),
+    ];
+    const { results } = play(state, [...cycle, ...cycle, ...cycle]);
+    expect(results.slice(0, -1).every((r) => !r.isFinished)).toBe(true);
+    const last = results[results.length - 1];
+    expect(last.isFinished).toBe(true);
+    expect(last.winnerIds).toEqual([P2]); // 王手をかけ続けた先手の負け
+    expect(last.message).toContain("perpetual check");
+  });
+
+  test("エンジン経由でも千日手で FINISHED になり、記録に残る", () => {
+    const engine = new UniversalEngine(ShogiRuleset, {});
+    engine.dispatch({ type: "JOIN", playerId: P1 } as any);
+    engine.dispatch({ type: "JOIN", playerId: P2 } as any);
+    engine.dispatch({ type: "START", playerId: P1 } as any);
+    // 初期局面から飛車を往復させる（初期局面が 4 回目で成立）
+    const cycle: ShogiAction[] = [
+      move(I(7, 7), I(6, 7)),
+      move(I(1, 1), I(2, 1), false, P2),
+      move(I(6, 7), I(7, 7)),
+      move(I(2, 1), I(1, 1), false, P2),
+    ];
+    for (const a of [...cycle, ...cycle, ...cycle]) expect(engine.dispatch(a)).toBe(true);
+    const fin = engine.getState();
+    expect(fin.status).toBe("FINISHED");
+    expect(fin.message).toContain("Sennichite");
+    expect(engine.history.length).toBe(3 + 12);
   });
 });
 

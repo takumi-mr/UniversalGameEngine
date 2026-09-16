@@ -192,7 +192,15 @@ export interface ShogiState extends BaseGameState {
   };
   /** 投了した側（1: 先手 / -1: 後手） */
   resignedBy?: number;
+  /**
+   * 千日手判定用の局面履歴（初期局面を含む、各手の後の局面）。
+   * key は盤面・持ち駒・手番、check はその局面で手番側に王手がかかっているか
+   */
+  positionHistory?: { key: string; check: boolean }[];
 }
+
+/** 同一局面がこの回数出現したら千日手 */
+export const REPETITION_LIMIT = 4;
 
 export type ShogiActionType = "MOVE" | "DROP" | "RESIGN";
 
@@ -385,15 +393,66 @@ function sideOf(state: ShogiState, playerId?: string): Side | null {
   return null;
 }
 
+/** 局面（盤面・持ち駒・手番）を同一性判定用の文字列にする */
+export function positionKey(state: Pick<ShogiState, "board" | "hands" | "turn">): string {
+  const hand = (h: Record<number, number>) =>
+    Object.entries(h)
+      .filter(([, n]) => n > 0)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([p, n]) => `${p}:${n}`)
+      .join(",");
+  return `${state.board.join(",")}|${hand(state.hands[1])}|${hand(state.hands[-1])}|${state.turn}`;
+}
+
+function positionEntry(state: Pick<ShogiState, "board" | "hands" | "turn">) {
+  return { key: positionKey(state), check: isInCheck(state.board, state.turn as Side) };
+}
+
+/**
+ * 千日手の判定。同一局面が REPETITION_LIMIT 回現れたら成立。
+ * その間、片方の手がすべて王手（連続王手の千日手）なら王手をかけていた側の負け、そうでなければ引き分け。
+ */
+function checkRepetition(
+  state: ShogiState,
+): { repeated: false } | { repeated: true; loser: Side | null } {
+  const history = state.positionHistory ?? [];
+  if (history.length === 0) return { repeated: false };
+  const last = history[history.length - 1];
+  const occurrences: number[] = [];
+  for (let i = 0; i < history.length; i++) {
+    if (history[i].key === last.key) occurrences.push(i);
+  }
+  if (occurrences.length < REPETITION_LIMIT) return { repeated: false };
+
+  // 最初の出現から最後の出現までの区間で、手番ごとに「常に王手されていたか」を見る
+  const first = occurrences[occurrences.length - REPETITION_LIMIT];
+  const lastIndex = occurrences[occurrences.length - 1];
+  const turn = state.turn as Side; // 最後の局面の手番（= 直前に指したのは -turn）
+  let checkedByOpponent = true; // -turn が turn に王手し続けていたか
+  let checkedByTurn = true; // turn が -turn に王手し続けていたか
+  for (let i = first; i <= lastIndex; i++) {
+    const sameSideToMove = (lastIndex - i) % 2 === 0;
+    if (sameSideToMove) checkedByOpponent &&= history[i].check;
+    else checkedByTurn &&= history[i].check;
+  }
+  if (checkedByOpponent) return { repeated: true, loser: -turn as Side };
+  if (checkedByTurn) return { repeated: true, loser: turn };
+  return { repeated: true, loser: null };
+}
+
 export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
-  getInitialState: (_options?: any, _rng?: IGameRNG): ShogiState => ({
-    status: "WAITING",
-    turn: 1,
-    board: [...initialBoard],
-    hands: { 1: {}, "-1": {} },
-    players: { 1: null, "-1": null },
-    activePlayers: [],
-  }),
+  getInitialState: (_options?: any, _rng?: IGameRNG): ShogiState => {
+    const state: ShogiState = {
+      status: "WAITING",
+      turn: 1,
+      board: [...initialBoard],
+      hands: { 1: {}, "-1": {} },
+      players: { 1: null, "-1": null },
+      activePlayers: [],
+    };
+    state.positionHistory = [positionEntry(state)];
+    return state;
+  },
 
   isValidAction: (state, action) => {
     if (state.status !== "PLAYING") return false;
@@ -477,6 +536,7 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
       newState.turn = -turn;
     }
 
+    newState.positionHistory = [...(state.positionHistory ?? []), positionEntry(newState)];
     newState.activePlayers = newState.players?.[newState.turn as Side]
       ? [newState.players[newState.turn as Side]!]
       : [];
@@ -498,6 +558,16 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
     // 玉が取られている（合法手のみを通していれば起きないが、保険として）
     if (!state.board.includes(PIECES.OU)) return winnerOf(-1, "Gote Wins");
     if (!state.board.includes(-PIECES.OU)) return winnerOf(1, "Sente Wins");
+
+    // 千日手
+    const repetition = checkRepetition(state);
+    if (repetition.repeated) {
+      if (repetition.loser === null) {
+        return { isFinished: true, winnerIds: [], message: "Draw by repetition (Sennichite)" };
+      }
+      const winner = -repetition.loser as Side;
+      return winnerOf(winner, `${winner === 1 ? "Sente" : "Gote"} Wins (perpetual check)`);
+    }
 
     // 手番側に合法手が無ければ負け（詰み。将棋ではステイルメイトも負け）
     if (state.status === "PLAYING") {
