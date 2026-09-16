@@ -70,7 +70,7 @@
                 <div class="target-prompt">Select Target:</div>
                 <div class="target-buttons">
                   <button
-                    v-for="opId in Object.keys(opponentData)"
+                    v-for="opId in targetableOpponents"
                     :key="opId"
                     class="btn-danger btn-small"
                     @click="confirmPlayWithTarget(card.id, opId)"
@@ -132,10 +132,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
 import { Equilibrium } from "../../three/Equilibrium";
-import type {
-  EquilibriumState,
-  EquilibriumAction,
-  Card,
+import {
+  cardNeedsTarget,
+  type EquilibriumState,
+  type EquilibriumAction,
+  type Card,
 } from "@engine/shared/rules/EquilibriumRuleset";
 
 const props = defineProps<{
@@ -172,6 +173,12 @@ const opponentData = computed(() => {
   return data;
 });
 const isMyTurn = computed(() => props.state.activePlayers?.includes(myPlayerId.value));
+// 倒れた相手は対象にできない
+const targetableOpponents = computed(() =>
+  Object.entries(opponentData.value)
+    .filter(([, p]) => p.hp > 0)
+    .map(([id]) => id),
+);
 
 // --- Helpers ---
 const isPlayer = computed(() => {
@@ -221,11 +228,10 @@ const bluffReveal = (fakeCard: any) => {
   emit("action", { type: "BLUFF_REVEAL", playerId: myPlayerId.value, fakeCard });
 };
 
-// ★ 変更: 対象選択が必要なカードの条件式を拡張
 const initiatePlay = (card: Card) => {
   if (!isPlayer.value) return;
-  // 攻撃、吸収(SYPHON)、または手札破壊(Corruption)の場合にターゲット選択UIを開く
-  if (card.type === "ATTACK" || card.type === "SYPHON" || card.name === "Corruption") {
+  // 対象を取るカード（攻撃・吸収・Peep・Mind_Control・Corruption・対象持ちを複製する Echo）はターゲット選択UIを開く
+  if (cardNeedsTarget(card, props.state.lastPlayedCard)) {
     pendingTargetCardId.value = card.id;
   } else {
     emit("action", {

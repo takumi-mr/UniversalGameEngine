@@ -268,13 +268,13 @@
         },
         "goals": {
           "label": "How to Win",
-          "title": "Four Ways to Victory!",
-          "content": "You win instantly if you achieve any ONE of these goals:\n1. [Annihilator] Reduce opponent's HP to 0!\n2. [Collector] Have 8 or more cards on your board!\n3. [Pacifist] Everyone survives until turn 15!\n4. [Soul Hoarder] Accumulate 25 or more Soul Points!"
+          "title": "Five Ways to Victory!",
+          "content": "You win instantly if you achieve any ONE of these goals:\n1. [Annihilator] Reduce opponent's HP to 0!\n2. [Collector] Have 8 or more cards on your board!\n3. [Pacifist] Everyone survives until turn 15!\n4. [Soul Hoarder] Accumulate 25 or more Soul Points!\n5. [Sudden Death] Defeat an opponent with your own attack! (a Goal card found in auctions)\nAfter turn 30, the player with the most HP (then SP) wins."
         },
         "phases": {
           "label": "Game Flow",
           "title": "Two Phases Every Turn!",
-          "content": "1. [Auction] Bid your Soul Points for the rare card in the center. The highest bidder gets the card!\n2. [Main] Use cards from your hand by spending SP. You can attack, defend, or even 'Bluff' to trick your opponents!"
+          "content": "1. [Auction] Everyone submits a sealed bid of Soul Points at the same time. The highest UNIQUE bid takes every card in the pool! If the top bids tie, nobody wins and the pool carries over to the next auction. If nobody bids, everyone loses 1 HP.\n2. [Main] Use cards from your hand by spending SP. You can attack, defend, or even 'Bluff' to trick your opponents!"
         },
         "cards": {
           "label": "Card Types",
