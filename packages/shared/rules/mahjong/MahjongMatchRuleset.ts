@@ -159,10 +159,18 @@ export const MahjongMatchRuleset: GameRuleset<
       };
     }
 
+    const handState = updated.state as { scores?: Record<string, number>; riichiSticks?: number };
     const scores = {
       ...state.scores,
-      ...((updated.state as { scores?: Record<string, number> }).scores ?? {}),
+      ...(handState.scores ?? {}),
     };
+    const winners = updated.result.winnerIds ?? [];
+    const handRiichiSticks = handState.riichiSticks ?? state.riichiSticks;
+    if (winners.length > 0 && handRiichiSticks > 0) {
+      const award = handRiichiSticks * 1_000;
+      scores[winners[0]!] = (scores[winners[0]!] ?? 0) + award;
+    }
+    const riichiSticks = winners.length > 0 ? 0 : handRiichiSticks;
     const completedGames = state.completedGames + 1;
     const finished = isMatchFinished({ ...state, scores, completedGames }, updated.result);
     if (finished) {
@@ -173,6 +181,7 @@ export const MahjongMatchRuleset: GameRuleset<
         currentGame: updated,
         completedGames,
         scores,
+        riichiSticks,
         ranking: finalRanking,
         activePlayers: [],
         message: `Mahjong ${state.mode} finished. Winner: ${finalRanking[0]}.`,
@@ -189,6 +198,7 @@ export const MahjongMatchRuleset: GameRuleset<
       dealerIndex: next.dealerIndex,
       honba: next.honba,
       scores,
+      riichiSticks,
       ranking: ranking(scores, state.playerIds),
       activePlayers: nextGame.state.activePlayers,
       message: `Hand ${completedGames} finished. Next: hand ${completedGames + 1}.`,
