@@ -28,6 +28,8 @@ import { TowerOfHanoiRuleset } from "./rules/TowerOfHanoiRuleset";
 import { LogicCircuitRuleset } from "./rules/LogicCircuitRuleset";
 import { LogicLabRuleset } from "./rules/LogicLabRuleset";
 import { CaveDiveRuleset } from "./rules/CaveDiveRuleset";
+import { setSubGameResolver } from "./rules/subGameResolver";
+import { DecathlonRuleset } from "./rules/DecathlonRuleset";
 
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
   type: string;
@@ -233,6 +235,17 @@ class GameRegistry {
         "洞窟でカードをめくるたびに、残るか逃げるかを全員同時に秘密で選びます。宝は残っている人で山分け、同じ罠が2枚出たら崩落して残っていた人はそのラウンドの宝を失います。逃げたのが1人だけなら道端の端数も独り占め。5ラウンドの合計が最多の人が勝ち。松明は1回だけ次のカードを覗けます。",
     });
     this.register({
+      type: "decathlon",
+      name: "十種競技",
+      ruleset: DecathlonRuleset,
+      minPlayers: 2,
+      maxPlayers: 4,
+      description: "いろんなゲームを種目として渡り歩く総合戦。負けている人が次の種目を選ぶ。",
+      emoji: "🏅",
+      rules:
+        "5 種目の総合得点を競います。各種目の前に最下位の人が 3 つの候補から種目を選び、出場者は「強気」か「堅実」かを秘密で宣言。勝ち 2 点・引き分け 1 点、強気で勝てば 2 倍、強気で勝てなければ 0 点で相手に +1。点差が開くと最下位ボーナス、最終種目は得点 2 倍。",
+    });
+    this.register({
       type: "mancala",
       name: "Mancala",
       ruleset: MancalaRuleset,
@@ -390,3 +403,6 @@ class GameRegistry {
 }
 
 export const gameRegistry = new GameRegistry();
+
+// メタ系ルールセット（MetaGame / Decathlon）がサブゲームを type 名から引けるようにする
+setSubGameResolver((type) => gameRegistry.getDefinition(type));
