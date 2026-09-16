@@ -2,7 +2,11 @@
 import { MongoClient, Db, type Document, type UpdateFilter } from "mongodb";
 import Redis from "ioredis";
 import { randomUUID } from "crypto";
-import type { IGameRepository, SessionRecord } from "@engine/shared/stores/repository";
+import type {
+  IGameRepository,
+  SessionRecord,
+  GameRecordChunk,
+} from "@engine/shared/stores/repository";
 import type { GameRecord, BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
 
 // Redis のキー設計
@@ -45,6 +49,8 @@ interface GameDocument<T> extends Document {
 interface ReplayDocument<TState extends BaseGameState> extends Document {
   _id: string;
   record: GameRecord<TState, BaseGameAction>;
+  /** record.actions がどの version まで記録済みか（appendGameRecord の重複排除用） */
+  persistedVersion?: number;
   createdAt: Date;
 }
 
@@ -262,57 +268,76 @@ export class HybridGameRepository<TState extends BaseGameState> implements IGame
   }
 
   /**
-   * 既存のゲーム記録にアクションを追加する（スナップショット対応用）。
-   * 既に記録がある場合は actions と stateHashes を末尾に追加し、snapshotState を更新する。
+   * リプレイ記録に履歴を追記する。記録が無ければ initialState などから作る。
+   *
+   * ドキュメントの persistedVersion に「どの version まで記録済みか」を持ち、
+   * それより前のアクションは捨てる（別インスタンスが Redis の古い履歴から復元して再送しても重複しない）。
+   * 更新は persistedVersion を条件にした CAS で行うので、同時に走った追記は片方が失敗する。
    */
   async appendGameRecord(
     gameId: string,
-    record: Partial<GameRecord<TState, BaseGameAction>>,
+    chunk: GameRecordChunk<TState, BaseGameAction>,
   ): Promise<void> {
-    const update: any = {
+    const toVersion = chunk.fromVersion + chunk.actions.length;
+
+    // 1. 器を作る（既にあれば何もしない）。記録済み version を同時に取得する
+    const created = await this.replayCollection.findOneAndUpdate(
+      { _id: gameId },
+      {
+        $setOnInsert: {
+          record: {
+            gameId,
+            initialState: chunk.initialState,
+            actions: [],
+            serverSeedHash: chunk.serverSeedHash,
+            clientSeed: chunk.clientSeed,
+            stateHashes: chunk.stateHashes.slice(0, 1),
+          },
+          persistedVersion: chunk.fromVersion,
+          createdAt: new Date(),
+        } as UpdateFilter<ReplayDocument<TState>>,
+      },
+      { upsert: true, returnDocument: "after", projection: { persistedVersion: 1 } },
+    );
+    const persisted = created?.persistedVersion ?? chunk.fromVersion;
+
+    // 2. 記録済みの分を捨てる
+    const skip = persisted - chunk.fromVersion;
+    if (skip < 0) {
+      // 記録に穴が空く（本来は起きない）。以降を失わないよう追記だけは続ける
+      console.error(
+        `[Replay] Missing actions for ${gameId}: recorded up to v${persisted}, chunk starts at v${chunk.fromVersion}`,
+      );
+    }
+    const actions = chunk.actions.slice(Math.max(skip, 0));
+    // stateHashes が各手に対応している（hashInterval = 1）ときだけ追記する。そうでなければ開始時のハッシュだけ持つ
+    const aligned = chunk.stateHashes.length === chunk.actions.length + 1;
+    const hashes = aligned ? chunk.stateHashes.slice(Math.max(skip, 0) + 1) : [];
+
+    // 3. CAS で追記
+    // ドット記法のパスは mongodb の型に乗らないので Document として組み立てる
+    const update: Document = {
       $set: {
-        ...(record.snapshotState !== undefined && { "record.snapshotState": record.snapshotState }),
-        ...(record.snapshotVersion !== undefined && {
-          "record.snapshotVersion": record.snapshotVersion,
+        persistedVersion: Math.max(persisted, toVersion),
+        ...(chunk.finalServerSeed !== undefined && {
+          "record.finalServerSeed": chunk.finalServerSeed,
         }),
-        ...(record.finalServerSeed !== undefined && {
-          "record.finalServerSeed": record.finalServerSeed,
-        }),
-        createdAt: new Date(),
       },
     };
-
-    // actions はそのまま $push
-    const pushOps: any = {};
-    if (record.actions && record.actions.length > 0) {
-      pushOps["record.actions"] = { $each: record.actions };
+    if (actions.length > 0) {
+      update.$push = {
+        "record.actions": { $each: actions },
+        ...(hashes.length > 0 && { "record.stateHashes": { $each: hashes } }),
+      };
     }
-
-    // stateHashes は 0番目以外を $push (0番目は setOnInsert で入るため)
-    if (record.stateHashes && record.stateHashes.length > 1) {
-      pushOps["record.stateHashes"] = { $each: record.stateHashes.slice(1) };
+    const result = await this.replayCollection.updateOne(
+      { _id: gameId, persistedVersion: persisted },
+      update as UpdateFilter<ReplayDocument<TState>>,
+    );
+    if (result.matchedCount === 0) {
+      throw new Error(
+        `[Replay] Concurrent update of game record ${gameId} (expected v${persisted})`,
+      );
     }
-
-    if (Object.keys(pushOps).length > 0) {
-      update.$push = pushOps;
-    }
-
-    // initialState などの基本情報は初回作成時のみ保存
-    const setOnInsert: any = {};
-    if (record.initialState) setOnInsert["record.initialState"] = record.initialState;
-    if (record.gameId) setOnInsert["record.gameId"] = record.gameId;
-    if (record.serverSeedHash) setOnInsert["record.serverSeedHash"] = record.serverSeedHash;
-    if (record.clientSeed) setOnInsert["record.clientSeed"] = record.clientSeed;
-
-    // 最初のハッシュも初回作成時のみ保存
-    if (record.stateHashes && record.stateHashes.length > 0) {
-      setOnInsert["record.stateHashes"] = [record.stateHashes[0]];
-    }
-
-    if (Object.keys(setOnInsert).length > 0) {
-      update.$setOnInsert = setOnInsert;
-    }
-
-    await this.replayCollection.updateOne({ _id: gameId }, update, { upsert: true });
   }
 }

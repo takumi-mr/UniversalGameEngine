@@ -23,6 +23,25 @@ export interface SessionRecord<TState extends BaseGameState> {
   replay?: EngineReplayData<TState, BaseGameAction>;
 }
 
+/**
+ * リプレイ記録（GameRecord）への追記単位。
+ * 対局中はエンジンの履歴を N 手ごとにこの形で永続ログへ追記し、追記できた分をメモリ / セッション記録から切り詰める。
+ * 完全なリプレイは永続ログ側にだけ存在する。
+ */
+export interface GameRecordChunk<TState extends BaseGameState, TAction extends BaseGameAction> {
+  /** 記録がまだ無いときの作成用（既にあれば無視される） */
+  initialState: TState;
+  serverSeedHash: string;
+  clientSeed: string;
+  /** actions[0] を適用する前の version（= 記録済みの末尾と一致するはず） */
+  fromVersion: number;
+  actions: TAction[];
+  /** stateHashes[0] は fromVersion 時点のハッシュ。以降は各アクション後のハッシュ（無ければ [hash0] だけでよい） */
+  stateHashes: string[];
+  /** 終局時のみ: サーバーシードの開示 */
+  finalServerSeed?: string;
+}
+
 export interface IGameRepository<TState extends BaseGameState> {
   save(gameId: string, state: TState, isFinished?: boolean): Promise<void>;
   load(gameId: string): Promise<TState | null>;
@@ -30,10 +49,11 @@ export interface IGameRepository<TState extends BaseGameState> {
 
   // Game History (Replay) persistence
   saveGameRecord(gameId: string, record: GameRecord<TState, BaseGameAction>): Promise<void>;
-  appendGameRecord(
-    gameId: string,
-    record: Partial<GameRecord<TState, BaseGameAction>>,
-  ): Promise<void>;
+  /**
+   * リプレイ記録に履歴を追記する（無ければ作る）。
+   * 既に記録済みの version までのアクションは重複しないよう捨てる（Redis から古い履歴で復元されたときの再送対策）。
+   */
+  appendGameRecord(gameId: string, chunk: GameRecordChunk<TState, BaseGameAction>): Promise<void>;
   loadGameRecord(gameId: string): Promise<GameRecord<TState, BaseGameAction> | null>;
 
   // --- セッション（複数インスタンスで共有する真実の状態） ---

@@ -1,5 +1,9 @@
 // apps/backend/infra/InMemoryDummyRepository.ts
-import type { IGameRepository, SessionRecord } from "@engine/shared/stores/repository";
+import type {
+  IGameRepository,
+  SessionRecord,
+  GameRecordChunk,
+} from "@engine/shared/stores/repository";
 import type { GameRecord, BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
 
 /**
@@ -19,6 +23,11 @@ export class InMemoryDummyRepository<
   // gameId → 掃除予定時刻（epoch ms）
   private cleanups = new Map<string, number>();
   private deadlines = new Map<string, number>();
+  // リプレイ記録（HybridGameRepository と同じ追記の契約。テストで検証できるよう実際に持つ）
+  private records = new Map<
+    string,
+    { record: GameRecord<TState, BaseGameAction>; persistedVersion: number }
+  >();
 
   async save(gameId: string, state: TState, isFinished = false): Promise<void> {
     this.store.set(gameId, state);
@@ -57,6 +66,7 @@ export class InMemoryDummyRepository<
     this.store.delete(gameId);
     this.cleanups.delete(gameId);
     this.deadlines.delete(gameId);
+    this.records.delete(gameId);
   }
 
   async listSessions(): Promise<{ gameId: string; type: string }[]> {
@@ -132,22 +142,52 @@ export class InMemoryDummyRepository<
     // 閉じるべきコネクションはない
   }
 
-  // --- RL学習時はリプレイを保存しないので何もしない ---
-  async saveGameRecord(
-    _gameId: string,
-    _record: GameRecord<TState, BaseGameAction>,
-  ): Promise<void> {
-    // No-op
+  // --- リプレイ記録（プロセス内。セッション削除時に一緒に消す） ---
+  async saveGameRecord(gameId: string, record: GameRecord<TState, BaseGameAction>): Promise<void> {
+    const copy = JSON.parse(JSON.stringify(record));
+    this.records.set(gameId, {
+      record: copy,
+      persistedVersion: (record.snapshotVersion ?? 0) + record.actions.length,
+    });
   }
 
-  async loadGameRecord(_gameId: string): Promise<GameRecord<TState, BaseGameAction> | null> {
-    return null;
+  async loadGameRecord(gameId: string): Promise<GameRecord<TState, BaseGameAction> | null> {
+    const entry = this.records.get(gameId);
+    return entry ? JSON.parse(JSON.stringify(entry.record)) : null;
   }
 
   async appendGameRecord(
-    _gameId: string,
-    _record: Partial<GameRecord<TState, BaseGameAction>>,
+    gameId: string,
+    chunk: GameRecordChunk<TState, BaseGameAction>,
   ): Promise<void> {
-    // No-op
+    let entry = this.records.get(gameId);
+    if (!entry) {
+      entry = {
+        record: {
+          gameId,
+          initialState: chunk.initialState,
+          actions: [],
+          serverSeedHash: chunk.serverSeedHash,
+          clientSeed: chunk.clientSeed,
+          stateHashes: chunk.stateHashes.slice(0, 1),
+        },
+        persistedVersion: chunk.fromVersion,
+      };
+      this.records.set(gameId, entry);
+    }
+    // 記録済みの分は捨てる（HybridGameRepository と同じ）
+    const skip = Math.max(entry.persistedVersion - chunk.fromVersion, 0);
+    const actions = chunk.actions.slice(skip);
+    const aligned = chunk.stateHashes.length === chunk.actions.length + 1;
+    const hashes = aligned ? chunk.stateHashes.slice(skip + 1) : [];
+
+    const copy = JSON.parse(JSON.stringify({ actions, hashes }));
+    entry.record.actions.push(...copy.actions);
+    (entry.record.stateHashes ??= []).push(...copy.hashes);
+    if (chunk.finalServerSeed !== undefined) entry.record.finalServerSeed = chunk.finalServerSeed;
+    entry.persistedVersion = Math.max(
+      entry.persistedVersion,
+      chunk.fromVersion + chunk.actions.length,
+    );
   }
 }
