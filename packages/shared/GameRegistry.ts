@@ -27,6 +27,7 @@ import { HakoiriMusumeRuleset } from "./rules/HakoiriMusumeRuleset";
 import { TowerOfHanoiRuleset } from "./rules/TowerOfHanoiRuleset";
 import { LogicCircuitRuleset } from "./rules/LogicCircuitRuleset";
 import { LogicLabRuleset } from "./rules/LogicLabRuleset";
+import { CaveDiveRuleset } from "./rules/CaveDiveRuleset";
 
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
   type: string;
@@ -219,6 +220,17 @@ class GameRegistry {
       description: "AIが考案した、魂を削り合う究極の心理戦ボードゲーム。",
       emoji: "⚖️",
       rules: "AIによって設計された戦略的なボードゲーム。相手の心理を読み、均衡を崩します。",
+    });
+    this.register({
+      type: "cave_dive",
+      name: "掘るか、逃げるか",
+      ruleset: CaveDiveRuleset,
+      minPlayers: 2,
+      maxPlayers: 8,
+      description: "欲張るか、降りるか。全員同時に秘密で決めるプッシュ・ユア・ラック。",
+      emoji: "⛏️",
+      rules:
+        "洞窟でカードをめくるたびに、残るか逃げるかを全員同時に秘密で選びます。宝は残っている人で山分け、同じ罠が2枚出たら崩落して残っていた人はそのラウンドの宝を失います。逃げたのが1人だけなら道端の端数も独り占め。5ラウンドの合計が最多の人が勝ち。松明は1回だけ次のカードを覗けます。",
     });
     this.register({
       type: "mancala",

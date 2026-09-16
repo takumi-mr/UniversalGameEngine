@@ -256,6 +256,11 @@
         }
       }
     },
+    "cave_dive": {
+      "name": "Dig or Dash",
+      "description": "Push your luck: everyone secretly decides at once whether to keep digging or get out.",
+      "rules": "Each time a card is turned over in the cave, everyone secretly and simultaneously chooses to stay or leave. Treasure is split among those still inside (leftovers stay on the path); a second copy of the same trap collapses the cave and everyone still inside loses that round's haul. If exactly one player leaves, they also scoop the leftovers on the path. Highest total after 5 rounds wins. Once per game your torch lets you peek at the next card (everyone sees that you peeked)."
+    },
     "equilibrium": {
       "name": "Equilibrium",
       "description": "AI-designed psychological warfare.",
