@@ -2,6 +2,7 @@ import { expect, test, describe } from "bun:test";
 import { MahjongRuleset as RealMahjongRuleset } from "../mahjong/MahjongRuleset";
 import { withTestRng } from "../../testing/withTestRng";
 import { UniversalEngine } from "../../UniversalEngine";
+import { MahjongHandEvaluator } from "../mahjong/MahjongHandEvaluator";
 
 // ルールセットを直接呼ぶテストなので、固定シードの RNG を補う
 const MahjongRuleset = withTestRng(RealMahjongRuleset);
@@ -188,6 +189,70 @@ describe("MahjongRuleset", () => {
     };
     expect(MahjongRuleset.isValidAction(state, chi)).toBe(true);
     expect(MahjongRuleset.isValidAction(state, { ...chi, playerId: "p3" })).toBe(false);
+  });
+
+  test("RIICHI deducts a deposit and records the declaration with the discard", () => {
+    let state = MahjongRuleset.getInitialState({ playerIds: ["p1", "p2", "p3", "p4"] });
+    state.players = { p1: "p1", p2: "p2", p3: "p3", p4: "p4" };
+    state = MahjongRuleset.reduce(state, { type: "START", playerId: "p1" });
+    state = MahjongRuleset.reduce(state, { type: "DRAW", playerId: "p1" });
+    const tile = state.hands.p1.value[0]!;
+
+    expect(MahjongRuleset.isValidAction(state, { type: "RIICHI", playerId: "p1", tile })).toBe(
+      true,
+    );
+    state = MahjongRuleset.reduce(state, { type: "RIICHI", playerId: "p1", tile });
+
+    expect(state.riichi.p1).toBe(true);
+    expect(state.scores.p1).toBe(24_000);
+    expect(state.riichiSticks).toBe(1);
+    expect(state.discards.p1).toEqual([tile]);
+  });
+
+  test("KYUUSHU_KYUUHAI ends the hand before the first discard", () => {
+    let state = MahjongRuleset.getInitialState({ playerIds: ["p1", "p2", "p3", "p4"] });
+    state.players = { p1: "p1", p2: "p2", p3: "p3", p4: "p4" };
+    state = MahjongRuleset.reduce(state, { type: "START", playerId: "p1" });
+    state.hands.p1 = {
+      __isSecret: true,
+      value: ["1m", "9m", "1p", "9p", "1s", "9s", "1z", "2z", "3z", "4z", "5z", "6z", "7z"],
+      visibleTo: ["p1"],
+    };
+
+    expect(MahjongRuleset.isValidAction(state, { type: "KYUUSHU_KYUUHAI", playerId: "p1" })).toBe(
+      true,
+    );
+    state = MahjongRuleset.reduce(state, { type: "KYUUSHU_KYUUHAI", playerId: "p1" });
+    expect(state.status).toBe("FINISHED");
+    expect(state.message).toContain("九種九牌");
+  });
+
+  test("red five is normalized and counted as dora", () => {
+    const state = MahjongRuleset.getInitialState({
+      playerIds: ["p1", "p2", "p3", "p4"],
+    });
+    state.doraIndicators = ["4m"];
+    const hand = [
+      "1m",
+      "2m",
+      "3m",
+      "0m",
+      "5m",
+      "6m",
+      "7m",
+      "2p",
+      "3p",
+      "4p",
+      "6s",
+      "7s",
+      "8s",
+      "1z",
+    ];
+
+    const result = MahjongHandEvaluator.evaluate(hand, [], "1z", true, state);
+    expect(result.dora).toBe(2);
+    expect(result.han).toBeGreaterThanOrEqual(2);
+    expect(result.yaku["ドラ"]).toBe("2飜");
   });
 
   test("timeout passes an unanswered interruption and clears the deadline", () => {

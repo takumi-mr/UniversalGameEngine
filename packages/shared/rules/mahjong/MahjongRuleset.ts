@@ -33,6 +33,11 @@ export interface MahjongState extends BaseGameState {
   turnIndex: number; // 現在のターンプレイヤーのインデックス(0~3)
 
   scores: Record<string, number>; // 点数
+  riichi: Record<string, boolean>;
+  riichiSticks: number;
+  akaDora: boolean;
+  firstDiscardTiles: Record<string, Tile | undefined>;
+  firstTurn: boolean;
 
   /** 割り込みアクション（鳴き、ロン）待ちの状態 */
   pendingDiscard?: {
@@ -44,7 +49,16 @@ export interface MahjongState extends BaseGameState {
 
 /** 麻雀のコマンドアクション */
 export interface MahjongAction extends BaseGameAction {
-  type: "DRAW" | "DISCARD" | "CALL" | "RON" | "TSUMO" | "PASS" | "START";
+  type:
+    | "DRAW"
+    | "DISCARD"
+    | "CALL"
+    | "RON"
+    | "TSUMO"
+    | "PASS"
+    | "RIICHI"
+    | "KYUUSHU_KYUUHAI"
+    | "START";
   tile?: Tile; // 対象の牌
   meldType?: "CHI" | "PON" | "KAN"; // 鳴きの種類
   consumed?: Tile[]; // チー・ポン・カンで手牌から公開する牌
@@ -57,7 +71,7 @@ const _WALL_SIZE = 136;
 const DEAD_WALL_SIZE = 14;
 
 /** 山牌の生成 */
-function createWall(rng?: IGameRNG): Tile[] {
+function createWall(rng?: IGameRNG, akaDora = true): Tile[] {
   const wall: Tile[] = [];
   const suits = ["m", "p", "s"];
   const honors = ["1z", "2z", "3z", "4z", "5z", "6z", "7z"];
@@ -65,6 +79,12 @@ function createWall(rng?: IGameRNG): Tile[] {
   for (let i = 0; i < 4; i++) {
     for (const s of suits) {
       for (let n = 1; n <= 9; n++) wall.push(`${n}${s}`);
+    }
+    if (akaDora) {
+      for (const suit of ["m", "p", "s"]) {
+        const index = wall.indexOf(`5${suit}`);
+        if (index >= 0) wall[index] = `0${suit}`;
+      }
     }
     for (const h of honors) wall.push(h);
   }
@@ -155,6 +175,14 @@ function isWinningRon(state: MahjongState, playerId: string): boolean {
   ).isAgari;
 }
 
+function terminalHonorCount(tiles: Tile[]): number {
+  return new Set(
+    tiles.filter(
+      (tile) => tile[1] === "z" || tile[0] === "1" || tile[0] === "9" || tile[0] === "0",
+    ),
+  ).size;
+}
+
 // --- Action Validators ---
 
 const ACTION_VALIDATORS: Record<
@@ -183,6 +211,25 @@ const ACTION_VALIDATORS: Record<
     const hand = state.hands[action.playerId!]?.value || [];
     return hand.length === concealedHandSize(state, action.playerId!) + 1;
   },
+  RIICHI: (state, action) => {
+    if (
+      state.phase !== "PLAYING" ||
+      !state.activePlayers?.includes(action.playerId!) ||
+      state.riichi[action.playerId!] ||
+      state.scores[action.playerId!] < 1000 ||
+      (state.melds[action.playerId!]?.length ?? 0) > 0 ||
+      !action.tile
+    ) {
+      return false;
+    }
+    const hand = state.hands[action.playerId!]?.value ?? [];
+    return hand.length === 14 && hand.includes(action.tile);
+  },
+  KYUUSHU_KYUUHAI: (state, action) =>
+    state.firstTurn &&
+    state.phase === "PLAYING" &&
+    state.activePlayers?.includes(action.playerId!) === true &&
+    terminalHonorCount(state.hands[action.playerId!]?.value ?? []) >= 9,
   CALL: (state, action) => {
     if (state.phase === "INTERRUPTING") {
       if (
@@ -220,7 +267,7 @@ const ACTION_HANDLERS: Record<
 > = {
   START: (state, action, rng) => {
     const playerIds = Object.values(state.players || {}).filter((p) => p !== null) as string[];
-    const wallArr = createWall(rng);
+    const wallArr = createWall(rng, state.akaDora);
     const deadW: Tile[] = wallArr.splice(-DEAD_WALL_SIZE);
     const doraIndicators = [deadW.pop()!];
 
@@ -249,6 +296,10 @@ const ACTION_HANDLERS: Record<
       discards,
       melds,
       scores,
+      riichi: Object.fromEntries(playerIds.map((id) => [id, false])),
+      riichiSticks: state.riichiSticks,
+      firstDiscardTiles: {},
+      firstTurn: true,
       turnIndex: 0,
       activePlayers: [playerIds[0]],
     };
@@ -299,8 +350,32 @@ const ACTION_HANDLERS: Record<
       },
       activePlayers: state.playerIds.filter((id) => id !== pId),
       turnDeadline: (action.timestamp || 0) + 10000,
+      firstDiscardTiles: state.firstTurn
+        ? { ...state.firstDiscardTiles, [pId]: tile }
+        : state.firstDiscardTiles,
+      firstTurn: false,
     };
   },
+
+  RIICHI: (state, action) => {
+    const pId = action.playerId!;
+    const nextState = {
+      ...state,
+      scores: { ...state.scores, [pId]: state.scores[pId] - 1000 },
+      riichi: { ...state.riichi, [pId]: true },
+      riichiSticks: state.riichiSticks + 1,
+    };
+    return ACTION_HANDLERS.DISCARD(nextState, action);
+  },
+
+  KYUUSHU_KYUUHAI: (state) => ({
+    ...state,
+    status: "FINISHED",
+    phase: "FINISHED",
+    activePlayers: [],
+    pendingDiscard: undefined,
+    message: "九種九牌による途中流局。",
+  }),
 
   TSUMO: (state, action) => {
     const pId = action.playerId!;
@@ -462,6 +537,11 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
       wind: options?.wind ?? "EAST",
       round: options?.round ?? 1,
       scores: options?.initialScores ?? {},
+      riichi: {},
+      riichiSticks: options?.riichiSticks ?? 0,
+      akaDora: options?.akaDora !== false,
+      firstDiscardTiles: {},
+      firstTurn: true,
     };
   },
 
@@ -484,6 +564,8 @@ export const MahjongRuleset: GameRuleset<MahjongState, MahjongAction> = {
       "RON",
       "TSUMO",
       "PASS",
+      "RIICHI",
+      "KYUUSHU_KYUUHAI",
     ];
     const actions: MahjongAction[] = [];
 

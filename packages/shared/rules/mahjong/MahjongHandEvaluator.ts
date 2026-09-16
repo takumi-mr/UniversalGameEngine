@@ -9,6 +9,7 @@ export interface EvaluatedHand {
   fu: number;
   ten: number; // 合計点数
   text: string;
+  dora: number;
 }
 
 /**
@@ -27,7 +28,7 @@ export class MahjongHandEvaluator {
     const z: string[] = [];
 
     for (const tile of tiles) {
-      const num = tile.charAt(0);
+      const num = tile.charAt(0) === "0" ? "5" : tile.charAt(0);
       const suit = tile.charAt(1);
       if (suit === "m") m.push(num);
       if (suit === "p") p.push(num);
@@ -102,7 +103,9 @@ export class MahjongHandEvaluator {
       query += "+" + winTileStr; // ロンの場合は + をつける
     }
 
-    const cached = this.cache.get(query);
+    const dora = _state ? this.countDora([...hand, winTile], _state.doraIndicators) : 0;
+    const cacheKey = `${query}|${_state?.doraIndicators.join(",") ?? ""}`;
+    const cached = this.cache.get(cacheKey);
     if (cached) return cached;
 
     try {
@@ -111,13 +114,14 @@ export class MahjongHandEvaluator {
 
       const evaluated = {
         isAgari: Boolean(result.isAgari),
-        yaku: result.yaku || {},
-        han: result.han || 0,
+        yaku: dora > 0 ? { ...(result.yaku || {}), ドラ: `${dora}飜` } : result.yaku || {},
+        han: (result.han || 0) + dora,
         fu: result.fu || 0,
         ten: result.ten || 0,
         text: result.text || "",
+        dora,
       };
-      this.cache.set(query, evaluated);
+      this.cache.set(cacheKey, evaluated);
       return evaluated;
     } catch {
       const evaluated = {
@@ -127,9 +131,33 @@ export class MahjongHandEvaluator {
         fu: 0,
         ten: 0,
         text: "Error",
+        dora: 0,
       };
-      this.cache.set(query, evaluated);
+      this.cache.set(cacheKey, evaluated);
       return evaluated;
     }
+  }
+
+  private static countDora(tiles: Tile[], indicators: Tile[]): number {
+    return tiles.reduce(
+      (count, tile) =>
+        count +
+        indicators.filter((indicator) => this.nextDora(indicator) === this.normalizeTile(tile))
+          .length,
+      0,
+    );
+  }
+
+  private static normalizeTile(tile: Tile): Tile {
+    return tile[0] === "0" ? `5${tile[1]}` : tile;
+  }
+
+  private static nextDora(indicator: Tile): Tile {
+    const normalized = this.normalizeTile(indicator);
+    const number = Number(normalized[0]);
+    if (normalized[1] === "z") {
+      return `${number >= 5 ? (number === 7 ? 1 : number + 1) : number + 1}z`;
+    }
+    return `${number === 9 ? 1 : number + 1}${normalized[1]}`;
   }
 }
