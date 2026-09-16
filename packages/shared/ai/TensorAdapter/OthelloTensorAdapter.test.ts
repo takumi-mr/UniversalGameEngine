@@ -59,7 +59,7 @@ describe("OthelloTensorAdapter", () => {
     const state = playingState();
     for (const id of OthelloTensorAdapter.encodeLegalActions(state, "black")) {
       const a = OthelloTensorAdapter.decodeAction(state, id, "black");
-      expect(a.y * state.size + a.x).toBe(id);
+      expect(a.y! * state.size + a.x!).toBe(id);
     }
   });
 

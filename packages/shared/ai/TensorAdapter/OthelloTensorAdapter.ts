@@ -34,7 +34,8 @@ export const OthelloTensorAdapter: IAITensorAdapter<OthelloState, OthelloAction>
   },
 
   encodeLegalActions: (state, playerId) => {
-    return OthelloRuleset.getLegalActions(state, playerId).map((a) => a.y * state.size + a.x);
+    // getLegalActions は PLACE_PIECE しか返さない（投了は学習対象外）
+    return OthelloRuleset.getLegalActions(state, playerId).map((a) => a.y! * state.size + a.x!);
   },
 
   decodeAction: (state, actionId, playerId) => {
