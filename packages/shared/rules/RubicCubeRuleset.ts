@@ -57,6 +57,12 @@ function rotateMatrix(matrix: Color[][], dir: 1 | -1): Color[][] {
 
 // 2. 面が回転した際、隣接する4つの辺（リング）を抽出・更新するための定義
 // ※展開図のトポロジーを定義します。各面から見て「時計回り」に隣接する面の [行or列, インデックス, 逆順か] を定義。
+//
+// 各面の行列は「その面を外側から見た」向きで、row 0 が上・col 0 が左:
+//   U: 上から見て上側が B（row 0 が B 側、row 2 が F 側）
+//   D: 下から見て上側が F（row 0 が F 側、row 2 が B 側）
+//   F/B/L/R: 上側が U。B は col 0 が R 側、R は col 0 が F 側、L は col 0 が B 側
+// reverse は「リングを時計回りにたどる向き」と「行/列のインデックスが増える向き」が逆のときに true。
 type EdgeDef = {
   face: FaceName;
   type: "row" | "col";
@@ -73,8 +79,9 @@ const ADJACENCY_MAP: Record<FaceName, EdgeDef[]> = {
     { face: "D", type: "row", index: 0, reverse: true },
     { face: "L", type: "col", index: 2, reverse: true },
   ],
+  // 上層は側面の row 0 が水平に巡回するだけなので、どの面も逆順にならない
   U: [
-    { face: "B", type: "row", index: 0, reverse: true },
+    { face: "B", type: "row", index: 0, reverse: false },
     { face: "R", type: "row", index: 0, reverse: false },
     { face: "F", type: "row", index: 0, reverse: false },
     { face: "L", type: "row", index: 0, reverse: false },
@@ -82,7 +89,7 @@ const ADJACENCY_MAP: Record<FaceName, EdgeDef[]> = {
   D: [
     { face: "F", type: "row", index: 2, reverse: false },
     { face: "R", type: "row", index: 2, reverse: false },
-    { face: "B", type: "row", index: 2, reverse: true },
+    { face: "B", type: "row", index: 2, reverse: false },
     { face: "L", type: "row", index: 2, reverse: false },
   ],
   B: [
@@ -101,7 +108,7 @@ const ADJACENCY_MAP: Record<FaceName, EdgeDef[]> = {
     { face: "U", type: "col", index: 2, reverse: true },
     { face: "B", type: "col", index: 0, reverse: false },
     { face: "D", type: "col", index: 2, reverse: true },
-    { face: "F", type: "col", index: 2, reverse: false },
+    { face: "F", type: "col", index: 2, reverse: true },
   ],
 };
 
