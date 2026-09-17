@@ -12,6 +12,7 @@ export interface DaifugoState extends BaseGameState {
 
   // トリック（場）の状態
   tableCards: Card[]; // 現在場に出ているカード
+  playedCards: Card[]; // これまでに出された全カード（AI の推論用）
   lastPlayedPlayerId: string | null; // 最後にカードを出したプレイヤー（場を流す判定に使用）
   passedPlayers: string[]; // 現在のトリックでパスしたプレイヤー
 
@@ -66,16 +67,21 @@ function evaluatePlay(cards: Card[]): { size: number; strength: number } | null 
   return { size: cards.length, strength };
 }
 
-// 54枚のデッキを作成してシャッフル
-function createDeck(rng?: IGameRNG): Card[] {
+// ジョーカー2枚を含む54枚のデッキ（未シャッフル）
+export function buildFullDeck(): Card[] {
   const suits = ["S", "H", "D", "C"];
   const ranks = ["3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A", "2"];
-  const deck: Card[] = ["JR", "JR"]; // ジョーカー2枚
+  const deck: Card[] = ["JR", "JR"];
   for (const s of suits) {
     for (const r of ranks) {
       deck.push(`${r}${s}`);
     }
   }
+  return deck;
+}
+
+function createDeck(rng?: IGameRNG): Card[] {
+  const deck = buildFullDeck();
   // Fisher-Yates shuffle
   for (let i = deck.length - 1; i > 0; i--) {
     const j = requireRng(rng).nextInt(0, i);
@@ -128,6 +134,7 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
       playerIds,
       hands,
       tableCards: [],
+      playedCards: [],
       lastPlayedPlayerId: null,
       passedPlayers: [],
       turnIndex: 0,
@@ -187,6 +194,7 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
 
       // 場を更新
       newState.tableCards = playCards;
+      newState.playedCards.push(...playCards);
       newState.lastPlayedPlayerId = pId;
 
       // 誰かがカードを出したら、パス履歴はリセットされる（ローカルルールによっては維持する場合もあるが、今回はリセット）
