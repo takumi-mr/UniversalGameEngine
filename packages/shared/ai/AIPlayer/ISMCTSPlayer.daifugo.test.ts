@@ -28,6 +28,9 @@ function maskedState(
     passedPlayers: [],
     turnIndex: 0,
     ranks: [],
+    kakumei: false,
+    revolution: false,
+    eightGiri: false,
     ...overrides,
   };
 }
