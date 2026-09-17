@@ -38,6 +38,8 @@ export interface MahjongMatchAction extends BaseGameAction {
 }
 
 export interface MahjongMatchOptions {
+  // エンジンのシード（serverSeed / clientSeed）などもこのオブジェクトで渡される
+  [key: string]: unknown;
   playerIds?: string[];
   players?: Record<string, string | null>;
   mode?: MahjongMatchMode;
