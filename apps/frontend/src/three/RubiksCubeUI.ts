@@ -27,16 +27,86 @@ const FACE_NORMALS: Record<FaceName, THREE.Vector3> = {
   L: new THREE.Vector3(-1, 0, 0),
 };
 
-// ステッカーの3x3グリッドマッピング (行=row, 列=col -> position)
-// FaceNameとgridの対応は3x3 state.faces[face][row][col]
-const STICKER_GRID_POSITIONS: Record<FaceName, (row: number, col: number) => THREE.Vector3> = {
-  U: (r, c) => new THREE.Vector3(-1 + c, 1.5, 1 - r), // Y+面: z=-1..1 (正面向きのグリッド)
-  D: (r, c) => new THREE.Vector3(-1 + c, -1.5, -1 + r), // Y-面
-  F: (r, c) => new THREE.Vector3(-1 + c, 1 - r, 1.5), // Z+面
-  B: (r, c) => new THREE.Vector3(1 - c, 1 - r, -1.5), // Z-面
-  R: (r, c) => new THREE.Vector3(1.5, 1 - r, 1 - c), // X+面
-  L: (r, c) => new THREE.Vector3(-1.5, 1 - r, -1 + c), // X-面
+// 各面を「外側から見た」ときの上方向・右方向（RubicCubeRuleset の展開図規約と一致させる）
+//   U: 上から見て上側が B、D: 下から見て上側が F、F/B/L/R: 上側が U
+const FACE_UP: Record<FaceName, THREE.Vector3> = {
+  U: new THREE.Vector3(0, 0, -1),
+  D: new THREE.Vector3(0, 0, 1),
+  F: new THREE.Vector3(0, 1, 0),
+  B: new THREE.Vector3(0, 1, 0),
+  R: new THREE.Vector3(0, 1, 0),
+  L: new THREE.Vector3(0, 1, 0),
 };
+const FACE_RIGHT: Record<FaceName, THREE.Vector3> = {
+  U: new THREE.Vector3(1, 0, 0),
+  D: new THREE.Vector3(1, 0, 0),
+  F: new THREE.Vector3(1, 0, 0),
+  B: new THREE.Vector3(-1, 0, 0),
+  R: new THREE.Vector3(0, 0, -1),
+  L: new THREE.Vector3(0, 0, 1),
+};
+
+// ステッカーの3x3グリッドマッピング (行=row, 列=col -> position)
+// state.faces[face][row][col] は面を外側から見て row 0 が上、col 0 が左
+const STICKER_GRID_POSITIONS: Record<FaceName, (row: number, col: number) => THREE.Vector3> = {
+  U: (r, c) => new THREE.Vector3(-1 + c, 1.5, -1 + r), // Y+面: row 0 が B 側 (z=-1)
+  D: (r, c) => new THREE.Vector3(-1 + c, -1.5, 1 - r), // Y-面: row 0 が F 側 (z=+1)
+  F: (r, c) => new THREE.Vector3(-1 + c, 1 - r, 1.5), // Z+面
+  B: (r, c) => new THREE.Vector3(1 - c, 1 - r, -1.5), // Z-面: col 0 が R 側
+  R: (r, c) => new THREE.Vector3(1.5, 1 - r, 1 - c), // X+面: col 0 が F 側
+  L: (r, c) => new THREE.Vector3(-1.5, 1 - r, -1 + c), // X-面: col 0 が B 側
+};
+
+// 回転ボタンパネルの配置
+const PANEL_SIZE = 2.7; // 面全体をカバーする一辺の長さ
+const PANEL_HALF_WIDTH = PANEL_SIZE / 2; // 左右半分ずつ CW / CCW に割り当てる
+const PANEL_OFFSET = 1.6; // ステッカー面 (1.5 + 厚み) のすぐ外側
+const PANEL_IDLE_OPACITY = 0.18;
+const PANEL_HOVER_OPACITY = 0.7;
+
+// 回転ボタン用の矢印テクスチャ（↻ / ↺）を Canvas で描く
+function createArrowTexture(dir: 1 | -1, tint: string): THREE.CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+
+  ctx.fillStyle = tint;
+  ctx.fillRect(0, 0, size, size);
+
+  const cx = size / 2;
+  const cy = size / 2;
+  const radius = size * 0.26;
+  // Canvas は y が下向きなので、角度が増える向き = 画面上の時計回り
+  const start = dir === 1 ? Math.PI * 0.75 : Math.PI * 0.25;
+  const end = dir === 1 ? Math.PI * 2.25 : -Math.PI * 1.25;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = size * 0.07;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, start, end, dir === -1);
+  ctx.stroke();
+
+  // 矢じり: 弧の終点で進行方向を向ける
+  const tip = new THREE.Vector2(cx + radius * Math.cos(end), cy + radius * Math.sin(end));
+  const tangent = new THREE.Vector2(-Math.sin(end), Math.cos(end)).multiplyScalar(dir);
+  const normal = new THREE.Vector2(-tangent.y, tangent.x);
+  const headLen = size * 0.14;
+  const headWidth = size * 0.1;
+  const head = tip.clone().addScaledVector(tangent, headLen);
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.moveTo(head.x, head.y);
+  ctx.lineTo(tip.x + normal.x * headWidth, tip.y + normal.y * headWidth);
+  ctx.lineTo(tip.x - normal.x * headWidth, tip.y - normal.y * headWidth);
+  ctx.closePath();
+  ctx.fill();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
 
 export class RubiksCubeUI {
   private onAction: (action: RubiksAction) => void;
@@ -49,6 +119,7 @@ export class RubiksCubeUI {
 
   // ステッカーメッシュのリスト: [face][row][col] -> Mesh
   private stickers: Map<string, THREE.Mesh> = new Map();
+  private stickerGeom = new THREE.BoxGeometry(0.85, 0.05, 0.85);
   // クリック可能な면 ボタンメッシュ
   private facePanels: { face: FaceName; dir: 1 | -1; mesh: THREE.Mesh }[] = [];
 
@@ -137,25 +208,38 @@ export class RubiksCubeUI {
   }
 
   private buildFacePanels() {
-    // 各面の6方向に「回転ボタン」として使える透過パネルを配置
+    // 各面を左右半分に分け、左半分=反時計回り(↺)・右半分=時計回り(↻) の「回転ボタン」パネルを配置する
+    // （面を外側から見た向きで左右を決める）
     const faces: FaceName[] = ["U", "D", "F", "B", "R", "L"];
-    const panelGeom = new THREE.PlaneGeometry(2.6, 2.6);
+    const panelGeom = new THREE.PlaneGeometry(PANEL_HALF_WIDTH, PANEL_SIZE);
+    const textures = {
+      1: createArrowTexture(1, "rgba(0, 204, 255, 0.45)"),
+      [-1]: createArrowTexture(-1, "rgba(255, 102, 0, 0.45)"),
+    } as const;
 
     for (const face of faces) {
       const normal = FACE_NORMALS[face];
+      const up = FACE_UP[face];
+      const right = FACE_RIGHT[face];
+      // PlaneGeometry のローカル +x を「右」、+y を「上」、+z を法線に合わせる
+      const orientation = new THREE.Matrix4().makeBasis(right, up, normal);
+
       for (const dir of [1, -1] as const) {
         const mat = new THREE.MeshBasicMaterial({
-          color: dir === 1 ? 0x00ccff : 0xff6600,
-          side: THREE.DoubleSide,
+          map: textures[dir],
+          side: THREE.FrontSide, // カメラから見えない裏側の面はクリック対象外にする
           transparent: true,
-          opacity: 0,
+          opacity: PANEL_IDLE_OPACITY,
           depthWrite: false,
         });
         const mesh = new THREE.Mesh(panelGeom, mat);
 
-        // 面の外側に少しオフセット
-        mesh.position.copy(normal.clone().multiplyScalar(2.0));
-        mesh.lookAt(normal.clone().multiplyScalar(10));
+        // ステッカーのすぐ外側に、左右にずらして配置
+        mesh.position
+          .copy(normal)
+          .multiplyScalar(PANEL_OFFSET)
+          .addScaledVector(right, (dir * PANEL_HALF_WIDTH) / 2);
+        mesh.setRotationFromMatrix(orientation);
         mesh.userData = { face, dir, isFacePanel: true };
 
         this.scene.add(mesh);
@@ -166,10 +250,13 @@ export class RubiksCubeUI {
 
   public renderState(state: RubiksState) {
     // 既存ステッカーを一旦全部削除して新たに描画
-    this.stickers.forEach((m) => this.scene.remove(m));
+    this.stickers.forEach((m) => {
+      this.scene.remove(m);
+      (m.material as THREE.Material).dispose();
+    });
     this.stickers.clear();
 
-    const stickerGeom = new THREE.BoxGeometry(0.85, 0.05, 0.85);
+    const stickerGeom = this.stickerGeom;
     const faces: FaceName[] = ["U", "D", "F", "B", "R", "L"];
 
     for (const face of faces) {
@@ -220,18 +307,23 @@ export class RubiksCubeUI {
     if (hits.length > 0) {
       const hit = hits[0].object as THREE.Mesh;
       if (this.hoveredPanel !== hit) {
-        if (this.hoveredPanel) (this.hoveredPanel.material as THREE.MeshBasicMaterial).opacity = 0;
+        this.setPanelOpacity(this.hoveredPanel, PANEL_IDLE_OPACITY);
         this.hoveredPanel = hit;
-        (this.hoveredPanel.material as THREE.MeshBasicMaterial).opacity = 0.28;
+        this.setPanelOpacity(this.hoveredPanel, PANEL_HOVER_OPACITY);
         this.renderer.domElement.style.cursor = "pointer";
       }
     } else {
       if (this.hoveredPanel) {
-        (this.hoveredPanel.material as THREE.MeshBasicMaterial).opacity = 0;
+        this.setPanelOpacity(this.hoveredPanel, PANEL_IDLE_OPACITY);
         this.hoveredPanel = null;
         this.renderer.domElement.style.cursor = "default";
       }
     }
+  }
+
+  private setPanelOpacity(panel: THREE.Mesh | null, opacity: number) {
+    if (!panel) return;
+    (panel.material as THREE.MeshBasicMaterial).opacity = opacity;
   }
 
   private pointerDownPos = new THREE.Vector2();

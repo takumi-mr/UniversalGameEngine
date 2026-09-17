@@ -40,7 +40,9 @@
     <div ref="canvasContainer" class="canvas-wrap" />
 
     <!-- Tooltip -->
-    <div class="tooltip">💡 Drag to rotate view · Click face arrows / buttons to turn</div>
+    <div class="tooltip">
+      💡 Drag to rotate view · Click ↻ / ↺ on a face (or the buttons) to turn it
+    </div>
   </div>
 </template>
 
