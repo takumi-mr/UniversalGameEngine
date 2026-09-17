@@ -238,19 +238,15 @@ const availableActions = computed(() => {
         playerId: props.myPlayerId,
       });
     }
-  } else if (isMyTurn.value) {
-    const hand = myHand.value;
-    if (hand.length === 13) {
-      actions.push({ type: "DRAW", playerId: props.myPlayerId });
-    } else if (hand.length === 14) {
-      actions.push({ type: "TSUMO", playerId: props.myPlayerId });
-    }
+  } else if (isMyTurn.value && props.state.phase === "PLAYING") {
+    // 自摸は自動なので、手番では打牌（牌クリック）と自摸和了だけを出す
+    actions.push({ type: "TSUMO", playerId: props.myPlayerId });
   }
   return actions;
 });
 
 const handleTileClick = (tile: string) => {
-  if (!isMyTurn.value || myHand.value.length !== 14) return;
+  if (!isMyTurn.value || props.state.phase !== "PLAYING") return;
   emit("action", { type: "DISCARD", tile, playerId: props.myPlayerId });
 };
 

@@ -376,7 +376,6 @@
         "NORTH": "北"
       },
       "actions": {
-        "DRAW": "ツモ",
         "DISCARD": "打牌",
         "CHI": "チー",
         "PON": "ポン",
@@ -384,6 +383,10 @@
         "RON": "ロン",
         "TSUMO": "ツモアガリ",
         "PASS": "パス",
+        "RIICHI": "リーチ",
+        "ANKAN": "暗槓",
+        "KAKAN": "加槓",
+        "KYUUSHU_KYUUHAI": "九種九牌",
         "START": "対局開始"
       },
       "tabs": {

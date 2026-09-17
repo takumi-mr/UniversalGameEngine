@@ -1,163 +1,175 @@
 // packages/shared/rules/mahjong/MahjongHandEvaluator.ts
-import type { MahjongState, Meld, Tile } from "./MahjongRuleset";
+//
+// npm `riichi` パッケージで役・符・点数を計算するラッパー。
+// 和了形の判定自体は MahjongTiles（isCompleteHand）でもできるが、役の有無と点数はここで確定する。
 import Riichi from "riichi";
+import type { Meld } from "./MahjongRuleset";
+import { nextDoraTile, type Tile } from "./MahjongTiles";
 
-export interface EvaluatedHand {
-  isAgari: boolean;
-  yaku: Record<string, string>; // e.g. { "立直": "1飜", "平和": "1飜" }
-  han: number;
-  fu: number;
-  ten: number; // 合計点数
-  text: string;
-  dora: number;
+/** 風: 1=東 2=南 3=西 4=北（riichi パッケージの表記に合わせる） */
+export type WindNumber = 1 | 2 | 3 | 4;
+
+/** 和了時の状況（役の成立条件になるもの） */
+export interface WinContext {
+  roundWind: WindNumber;
+  seatWind: WindNumber; // 1 なら親
+  doraIndicators: Tile[];
+  uraDoraIndicators?: Tile[]; // 立直和了時のみ渡す
+  riichi?: boolean;
+  doubleRiichi?: boolean;
+  ippatsu?: boolean;
+  rinshan?: boolean; // 嶺上開花
+  chankan?: boolean; // 搶槓
+  haitei?: boolean; // 海底摸月（自摸）
+  houtei?: boolean; // 河底撈魚（栄和）
+  tenhou?: boolean; // 天和（親の配牌自摸）
+  chiihou?: boolean; // 地和（子の第一自摸）
+  akaDora?: boolean; // 赤ドラ有効（既定 true）
 }
 
-/**
- * npm `riichi` パッケージを使って点数計算を行うラッパー
- */
+export interface EvaluatedHand {
+  /** 役のある和了か（和了形でも無役なら false） */
+  isAgari: boolean;
+  /** 和了形か（無役を含む） */
+  isCompleteShape: boolean;
+  yaku: Record<string, string>; // e.g. { "立直": "1飜", "平和": "1飜" }
+  yakuman: number; // 役満倍数（0 なら通常手）
+  han: number;
+  fu: number;
+  ten: number; // 合計点数（本場・供託は含まない）
+  /** 自摸時の支払い: 親和了なら oya[0] を子全員が、子和了なら親が ko[0]、子が ko[1] */
+  oya: number[];
+  ko: number[];
+  text: string;
+  dora: number; // ドラ・赤ドラ・裏ドラの合計飜
+}
+
+const NO_WIN: EvaluatedHand = {
+  isAgari: false,
+  isCompleteShape: false,
+  yaku: {},
+  yakuman: 0,
+  han: 0,
+  fu: 0,
+  ten: 0,
+  oya: [0, 0, 0],
+  ko: [0, 0, 0],
+  text: "",
+  dora: 0,
+};
+
+const CACHE_LIMIT = 4096;
+
 export class MahjongHandEvaluator {
   private static readonly cache = new Map<string, EvaluatedHand>();
+
   /**
-   * 手牌配列から riichi パッケージが解釈可能な文字列 (例: "123m456p789s1122z") に変換する
+   * "1m" "2m" のような配列を riichi 表記（例 "12m"）にする。赤五は "0" のまま渡す（赤ドラとして数えられる）
    */
-  private static formatTilesToRiichiString(tiles: Tile[]): string {
-    // "1m" "2m" のような配列を、"12m" のようにスーツごとにまとめる
-    const m: string[] = [];
-    const p: string[] = [];
-    const s: string[] = [];
-    const z: string[] = [];
-
-    for (const tile of tiles) {
-      const num = tile.charAt(0) === "0" ? "5" : tile.charAt(0);
-      const suit = tile.charAt(1);
-      if (suit === "m") m.push(num);
-      if (suit === "p") p.push(num);
-      if (suit === "s") s.push(num);
-      if (suit === "z") z.push(num);
-    }
-
+  private static formatTiles(tiles: Tile[]): string {
+    const bySuit: Record<string, string[]> = { m: [], p: [], s: [], z: [] };
+    for (const tile of tiles) bySuit[tile[1]!]?.push(tile[0]!);
     let result = "";
-    if (m.length > 0) result += m.sort().join("") + "m";
-    if (p.length > 0) result += p.sort().join("") + "p";
-    if (s.length > 0) result += s.sort().join("") + "s";
-    if (z.length > 0) result += z.sort().join("") + "z";
-
+    for (const suit of ["m", "p", "s", "z"]) {
+      const numbers = bySuit[suit]!;
+      if (numbers.length > 0) result += numbers.sort().join("") + suit;
+    }
     return result;
   }
 
   /**
-   * 副露を riichi 形式の文字列に変換する
-   * 鳴き（ポン等）は riichi に追加の文字として渡すルールがある（例: チーは "123m", ポンは "111p" など）
-   * 仕様上、単純結合で "+111p" のように連結させる（riichi仕様次第だが簡易実装）
+   * 副露を riichi 表記にする。
+   * 暗槓は 2 枚表記（"55z"）、明刻・順子は 3 枚、明槓（大明槓・加槓）は 4 枚で表す（riichi の仕様）
    */
-  private static formatMeldsToRiichiString(melds: Meld[]): string {
-    if (!melds || melds.length === 0) return "";
-
-    let meldStr = "";
+  private static formatMelds(melds: Meld[]): string {
+    let result = "";
     for (const meld of melds) {
-      const tiles = [...meld.consumed, meld.tile];
-      const grouped = this.formatTilesToRiichiString(tiles);
-      meldStr += `+${grouped}`;
+      const tiles =
+        meld.type === "ANKAN" ? meld.consumed.slice(0, 2) : [...meld.consumed, meld.tile];
+      result += `+${this.formatTiles(tiles)}`;
     }
-    return meldStr;
+    return result;
+  }
+
+  private static doraTiles(context: WinContext): Tile[] {
+    const indicators = [...context.doraIndicators, ...(context.uraDoraIndicators ?? [])];
+    return indicators.map(nextDoraTile);
+  }
+
+  private static extraFlags(context: WinContext, isTsumo: boolean): string {
+    let flags = "";
+    if (context.doubleRiichi) flags += "w";
+    else if (context.riichi) flags += "r";
+    if (context.ippatsu) flags += "i";
+    if (isTsumo ? context.haitei : context.houtei) flags += "h";
+    if (isTsumo ? context.rinshan : context.chankan) flags += "k";
+    if (isTsumo && (context.tenhou || context.chiihou)) flags += "t";
+    return `${flags}${context.roundWind}${context.seatWind}`;
   }
 
   /**
-   * 役と点数を計算するメイン関数
-   * @param hand アガリ者の現在のメンゼン手牌（アガリ牌を含む14枚、鳴きがある場合は少ない）
-   * @param melds アガリ者の鳴き情報
-   * @param winTile ロンまたはツモしたアガリ牌
-   * @param isTsumo ツモアガリかどうか
-   * @param wind 現在の場風などの状態 (オプション・簡略化のため現状は固定値等を利用想定)
+   * 役と点数を計算する
+   * @param hand 和了者の手牌（副露を除く。和了牌を含む 14, 11, 8, 5, 2 枚）
+   * @param melds 和了者の副露
+   * @param winTile 和了牌（hand に含まれていること）
+   * @param isTsumo 自摸和了か
+   * @param context 場風・自風・ドラ・状況役
    */
   public static evaluate(
     hand: Tile[],
     melds: Meld[],
     winTile: Tile,
     isTsumo: boolean,
-    _state?: MahjongState, // 将来的に場風やドラの計算に使用
+    context: WinContext,
   ): EvaluatedHand {
-    // 1. 手牌を riichi が読める形にまとめる (アガリ牌は一旦除外してフォーマット)
-    // 判定のため、引数の hand には既に winTile が含まれている前提なので、それを1つコピーから抜く
-    const handCopy = [...hand];
-    const winIdx = handCopy.indexOf(winTile);
-    if (winIdx !== -1) {
-      handCopy.splice(winIdx, 1);
-    }
+    const rest = [...hand];
+    const winIndex = rest.indexOf(winTile);
+    if (winIndex < 0) return NO_WIN;
+    rest.splice(winIndex, 1);
 
-    const handStr = this.formatTilesToRiichiString(handCopy);
+    let query = this.formatTiles(rest);
+    if (isTsumo) query += winTile;
+    query += this.formatMelds(melds);
+    if (!isTsumo) query += `+${winTile}`;
+    const dora = this.doraTiles(context);
+    if (dora.length > 0) query += `+d${this.formatTiles(dora)}`;
+    query += `+${this.extraFlags(context, isTsumo)}`;
 
-    // 2. 鳴きがあればくっつける
-    const meldStr = this.formatMeldsToRiichiString(melds);
-
-    // 3. アガリ牌の指定
-    // riichiライブラリの仕様: ロンの場合は最後に "+1m" などをくっつける。
-    // ツモの場合はアガリ牌を手牌の最後に含める (例: 12m3m) だが、
-    // 独立して評価するために "+1m" と同等に扱うか、明示的にツモのコンテクストを与える
-    const winTileStr = winTile.charAt(0) + winTile.charAt(1);
-    let query = handStr + meldStr;
-
-    if (isTsumo) {
-      query += winTileStr; // ツモの場合は手牌として連結
-    } else {
-      query += "+" + winTileStr; // ロンの場合は + をつける
-    }
-
-    const dora = _state ? this.countDora([...hand, winTile], _state.doraIndicators) : 0;
-    const cacheKey = `${query}|${_state?.doraIndicators.join(",") ?? ""}`;
+    const cacheKey = `${query}|${context.akaDora === false ? "noaka" : "aka"}`;
     const cached = this.cache.get(cacheKey);
     if (cached) return cached;
 
+    let evaluated: EvaluatedHand;
     try {
-      // riichiライブラリで計算
-      const result = new Riichi(query).calc();
-
-      const evaluated = {
-        isAgari: Boolean(result.isAgari),
-        yaku: dora > 0 ? { ...(result.yaku || {}), ドラ: `${dora}飜` } : result.yaku || {},
-        han: (result.han || 0) + dora,
-        fu: result.fu || 0,
-        ten: result.ten || 0,
-        text: result.text || "",
-        dora,
+      const riichi = new Riichi(query);
+      riichi.disableHairi();
+      if (context.akaDora === false) riichi.disableAka();
+      const result = riichi.calc();
+      const yaku = result.yaku ?? {};
+      const doraHan = ["ドラ", "赤ドラ"].reduce(
+        (sum, name) => sum + (yaku[name] ? Number.parseInt(yaku[name]!, 10) || 0 : 0),
+        0,
+      );
+      const isCompleteShape = Boolean(result.isAgari) && !result.error;
+      evaluated = {
+        isAgari: isCompleteShape && result.ten > 0,
+        isCompleteShape,
+        yaku,
+        yakuman: result.yakuman ?? 0,
+        han: result.han ?? 0,
+        fu: result.fu ?? 0,
+        ten: result.ten ?? 0,
+        oya: result.oya ?? [0, 0, 0],
+        ko: result.ko ?? [0, 0, 0],
+        text: result.text ?? "",
+        dora: doraHan,
       };
-      this.cache.set(cacheKey, evaluated);
-      return evaluated;
     } catch {
-      const evaluated = {
-        isAgari: false,
-        yaku: {},
-        han: 0,
-        fu: 0,
-        ten: 0,
-        text: "Error",
-        dora: 0,
-      };
-      this.cache.set(cacheKey, evaluated);
-      return evaluated;
+      evaluated = { ...NO_WIN, text: "Error" };
     }
-  }
 
-  private static countDora(tiles: Tile[], indicators: Tile[]): number {
-    return tiles.reduce(
-      (count, tile) =>
-        count +
-        indicators.filter((indicator) => this.nextDora(indicator) === this.normalizeTile(tile))
-          .length,
-      0,
-    );
-  }
-
-  private static normalizeTile(tile: Tile): Tile {
-    return tile[0] === "0" ? `5${tile[1]}` : tile;
-  }
-
-  private static nextDora(indicator: Tile): Tile {
-    const normalized = this.normalizeTile(indicator);
-    const number = Number(normalized[0]);
-    if (normalized[1] === "z") {
-      return `${number >= 5 ? (number === 7 ? 1 : number + 1) : number + 1}z`;
-    }
-    return `${number === 9 ? 1 : number + 1}${normalized[1]}`;
+    if (this.cache.size >= CACHE_LIMIT) this.cache.clear();
+    this.cache.set(cacheKey, evaluated);
+    return evaluated;
   }
 }
