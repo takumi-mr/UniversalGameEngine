@@ -55,8 +55,8 @@
 
             <div class="hole-cards opponent-cards">
               <div
-                v-for="c in (state.hands[opponent.id] as any)?.value"
-                :key="c"
+                v-for="(c, i) in handOf(opponent.id)"
+                :key="'opp-' + opponent.id + '-' + i"
                 class="playing-card small-card"
               >
                 <CardInner :card-str="c" />
@@ -66,8 +66,14 @@
             <div v-if="state.playerBets[opponent.id] > 0" class="current-bet">
               Bet: {{ state.playerBets[opponent.id] }}
             </div>
+            <div v-if="handNameOf(opponent.id)" class="hand-name">
+              {{ handNameOf(opponent.id) }}
+            </div>
             <div v-if="state.foldedPlayers.includes(opponent.id)" class="action-badge folded">
               FOLD
+            </div>
+            <div v-else-if="state.allInPlayers.includes(opponent.id)" class="action-badge all-in">
+              ALL IN
             </div>
           </div>
         </div>
@@ -86,6 +92,9 @@
             現在のベット:
             <strong>{{ state.playerBets[myPlayerId] }}</strong> (コール額: {{ callAmount }})
           </div>
+          <div v-if="handNameOf(myPlayerId)" class="hand-name">
+            {{ handNameOf(myPlayerId) }}
+          </div>
         </div>
 
         <div class="hole-cards my-cards">
@@ -96,11 +105,14 @@
       </div>
 
       <div class="action-bar">
-        <div v-if="!isMyTurn" class="waiting-overlay">
+        <div v-if="state.status === 'FINISHED'" class="waiting-overlay">ハンド終了</div>
+        <div v-else-if="!isMyTurn" class="waiting-overlay">
           {{
             isFolded
-              ? "フォールドしました。ラウンド終了を待っています..."
-              : "相手のターンを待っています..."
+              ? "フォールドしました。ハンド終了を待っています..."
+              : isAllIn
+                ? "オールインしました。結果を待っています..."
+                : "相手のターンを待っています..."
           }}
         </div>
 
@@ -109,7 +121,7 @@
 
           <button v-if="canCheck" class="btn btn-check" @click="takeAction('CHECK')">Check</button>
           <button v-if="canCall" class="btn btn-call" @click="takeAction('CALL')">
-            Call ({{ callAmount }})
+            {{ isAllInCall ? `All-in (${myChips})` : `Call (${callAmount})` }}
           </button>
 
           <div v-if="canRaise" class="raise-container">
@@ -117,12 +129,12 @@
               v-model.number="raiseAmount"
               type="range"
               :min="minRaise"
-              :max="state.playerChips[myPlayerId]"
-              step="10"
+              :max="maxRaise"
+              step="1"
               class="raise-slider"
             />
             <button class="btn btn-raise" @click="takeAction('RAISE')">
-              Raise ({{ raiseAmount }})
+              {{ raiseAmount >= maxRaise ? `All-in (+${maxRaise})` : `Raise (+${raiseAmount})` }}
             </button>
           </div>
         </div>
@@ -132,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineComponent, watch } from "vue";
+import { ref, computed, defineComponent, h, watch } from "vue";
 import type { TexasHoldemState, TexasHoldemAction } from "@engine/shared/rules/TexasHoldemRuleset";
 
 const props = defineProps<{
@@ -142,20 +154,31 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: "action", action: TexasHoldemAction): void }>();
 
 // --- カード描画用インラインコンポーネント ---
+// cardStr は "AS" / "TD" のような「ランク + スート」。"?" は裏面
+const SUIT_SYMBOLS: Record<string, string> = { H: "♥", D: "♦", C: "♣", S: "♠" };
 const CardInner = defineComponent({
   props: { cardStr: { type: String, required: true } },
-  setup() {
-    return () => null; // 実際の描画は以下のtemplateで
+  setup(cardProps) {
+    return () => {
+      const str = cardProps.cardStr;
+      const isBack = str.length < 2 || !SUIT_SYMBOLS[str[1]];
+      if (isBack) {
+        return h("div", { class: "card-inner is-back" }, [
+          h("div", { class: "card-back-pattern" }),
+        ]);
+      }
+      const rank = str[0] === "T" ? "10" : str[0];
+      const suit = SUIT_SYMBOLS[str[1]];
+      const isRed = str[1] === "H" || str[1] === "D";
+      return h("div", { class: ["card-inner", { "is-red": isRed }] }, [
+        h("div", { class: "top-left" }, [
+          h("div", { class: "rank" }, rank),
+          h("div", { class: "suit" }, suit),
+        ]),
+        h("div", { class: "center-suit" }, suit),
+      ]);
+    };
   },
-  template: `
-    <div class="card-inner" :class="{ 'is-red': isRed, 'is-back': isBack }">
-      <div v-if="isBack" class="card-back-pattern"></div>
-      <template v-else>
-        <div class="top-left"><div class="rank">{{ rank }}</div><div class="suit">{{ suit }}</div></div>
-        <div class="center-suit">{{ suit }}</div>
-      </template>
-    </div>
-  `,
 });
 
 // --- プレイヤー状態の算出 ---
@@ -167,11 +190,23 @@ const isPlayer = computed(() => {
   return props.state.playerIds.includes(props.myPlayerId || "");
 });
 
-const myHand = computed(() => (props.state.hands[myPlayerId.value] as any)?.value || []);
+// 手札はサーバー側でマスク済み（配列）の場合と Secret のままの場合がある
+const handOf = (playerId: string): string[] => {
+  const hand = props.state.hands[playerId] as unknown;
+  if (Array.isArray(hand)) return hand as string[];
+  const value = (hand as { value?: unknown } | undefined)?.value;
+  return Array.isArray(value) ? (value as string[]) : [];
+};
+const handNameOf = (playerId: string): string | undefined =>
+  props.state.result?.showdown?.find((e) => e.playerId === playerId)?.handName;
+
+const myHand = computed(() => handOf(myPlayerId.value));
+const myChips = computed(() => props.state.playerChips[myPlayerId.value] ?? 0);
 const isMyTurn = computed(
   () => isPlayer.value && props.state.activePlayers?.includes(myPlayerId.value),
 );
 const isFolded = computed(() => props.state.foldedPlayers.includes(myPlayerId.value));
+const isAllIn = computed(() => props.state.allInPlayers.includes(myPlayerId.value));
 
 const opponents = computed(() => {
   return props.state.playerIds.filter((id) => id !== myPlayerId.value).map((id) => ({ id }));
@@ -185,15 +220,17 @@ const callAmount = computed(() => {
 });
 
 const canCheck = computed(() => callAmount.value === 0);
-const canCall = computed(
-  () => callAmount.value > 0 && props.state.playerChips[myPlayerId.value] >= callAmount.value,
+// チップが足りなくても持っている分だけでコール（オールイン）できる
+const canCall = computed(() => callAmount.value > 0 && myChips.value > 0);
+const isAllInCall = computed(() => myChips.value <= callAmount.value);
+// 直前のフルレイズ以降に行動済みなら再レイズ不可
+const canRaise = computed(
+  () => myChips.value > callAmount.value && !props.state.actedPlayers.includes(myPlayerId.value),
 );
-const canRaise = computed(() => props.state.playerChips[myPlayerId.value] > callAmount.value);
 
-// レイズ額の管理
-const minRaise = computed(() =>
-  Math.min(props.state.playerChips[myPlayerId.value], callAmount.value + 10),
-); // 最低レイズ額の簡易計算
+// レイズ額（現在の最高ベット額への上乗せ分）の管理
+const maxRaise = computed(() => Math.max(0, myChips.value - callAmount.value));
+const minRaise = computed(() => Math.min(props.state.minRaise, maxRaise.value));
 const raiseAmount = ref(0);
 
 // ターンが回ってきたらレイズ額をリセット
@@ -406,6 +443,15 @@ const formatPhase = (phase: string) => {
   font-size: 0.8rem;
   color: #6ee7b7;
 }
+.hand-name {
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  color: #fde047;
+  font-weight: bold;
+}
 .action-badge {
   position: absolute;
   top: 50%;
@@ -418,6 +464,9 @@ const formatPhase = (phase: string) => {
   font-weight: bold;
   font-size: 1.2rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+.action-badge.all-in {
+  background: #8b5cf6;
 }
 
 /* --- My Area --- */
