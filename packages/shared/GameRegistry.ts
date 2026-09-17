@@ -31,6 +31,7 @@ import { LogicLabRuleset } from "./rules/LogicLabRuleset";
 import { CaveDiveRuleset } from "./rules/CaveDiveRuleset";
 import { setSubGameResolver } from "./rules/subGameResolver";
 import { DecathlonRuleset } from "./rules/DecathlonRuleset";
+import { CyberStrikeRuleset } from "./rules/CyberStrikeRuleset";
 
 export interface GameDefinition<TState extends BaseGameState, TAction extends BaseGameAction> {
   type: string;
@@ -388,6 +389,17 @@ class GameRegistry {
       emoji: "🧠",
       rules:
         "各レベルで提示される「入力」と「期待される出力」のパターン（真理値表）を満たすように回路を設計します。単純なゲートから始まり、徐々に複雑な回路（加算器やCPU等）を目指します。",
+    });
+    this.register({
+      type: "cyber_strike",
+      name: "Cyber Strike",
+      ruleset: CyberStrikeRuleset,
+      minPlayers: 1,
+      maxPlayers: 2,
+      description: "入力予測とロールバックを備えたリアルタイム2Dサイバーアリーナ対戦アクション。",
+      emoji: "⚡",
+      rules:
+        "WASD/矢印キーで移動、Spaceでブーストダッシュ、クリック/Enterでレーザーショット。障害物や壁の反射、パワーアップを活用して相手のHPを0に削り切ろう！",
     });
   }
 

@@ -111,7 +111,10 @@ export const setupSocketIO = (io: Server) => {
           if (seated.length >= slotKeys.length && seated.length >= def.minPlayers) {
             // START はエンジンの組み込みアクション。ルールセットが START を持てばその初期化（Speed, Mahjong 等）が走り、
             // 持たなければ status を PLAYING にして手番を設定する
-            if (engine.dispatch({ type: "START", playerId: seated[0] } as any)) {
+            // サーバー発のアクションにも時刻を付ける（時刻駆動のルールセットが開始時刻を記録できるように）
+            if (
+              engine.dispatch({ type: "START", playerId: seated[0], timestamp: Date.now() } as any)
+            ) {
               console.log(`[AI] All slots filled — game ${gameId} auto-started`);
             }
           }
@@ -160,7 +163,13 @@ export const setupSocketIO = (io: Server) => {
 
             if (current.status === "WAITING" && def && uniquePlayersCount >= def.minPlayers) {
               const firstPlayerId = Object.values(current.players ?? {}).find((p) => p !== null)!;
-              if (engine.dispatch({ type: "START", playerId: firstPlayerId } as any)) {
+              if (
+                engine.dispatch({
+                  type: "START",
+                  playerId: firstPlayerId,
+                  timestamp: Date.now(),
+                } as any)
+              ) {
                 console.log(`Game ${gameId} started (by ${firstPlayerId})`);
               }
             }

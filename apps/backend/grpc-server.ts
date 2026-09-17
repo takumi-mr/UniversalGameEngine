@@ -331,7 +331,7 @@ const gameServiceHandlers: GameServiceHandlers = {
           engine.dispatch({ type: "JOIN", playerId: seated[i], slot: slotKey } as any);
         });
         if (engine.getState().status === "WAITING") {
-          engine.dispatch({ type: "START", playerId: seated[0] } as any);
+          engine.dispatch({ type: "START", playerId: seated[0], timestamp: Date.now() } as any);
         }
       }
       await session.server.commit();

@@ -519,6 +519,28 @@
           "content": "You win when all disks are moved to the third peg in the correct order. Try to solve it in the minimum number of moves!"
         }
       }
+    },
+    "cyber_strike": {
+      "name": "Cyber Strike",
+      "description": "Real-time 2D cyber arena action game powered by input prediction and rollback.",
+      "rules": "Move with WASD/Arrows, boost dash with Space, and fire laser shots with Click/Enter. Defeat your opponent by utilizing obstacles, reflections, and power-ups!",
+      "tabs": {
+        "summary": {
+          "label": "About",
+          "title": "High-Speed Cyber Arena Action!",
+          "content": "Experience zero-lag, instant 0ms responsiveness even in high-latency environments through Client-Side Prediction and Server Reconciliation (Rollback)."
+        },
+        "controls": {
+          "label": "Controls",
+          "title": "Intuitive Controls",
+          "content": "• Movement: WASD or Arrow Keys\n• Boost Dash: Space (invincibility & instant acceleration)\n• Laser Shot: Mouse Click or Enter / J key\n• Verification Panel: Toggle Prediction ON/OFF or simulate latency (0-200ms) to test performance live!"
+        },
+        "win": {
+          "label": "Victory",
+          "title": "Deplete Opponent HP!",
+          "content": "Win by reducing the opponent's HP to 0 or having more HP when the match timer expires. Collect power-ups (Heal, Shield, Energy) across the arena!"
+        }
+      }
     }
   },
   "help": {

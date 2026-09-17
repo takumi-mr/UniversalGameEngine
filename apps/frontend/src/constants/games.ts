@@ -271,6 +271,17 @@ export const availableGames = [
     maxPlayers: 1,
     category: "Puzzles",
     rules:
-      "各レベルの真理値表を満たすように回路を設計します。単純なゲートから始まり、徐々に複雑な回路を目指します。",
+      "各レベルで提示される「入力」と「期待される出力」のパターン（真理値表）を満たすように回路を設計します。単純なゲートから始まり、徐々に複雑な回路（加算器やCPU等）を目指します。",
+  },
+  {
+    type: "cyber_strike",
+    name: "Cyber Strike",
+    description: "入力予測とロールバックを備えたリアルタイム2Dサイバーアリーナ対戦アクション。",
+    emoji: "⚡",
+    minPlayers: 1,
+    maxPlayers: 2,
+    category: "Special",
+    rules:
+      "WASD/矢印キーで移動、Spaceでブーストダッシュ、クリック/Enterでレーザーショット。障害物や壁の反射、パワーアップを活用して相手のHPを0に削り切ろう！",
   },
 ];
