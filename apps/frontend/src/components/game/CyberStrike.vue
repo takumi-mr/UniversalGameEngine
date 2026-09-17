@@ -66,43 +66,6 @@
         @mousedown="handleCanvasClick"
       />
 
-      <!-- Start Overlay if WAITING -->
-      <div v-if="state.status === 'WAITING'" class="overlay-modal">
-        <div class="overlay-card glass-panel">
-          <div class="glitch-title" data-text="CYBER STRIKE">CYBER STRIKE</div>
-          <p class="overlay-desc">Client-Side Prediction & Rollback Netcode PoC</p>
-          <div class="mode-select-box">
-            <div class="box-title">Select Mode:</div>
-            <div class="mode-btn-group">
-              <button
-                class="mode-btn"
-                :class="{ active: playMode === 'vs_ai' }"
-                @click="playMode = 'vs_ai'"
-              >
-                🤖 vs CPU Bot
-              </button>
-              <button
-                class="mode-btn"
-                :class="{ active: playMode === 'local_2p' }"
-                @click="playMode = 'local_2p'"
-              >
-                👥 Local 2P (WASD vs Arrows)
-              </button>
-              <button
-                class="mode-btn"
-                :class="{ active: playMode === 'online' }"
-                @click="playMode = 'online'"
-              >
-                🌐 Online Match
-              </button>
-            </div>
-          </div>
-          <button class="cyber-btn primary-pulse" @click="startMatch">
-            🚀 ENGAGE COMBAT (START)
-          </button>
-        </div>
-      </div>
-
       <!-- Game Over Overlay -->
       <div v-if="state.status === 'FINISHED'" class="overlay-modal">
         <div class="overlay-card glass-panel">
@@ -112,7 +75,7 @@
             <span>{{ p1Name }}: {{ p1Score }} pts</span> |
             <span>{{ p2Name }}: {{ p2Score }} pts</span>
           </div>
-          <button class="cyber-btn primary-pulse" @click="startMatch">🔄 PLAY AGAIN</button>
+          <button class="cyber-btn primary-pulse" @click="playAgain">🔄 PLAY AGAIN</button>
         </div>
       </div>
     </div>
@@ -121,15 +84,8 @@
     <div class="control-deck glass-panel">
       <div class="deck-header">
         <span class="deck-title">🔮 PREDICTION & ROLLBACK VERIFICATION CONSOLE</span>
-        <span
-          class="deck-badge"
-          :class="predictiveEngine.isPredictionEnabled ? 'badge-on' : 'badge-off'"
-        >
-          {{
-            predictiveEngine.isPredictionEnabled
-              ? "PREDICTION ACTIVE (0ms)"
-              : "PREDICTION OFF (LAG SIMULATED)"
-          }}
+        <span class="deck-badge" :class="predictionEnabled ? 'badge-on' : 'badge-off'">
+          {{ predictionEnabled ? "PREDICTION ACTIVE (0ms)" : "PREDICTION OFF (LAG SIMULATED)" }}
         </span>
       </div>
 
@@ -143,14 +99,14 @@
           <div class="toggle-buttons">
             <button
               class="t-btn"
-              :class="{ active: predictiveEngine.isPredictionEnabled }"
+              :class="{ active: predictionEnabled }"
               @click="togglePrediction(true)"
             >
               ⚡ ON (Instant 0ms)
             </button>
             <button
               class="t-btn"
-              :class="{ active: !predictiveEngine.isPredictionEnabled }"
+              :class="{ active: !predictionEnabled }"
               @click="togglePrediction(false)"
             >
               ⏳ OFF (Authoritative Only)
@@ -158,7 +114,7 @@
           </div>
           <div class="control-desc">
             {{
-              predictiveEngine.isPredictionEnabled
+              predictionEnabled
                 ? "キー入力が即座にローカルに反映され、確定状態でロールバック＆再計算されます。"
                 : "サーバーから応答が届くまで自機が動かず、レイテンシによる操作遅延が発生します。"
             }}
@@ -217,16 +173,20 @@
               <div class="m-lbl">Simulated Ping</div>
             </div>
             <div class="metric-cell">
-              <div class="m-val">{{ predictiveEngine.metrics.rollbackCount }}</div>
+              <div class="m-val">{{ metrics.rollbackCount }}</div>
               <div class="m-lbl">Rollbacks</div>
             </div>
             <div class="metric-cell">
-              <div class="m-val">{{ predictiveEngine.metrics.pendingActionsCount }}</div>
+              <div class="m-val">{{ metrics.pendingActionsCount }}</div>
               <div class="m-lbl">Pending Queue</div>
             </div>
             <div class="metric-cell">
-              <div class="m-val">{{ predictiveEngine.metrics.lastRollbackActions }}</div>
-              <div class="m-lbl">Replayed Ticks</div>
+              <div class="m-val">{{ metrics.lastRollbackActions }}</div>
+              <div class="m-lbl">Replayed Inputs</div>
+            </div>
+            <div class="metric-cell">
+              <div class="m-val">{{ metrics.reconcileCount }}</div>
+              <div class="m-lbl">Server Updates</div>
             </div>
           </div>
         </div>
@@ -239,6 +199,7 @@
           ><kbd>▶</kbd> : Move</span
         >
         <span class="guide-item"><kbd>Space</kbd> : Boost Dash (Invincible)</span>
+        <span class="guide-item">1 人なら CPU が相手。2 人目が入室すると CPU と交代</span>
         <span class="guide-item"
           ><kbd>Left Click</kbd> or <kbd>J</kbd> / <kbd>Enter</kbd> : Laser Shot</span
         >
@@ -248,9 +209,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+// Cyber Strike の画面。
+// - ローカルには PredictiveEngine（サーバーと同じルールセット）を持ち、自分の入力を即座に反映する
+// - 物理は時刻の関数なので、ローカルは自分の時計（サーバー時計に補正済み）で毎フレーム進める
+// - サーバーの確定状態が届いたら巻き戻し → 未処理の入力を再適用 → 予測していたティックまで進め直す
+// - サーバーへ送るのは入力の変化とショット、無入力時のハートビートだけ
+import { ref, shallowRef, computed, onMounted, onUnmounted, watch, toRaw } from "vue";
 import {
   CyberStrikeRuleset,
+  TICK_RATE,
   type CyberStrikeState,
   type CyberStrikeAction,
   type CyberInput,
@@ -265,6 +232,8 @@ const props = defineProps<{
   state: CyberStrikeState;
   gameId: string;
   myPlayerId: string;
+  /** クライアント時計 − サーバー時計（ms）。無ければ 0 */
+  clockSkew?: number;
 }>();
 
 const emit = defineEmits<{
@@ -273,31 +242,44 @@ const emit = defineEmits<{
 
 const ARENA_WIDTH = 800;
 const ARENA_HEIGHT = 500;
+const TICK_MS = 1000 / TICK_RATE;
+/** 入力が無いときにサーバーの物理を進めるためのハートビート間隔 */
+const HEARTBEAT_MS = 100;
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const arenaWrapperRef = ref<HTMLDivElement | null>(null);
 
-// ゲームモード
-const playMode = ref<"vs_ai" | "local_2p" | "online">("vs_ai");
-const simulatedLatency = ref<number>(50); // デフォルト50msの人工遅延
-const showServerGhost = ref<boolean>(true); // サーバーゴースト表示
+const simulatedLatency = ref<number>(50); // 人工遅延（RTT, ms）
+const showServerGhost = ref<boolean>(true);
 const showAimLine = ref<boolean>(true);
+const predictionEnabled = ref<boolean>(true);
 
-// 汎用予測エンジンの初期化
+// 予測エンジン。状態は Vue の外にあるので、変更のたびに shallowRef へ写して描画と HUD に知らせる
 const predictiveEngine = new PredictiveEngine<CyberStrikeState, CyberStrikeAction>(
   CyberStrikeRuleset,
   {},
 );
+const localState = shallowRef<CyberStrikeState>(predictiveEngine.getState());
+const metrics = ref({ ...predictiveEngine.metrics });
+const syncView = () => {
+  localState.value = predictiveEngine.getState();
+  metrics.value = { ...predictiveEngine.metrics };
+};
 
-// キー入力トラッカー
+/** サーバー時計での「いま」 */
+const serverNow = () => Date.now() - (props.clockSkew ?? 0);
+
+// キー入力
 const keysDown: Record<string, boolean> = {};
 let mouseX = ARENA_WIDTH / 2;
 let mouseY = ARENA_HEIGHT / 2;
+let firePrev = false;
+let dashPrev = false;
+let lastSentMove = "";
+let lastSentAt = 0;
 
-// アニメーションループ & タイマー
 let animationFrameId: number | null = null;
 let tickIntervalId: ReturnType<typeof setInterval> | null = null;
-let cpuAiIntervalId: ReturnType<typeof setInterval> | null = null;
 
 // パーティクル & エフェクト
 interface Particle {
@@ -312,7 +294,6 @@ interface Particle {
 }
 const particles: Particle[] = [];
 
-// ショックウェーブ
 interface Shockwave {
   x: number;
   y: number;
@@ -323,38 +304,23 @@ interface Shockwave {
 }
 const shockwaves: Shockwave[] = [];
 
-// 自プレイヤーのスロット判定
-const myPlayerSlot = computed(() => {
-  if (playMode.value === "local_2p") return "0";
-  const players = props.state.players ?? {};
-  for (const [slot, id] of Object.entries(players)) {
-    if (id === props.myPlayerId) return slot;
-  }
-  return "0"; // デフォルト
-});
-
-const myPlayerKey = computed(() => {
-  const currentState = predictiveEngine.getState();
-  const seated = Object.values(currentState.players ?? {}).filter(Boolean) as string[];
-  if (myPlayerSlot.value === "0") return seated[0] ?? "player1";
-  return seated[1] ?? "player2";
-});
-
-// HUD表示データ
-const currentState = computed(() => predictiveEngine.getState());
+// --- 表示用の派生値（すべてローカルの予測状態から） ---
+const currentState = computed(() => localState.value);
+const seatedIds = computed(
+  () => Object.values(currentState.value.players ?? {}).filter(Boolean) as string[],
+);
+const myPlayerKey = computed(() => props.myPlayerId);
+const myPlayerSlot = computed(() => (seatedIds.value[0] === props.myPlayerId ? "0" : "1"));
+const myEntity = computed(() => currentState.value.playersData[myPlayerKey.value]);
 
 const p1Data = computed(() => {
-  const s = currentState.value;
-  const seated = Object.values(s.players ?? {}).filter(Boolean) as string[];
-  const id = seated[0] ?? "player1";
-  return s.playersData[id];
+  const id = seatedIds.value[0];
+  return id ? currentState.value.playersData[id] : undefined;
 });
-
 const p2Data = computed(() => {
   const s = currentState.value;
-  const seated = Object.values(s.players ?? {}).filter(Boolean) as string[];
-  const id = seated[1] ?? (seated.length === 1 ? "cpu_bot" : "player2");
-  return s.playersData[id];
+  const id = seatedIds.value[1] ?? s.botId ?? undefined;
+  return id ? s.playersData[id] : undefined;
 });
 
 const p1Name = computed(() => p1Data.value?.id ?? "Player 1");
@@ -368,127 +334,114 @@ const p2Score = computed(() => p2Data.value?.score ?? 0);
 
 const remainingMatchSeconds = computed(() => {
   const s = currentState.value;
-  const remainingTicks = Math.max(0, (s.maxTicks ?? 1800) - s.tick);
-  return Math.ceil(remainingTicks / 30);
+  const remainingTicks = Math.max(0, s.maxTicks - s.tick);
+  return Math.ceil(remainingTicks / s.tickRate);
 });
 
 const matchResultTitle = computed(() => {
-  const s = currentState.value;
-  const win = CyberStrikeRuleset.checkWinCondition(s);
+  const win = CyberStrikeRuleset.checkWinCondition({ ...currentState.value, status: "PLAYING" });
   if (!win.isFinished) return "";
   if (!win.winnerIds || win.winnerIds.length === 0) return "DRAW MATCH";
   if (win.winnerIds.includes(myPlayerKey.value)) return "VICTORY! YOU WIN!";
   return "DEFEAT! OPPONENT WINS";
 });
 
-// 親からの state 更新を監視し、PredictiveEngine に Reconcile 適用
+// --- サーバー確定状態の取り込み ---
+const applyServerState = (serverState: CyberStrikeState) => {
+  const myP = serverState.playersData?.[myPlayerKey.value];
+  predictiveEngine.reconcile(serverState, myP?.lastProcessedSeq, {
+    // 予測していたティックまで進め直してから予測と比較する
+    catchUp: (predicted) =>
+      predicted.status === "PLAYING" ? { type: "TICK", tick: predicted.tick } : null,
+  });
+  syncView();
+};
+
 watch(
   () => props.state,
   (newServerState) => {
-    if (!newServerState || !newServerState.playersData) return;
-
-    if (simulatedLatency.value > 0) {
-      // 人工遅延をシミュレートして到着を遅らせる
-      setTimeout(() => {
-        const myP = newServerState.playersData[myPlayerKey.value];
-        predictiveEngine.reconcile(newServerState, myP?.lastProcessedSeq);
-      }, simulatedLatency.value / 2);
-    } else {
-      const myP = newServerState.playersData[myPlayerKey.value];
-      predictiveEngine.reconcile(newServerState, myP?.lastProcessedSeq);
-    }
+    if (!newServerState) return;
+    // Vue のリアクティブプロキシは structuredClone できないので生のオブジェクトを渡す
+    const raw = toRaw(newServerState);
+    const delay = simulatedLatency.value / 2;
+    if (delay > 0) setTimeout(() => applyServerState(raw), delay);
+    else applyServerState(raw);
   },
-  { deep: true },
+  { deep: true, immediate: true },
 );
 
-// 設定変更ハンドラ
+// --- 設定 ---
 const togglePrediction = (enabled: boolean) => {
+  predictionEnabled.value = enabled;
   predictiveEngine.isPredictionEnabled = enabled;
+  if (!enabled) predictiveEngine.clearPendingActions();
+  syncView();
 };
 
 const setSimulatedLatency = (lat: number) => {
   simulatedLatency.value = lat;
 };
 
-// ゲーム開始
-const startMatch = () => {
-  const p1Id = props.myPlayerId || "player1";
-  const p2Id = playMode.value === "vs_ai" ? "cpu_bot" : "player2";
-
-  const startAction: CyberStrikeAction = {
-    type: "START",
-    playerId: p1Id,
-  };
-
-  // ローカルディスパッチ
-  predictiveEngine.localEngine.dispatch({
-    type: "JOIN",
-    playerId: p1Id,
-    slot: "0",
-  } as unknown as CyberStrikeAction);
-  predictiveEngine.localEngine.dispatch({
-    type: "JOIN",
-    playerId: p2Id,
-    slot: "1",
-  } as unknown as CyberStrikeAction);
-  predictiveEngine.localEngine.dispatch(startAction);
-
-  // 親に送信
-  emit("action", startAction);
+// --- サーバーへの送信（人工遅延つき） ---
+const sendToServer = (action: CyberStrikeAction) => {
+  lastSentAt = serverNow();
+  const delay = simulatedLatency.value / 2;
+  if (delay > 0) setTimeout(() => emit("action", action), delay);
+  else emit("action", action);
 };
 
-// マウスクリックでのショット
-const handleCanvasClick = (e: MouseEvent) => {
-  const canvas = canvasRef.value;
-  if (!canvas || currentState.value.status !== "PLAYING") return;
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const clickX = (e.clientX - rect.left) * scaleX;
-  const clickY = (e.clientY - rect.top) * scaleY;
-
-  const myP = p1Data.value;
-  if (!myP) return;
-
-  const aimAngle = Math.atan2(clickY - myP.y, clickX - myP.x);
-  dispatchPlayerInput({
-    moveX: 0,
-    moveY: 0,
-    fire: true,
-    aimAngle,
-  });
+/** もう一度（サーバーが RESET を処理して新しい試合を配る） */
+const playAgain = () => {
+  sendToServer({ type: "RESET", playerId: myPlayerKey.value });
 };
 
-// 入力ディスパッチ（予測適用 & 人工遅延送信）
-const dispatchPlayerInput = (input: CyberInput, customPlayerId?: string) => {
-  const pid = customPlayerId || myPlayerKey.value;
+// --- 入力 ---
+const readMovement = () => {
+  let moveX = 0;
+  let moveY = 0;
+  if (keysDown["w"] || keysDown["arrowup"]) moveY -= 1;
+  if (keysDown["s"] || keysDown["arrowdown"]) moveY += 1;
+  if (keysDown["a"] || keysDown["arrowleft"]) moveX -= 1;
+  if (keysDown["d"] || keysDown["arrowright"]) moveX += 1;
+  return { moveX, moveY };
+};
+
+const aimAtMouse = () => {
+  const me = myEntity.value;
+  if (!me) return undefined;
+  return Math.atan2(mouseY - me.y, mouseX - me.x);
+};
+
+/** 入力を予測として即座に適用し、サーバーへ送る */
+const dispatchPlayerInput = (input: CyberInput) => {
   const action: CyberStrikeAction = {
     type: "INPUT",
-    playerId: pid,
+    playerId: myPlayerKey.value,
     seq: predictiveEngine.allocateSeq(),
-    tick: currentState.value.tick,
+    timestamp: serverNow(),
     input,
   };
-
-  // 1. クライアント側入力予測ディスパッチ (0ms 即時適用)
   predictiveEngine.predictAction(action);
+  syncView();
 
-  // 2. ショットやダッシュ時の演出パーティクル
-  if (input.fire) {
-    createMuzzleParticles(pid, input.aimAngle);
-  }
-  if (input.dash) {
-    createDashShockwave(pid);
-  }
+  if (input.fire) createMuzzleParticles(myPlayerKey.value, input.aimAngle);
+  if (input.dash) createDashShockwave(myPlayerKey.value);
 
-  // 3. 人工遅延を挟んで親/サーバーへ送信
-  if (simulatedLatency.value > 0) {
-    setTimeout(() => {
-      emit("action", action);
-    }, simulatedLatency.value / 2);
-  } else {
-    emit("action", action);
-  }
+  sendToServer(action);
+};
+
+const handleCanvasClick = (e: MouseEvent) => {
+  const canvas = canvasRef.value;
+  if (!canvas || currentState.value.status !== "PLAYING" || !myEntity.value) return;
+  const rect = canvas.getBoundingClientRect();
+  const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const clickY = (e.clientY - rect.top) * (canvas.height / rect.height);
+  const me = myEntity.value;
+  dispatchPlayerInput({
+    ...readMovement(),
+    fire: true,
+    aimAngle: Math.atan2(clickY - me.y, clickX - me.x),
+  });
 };
 
 // エフェクト生成
@@ -527,7 +480,6 @@ const createDashShockwave = (playerId: string) => {
   });
 };
 
-// キーボードイベントハンドラ
 const handleKeyDown = (e: KeyboardEvent) => {
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space", " "].includes(e.key)) {
     e.preventDefault();
@@ -543,109 +495,44 @@ const handleMouseMove = (e: MouseEvent) => {
   const canvas = canvasRef.value;
   if (!canvas) return;
   const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  mouseX = (e.clientX - rect.left) * scaleX;
-  mouseY = (e.clientY - rect.top) * scaleY;
+  mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
+  mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
 };
 
-// 毎Tick（30Hz）のゲームループ
+/**
+ * 固定レート（30Hz）の更新。
+ * 入力の変化・ショット・ダッシュはその場でサーバーへ、何も無ければハートビート。
+ * ローカルの物理は毎回「いま」まで進める（サーバーへは送らない）
+ */
 const runFixedUpdate = () => {
-  if (currentState.value.status !== "PLAYING") return;
+  if (currentState.value.status !== "PLAYING" || !myEntity.value) return;
+  const now = serverNow();
 
-  // 1. P1 入力の収集
-  let moveX = 0;
-  let moveY = 0;
-  if (keysDown["w"] || keysDown["arrowup"]) moveY -= 1;
-  if (keysDown["s"] || keysDown["arrowdown"]) moveY += 1;
-  if (keysDown["a"] || keysDown["arrowleft"]) moveX -= 1;
-  if (keysDown["d"] || keysDown["arrowright"]) moveX += 1;
+  const { moveX, moveY } = readMovement();
+  const fireHeld = !!(keysDown["j"] || keysDown["enter"]);
+  const dashHeld = !!(keysDown[" "] || keysDown["space"]);
+  const fire = fireHeld && !firePrev;
+  const dash = dashHeld && !dashPrev;
+  firePrev = fireHeld;
+  dashPrev = dashHeld;
 
-  const dash = !!(keysDown[" "] || keysDown["space"]);
-  const fire = !!(keysDown["j"] || keysDown["enter"]);
-
-  const myP = p1Data.value;
-  let aimAngle: number | undefined = undefined;
-  if (myP) {
-    aimAngle = Math.atan2(mouseY - myP.y, mouseX - myP.x);
+  const moveKey = `${moveX},${moveY}`;
+  if (fire || dash || moveKey !== lastSentMove) {
+    lastSentMove = moveKey;
+    dispatchPlayerInput({
+      moveX,
+      moveY,
+      fire,
+      dash,
+      aimAngle: fire || dash ? aimAtMouse() : undefined,
+    });
+  } else if (now - lastSentAt >= HEARTBEAT_MS) {
+    sendToServer({ type: "TICK", timestamp: now });
   }
 
-  // 入力があればディスパッチ
-  if (moveX !== 0 || moveY !== 0 || dash || fire) {
-    dispatchPlayerInput({ moveX, moveY, dash, fire, aimAngle });
-  }
-
-  // 2. Local 2P モード時の P2 入力（Arrow Keys + Numpad / Keypad）
-  if (playMode.value === "local_2p") {
-    let p2MoveX = 0;
-    let p2MoveY = 0;
-    if (keysDown["i"]) p2MoveY -= 1;
-    if (keysDown["k"]) p2MoveY += 1;
-    if (keysDown["j"]) p2MoveX -= 1;
-    if (keysDown["l"]) p2MoveX += 1;
-    const p2Dash = !!keysDown["shift"];
-    const p2Fire = !!keysDown["/"];
-
-    if (p2MoveX !== 0 || p2MoveY !== 0 || p2Dash || p2Fire) {
-      dispatchPlayerInput(
-        { moveX: p2MoveX, moveY: p2MoveY, dash: p2Dash, fire: p2Fire },
-        p2Name.value,
-      );
-    }
-  }
-
-  // 3. TICK アクションの実行（物理シミュレーション）
-  const tickAction: CyberStrikeAction = {
-    type: "TICK",
-    seq: predictiveEngine.allocateSeq(),
-    tick: currentState.value.tick,
-  };
-
-  predictiveEngine.localEngine.dispatch(tickAction);
-
-  if (simulatedLatency.value > 0) {
-    setTimeout(() => {
-      emit("action", tickAction);
-    }, simulatedLatency.value / 2);
-  } else {
-    emit("action", tickAction);
-  }
+  predictiveEngine.advanceLocal({ type: "TICK", timestamp: now });
+  syncView();
 };
-
-// CPU ボットの思考ループ（vs CPU Bot モード時）
-const runCpuAi = () => {
-  if (playMode.value !== "vs_ai" || currentState.value.status !== "PLAYING") return;
-  const p1 = p1Data.value;
-  const p2 = p2Data.value;
-  if (!p1 || !p2) return;
-
-  const dx = p1.x - p2.x;
-  const dy = p1.y - p2.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  const aimAngle = Math.atan2(dy, dx);
-
-  // 距離に応じた移動（適正距離 250px を保つ）
-  let moveX = 0;
-  let moveY = 0;
-  if (dist > 300) {
-    moveX = dx > 0 ? 1 : -1;
-    moveY = dy > 0 ? 1 : -1;
-  } else if (dist < 180) {
-    moveX = dx > 0 ? -1 : 1;
-    moveY = dy > 0 ? -1 : 1;
-  } else {
-    // 横移動（回避ダンス）
-    moveX = dy > 0 ? -1 : 1;
-    moveY = dx > 0 ? 1 : -1;
-  }
-
-  // 一定確率でダッシュやショット
-  const fire = Math.random() < 0.35 && p2.energy >= 20;
-  const dash = Math.random() < 0.1 && p2.energy >= 30;
-
-  dispatchPlayerInput({ moveX, moveY, dash, fire, aimAngle }, p2.id);
-};
-
 // Canvas 描画ループ (60fps)
 const renderFrame = () => {
   const canvas = canvasRef.value;
@@ -684,8 +571,8 @@ const renderFrame = () => {
   updateAndDrawEffects(ctx);
 
   // 8. 照準線の描画
-  if (showAimLine.value && p1Data.value && state.status === "PLAYING") {
-    drawAimingLine(ctx, p1Data.value);
+  if (showAimLine.value && myEntity.value && state.status === "PLAYING") {
+    drawAimingLine(ctx, myEntity.value);
   }
 
   animationFrameId = requestAnimationFrame(renderFrame);
@@ -962,14 +849,8 @@ onMounted(() => {
   window.addEventListener("keyup", handleKeyUp);
   window.addEventListener("mousemove", handleMouseMove);
 
-  // 描画ループ (60fps)
-  renderFrame();
-
-  // 物理＆入力ループ (30Hz = 約33ms)
-  tickIntervalId = setInterval(runFixedUpdate, 33);
-
-  // CPU AI ループ (15Hz)
-  cpuAiIntervalId = setInterval(runCpuAi, 66);
+  renderFrame(); // 描画ループ (60fps)
+  tickIntervalId = setInterval(runFixedUpdate, TICK_MS); // 入力と物理 (30Hz)
 });
 
 onUnmounted(() => {
@@ -979,7 +860,6 @@ onUnmounted(() => {
 
   if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
   if (tickIntervalId !== null) clearInterval(tickIntervalId);
-  if (cpuAiIntervalId !== null) clearInterval(cpuAiIntervalId);
 });
 </script>
 

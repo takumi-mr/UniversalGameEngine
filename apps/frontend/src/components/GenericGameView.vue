@@ -38,6 +38,7 @@
           :state="gameState"
           :game-id="roomId"
           :my-player-id="myPlayerId"
+          :clock-skew="clockSkew"
           @action="onGameAction"
         />
 
@@ -231,13 +232,15 @@ const API_BASE = "http://127.0.0.1:3000";
 const roomId = ref(props.roomId);
 const errorMsg = ref("");
 const gameState = ref<GameState | null>(null);
+// サーバー時計との差（締切カウントダウンと、リアルタイム系ゲームの予測に使う）
+const clockSkew = ref(0);
 // 締切カウントダウン（サーバー時計との差を補正）
 const now = ref(Date.now());
 let clockTimer: ReturnType<typeof setInterval> | null = null;
 const remainingSeconds = computed(() => {
   const deadline = gameState.value?.turnDeadline;
   if (deadline === undefined || !client) return null;
-  const serverNow = now.value - client.clockSkew;
+  const serverNow = now.value - clockSkew.value;
   return Math.max(0, Math.ceil((deadline - serverNow) / 1000));
 });
 const connectionStatus = ref("Connecting");
@@ -331,6 +334,7 @@ const currentPlayersList = computed(() => {
 onMounted(() => {
   client = new SocketIoClient<GameState, GameAction>(API_BASE, props.authToken);
   client.onStateUpdate = (state) => {
+    clockSkew.value = client.clockSkew;
     gameState.value = state;
     connectionStatus.value = "Connected";
     errorMsg.value = "";
