@@ -376,7 +376,6 @@
         "NORTH": "North"
       },
       "actions": {
-        "DRAW": "Draw",
         "DISCARD": "Discard",
         "CHI": "Chii",
         "PON": "Pon",
@@ -384,6 +383,10 @@
         "RON": "Ron",
         "TSUMO": "Tsumo",
         "PASS": "Pass",
+        "RIICHI": "Riichi",
+        "ANKAN": "Closed Kan",
+        "KAKAN": "Added Kan",
+        "KYUUSHU_KYUUHAI": "Nine Terminals",
         "START": "Start Game"
       },
       "tabs": {
