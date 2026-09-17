@@ -1,31 +1,89 @@
-// packages/shared/rules/TexasHoldemRules.ts
+// packages/shared/rules/TexasHoldemRuleset.ts
+//
+// テキサスホールデム（1 ハンド完結）
+// - JOIN で着席し、START で配札・ブラインド投入（プリフロップ）から始まる
+// - PRE_FLOP → FLOP(3枚) → TURN(1枚) → RIVER(1枚) → SHOWDOWN の 4 ベッティングラウンド
+// - ブラインド、ミニマムレイズ、オールイン（不足分コール / ショートオールインは再オープンしない）、サイドポットに対応
+// - ショーダウンでは手札 2 枚 + コミュニティ 5 枚から最強の 5 枚で役を比較する。残り 1 人になれば即終了
 import { requireRng } from "../utils/requireRng";
 import { createSecret, type Secret } from "../GameRules";
 import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
 import type { IGameRNG } from "../utils/IGameRNG";
+import { compareHandRanks, evaluateBestHand, type HandRank } from "./PokerHandEvaluator";
 
-// ポーカー特有の状態定義
+// --- 1. 型定義 ---
+
+export type TexasHoldemPhase = "PRE_FLOP" | "FLOP" | "TURN" | "RIVER" | "SHOWDOWN";
+
+export interface TexasHoldemShowdownEntry {
+  playerId: string;
+  handName: string;
+  bestCards: string[];
+}
+
+export interface TexasHoldemResult {
+  reason: "FOLD" | "SHOWDOWN";
+  /** 最強の役（フォールド勝ちなら残った 1 人） */
+  winnerIds: string[];
+  /** 各プレイヤーがポットから受け取った額（サイドポット含む） */
+  payouts: Record<string, number>;
+  /** ショーダウンに参加したプレイヤーの役 */
+  showdown?: TexasHoldemShowdownEntry[];
+}
+
 export interface TexasHoldemState extends BaseGameState {
   deck: Secret<string[]>; // 山札
   communityCards: string[]; // コミュニティカード (フロップ、ターン、リバー)
-  hands: Record<string, Secret<string[]>>; // 各プレイヤーごとの手札（ユーザーIDがキー）
-  pot: number; // 現在の総ポット額
+  hands: Record<string, Secret<string[]>>; // 各プレイヤーの手札（ショーダウンで残った人の分は公開される）
+  pot: number; // ポット総額（未精算分）
   currentBet: number; // 現在のラウンドでの最高ベット額
-  playerBets: Record<string, number>; // 各プレイヤーがこのラウンドでベットした額
-  playerChips: Record<string, number>; // 各プレイヤーの所持チップ額
-  foldedPlayers: string[]; // フォールドしたプレイヤーのIDリスト
-  phase: "PRE_FLOP" | "FLOP" | "TURN" | "RIVER" | "SHOWDOWN"; // 現在のフェーズ
-  dealerIndex: number; // ディーラー（ボタン）のインデックス
-  playerIds: string[]; // 参加プレイヤーのID順序リスト
+  minRaise: number; // 現在のミニマムレイズ幅（直前のフルレイズ幅、初期値はビッグブラインド）
+  playerBets: Record<string, number>; // このラウンドで各プレイヤーがベットした額
+  totalBets: Record<string, number>; // このハンド全体で各プレイヤーがポットに入れた額（サイドポット計算用）
+  playerChips: Record<string, number>; // 各プレイヤーの所持チップ
+  foldedPlayers: string[]; // フォールドしたプレイヤー
+  allInPlayers: string[]; // オールインしたプレイヤー
+  actedPlayers: string[]; // 直前のフルレイズ以降にこのラウンドで行動済みのプレイヤー（ラウンド終了判定・再レイズ可否）
+  phase: TexasHoldemPhase;
+  dealerIndex: number; // ディーラー（ボタン）の playerIds 上のインデックス
+  playerIds: string[]; // 参加プレイヤーの席順
+  smallBlind: number;
+  bigBlind: number;
+  initialChips: number; // 開始時に各プレイヤーへ配るチップ
+  result: TexasHoldemResult | null; // ハンド終了時の精算結果
 }
 
-// ポーカー特有のアクション定義
 export interface TexasHoldemAction extends BaseGameAction {
-  type: "FOLD" | "CHECK" | "CALL" | "RAISE";
-  amount?: number; // RAISE の場合のレイズ額
+  type: "JOIN" | "START" | "FOLD" | "CHECK" | "CALL" | "RAISE"; // JOIN はエンジンの組み込み
+  /** RAISE: 現在の最高ベット額に上乗せする額（コール分は含まない） */
+  amount?: number;
 }
 
-// 簡易的なデッキ生成関数（実際にはスートとランクを持つオブジェクト配列が望ましい）
+export interface TexasHoldemOptions {
+  playerIds?: string[];
+  initialChips?: number;
+  smallBlind?: number;
+  bigBlind?: number;
+  dealerIndex?: number;
+}
+
+// --- 2. 定数 ---
+
+export const MIN_PLAYERS = 2;
+export const MAX_PLAYERS = 6;
+export const DEFAULT_INITIAL_CHIPS = 1000;
+export const DEFAULT_SMALL_BLIND = 10;
+export const DEFAULT_BIG_BLIND = 20;
+
+const PHASE_ORDER: TexasHoldemPhase[] = ["PRE_FLOP", "FLOP", "TURN", "RIVER", "SHOWDOWN"];
+const CARDS_DEALT_ON_ENTER: Partial<Record<TexasHoldemPhase, number>> = {
+  FLOP: 3,
+  TURN: 1,
+  RIVER: 1,
+};
+
+// --- 3. ヘルパー ---
+
 function createDeck(rng?: IGameRNG): string[] {
   const suits = ["H", "D", "C", "S"]; // Hearts, Diamonds, Clubs, Spades
   const ranks = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
@@ -37,198 +95,418 @@ function createDeck(rng?: IGameRNG): string[] {
   }
   // Fisher-Yates shuffle
   for (let i = deck.length - 1; i > 0; i--) {
-    const j = requireRng(rng).nextInt(0, i);
+    const j = requireRng(rng, "TexasHoldem").nextInt(0, i);
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
   return deck;
 }
 
-export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction> = {
-  getInitialState: (options: any, rng?: IGameRNG) => {
-    const opts = options || {};
-    const playerIds = (opts.playerIds || []).filter((id: any) => !!id);
-    const initialChips = opts.initialChips || 1000;
-    const deckArr = createDeck(rng);
-    const hands: Record<string, Secret<string[]>> = {};
-    const playerChips: Record<string, number> = {};
-    const playerBets: Record<string, number> = {};
+const hiddenDeck = (cards: string[]) =>
+  createSecret(
+    cards,
+    [],
+    cards.map(() => "?"),
+  );
 
-    // 各プレイヤーにチップを配り、初期設定
-    if (playerIds.length > 0) {
-      for (const pId of playerIds) {
-        playerChips[pId] = initialChips;
-        playerBets[pId] = 0;
-        // 2枚ずつ配る
-        const handArr = [deckArr.pop()!, deckArr.pop()!];
-        hands[pId] = createSecret(handArr, [pId], ["?", "?"]);
+const seatedPlayers = (state: BaseGameState): string[] =>
+  Object.values(state.players ?? {}).filter((p): p is string => typeof p === "string");
+
+/** ポットの権利があるプレイヤー（フォールドしていない） */
+const contenders = (state: TexasHoldemState): string[] =>
+  state.playerIds.filter((p) => !state.foldedPlayers.includes(p));
+
+/** まだベットの意思決定ができるプレイヤー（フォールドもオールインもしていない） */
+const actors = (state: TexasHoldemState): string[] =>
+  contenders(state).filter((p) => !state.allInPlayers.includes(p));
+
+const callAmountOf = (state: TexasHoldemState, pId: string): number =>
+  Math.max(0, state.currentBet - (state.playerBets[pId] ?? 0));
+
+/** 席順で seatIndex の次から探して、最初に行動できるプレイヤーを返す */
+function firstActorAfter(state: TexasHoldemState, seatIndex: number): string | null {
+  const n = state.playerIds.length;
+  const acting = actors(state);
+  for (let k = 1; k <= n; k++) {
+    const p = state.playerIds[(seatIndex + k) % n];
+    if (acting.includes(p)) return p;
+  }
+  return null;
+}
+
+/** ブラインドの席。ヘッズアップではディーラーが SB */
+function blindSeats(state: TexasHoldemState): { sb: number; bb: number } {
+  const n = state.playerIds.length;
+  const d = state.dealerIndex % n;
+  return n === 2 ? { sb: d, bb: (d + 1) % n } : { sb: (d + 1) % n, bb: (d + 2) % n };
+}
+
+/** チップをポットに入れる（不足していれば持っている分だけ = オールイン）。state は破壊的に更新する */
+function commitChips(state: TexasHoldemState, pId: string, amount: number): number {
+  const pay = Math.min(amount, state.playerChips[pId]);
+  state.playerChips[pId] -= pay;
+  state.playerBets[pId] += pay;
+  state.totalBets[pId] += pay;
+  state.pot += pay;
+  if (state.playerChips[pId] === 0 && !state.allInPlayers.includes(pId)) {
+    state.allInPlayers.push(pId);
+  }
+  return pay;
+}
+
+/**
+ * ベッティングラウンドが終了したか:
+ * 行動できる全員が最高ベット額に揃っていて、かつ全員が（直前のフルレイズ以降に）行動済み。
+ * 行動できる人が 1 人以下なら、揃った時点で終了（相手がいないので賭けようがない）
+ */
+function isBettingRoundComplete(state: TexasHoldemState): boolean {
+  const acting = actors(state);
+  if (!acting.every((p) => state.playerBets[p] === state.currentBet)) return false;
+  if (acting.length <= 1) return true;
+  return acting.every((p) => state.actedPlayers.includes(p));
+}
+
+/** 残り 1 人: ポットを総取りして終了（手札は公開しない） */
+function settleByFold(state: TexasHoldemState): TexasHoldemState {
+  const winner = contenders(state)[0];
+  const amount = state.pot;
+  const playerChips = { ...state.playerChips, [winner]: state.playerChips[winner] + amount };
+  return {
+    ...state,
+    playerChips,
+    pot: 0,
+    activePlayers: [],
+    result: { reason: "FOLD", winnerIds: [winner], payouts: { [winner]: amount } },
+  };
+}
+
+/**
+ * ショーダウン: 役を比較し、サイドポットを含めて分配する。
+ * 各プレイヤーの総投入額を閾値として、低い順に「その閾値まで」の分を、
+ * その閾値以上を投入している未フォールド者の中で最強の役に配る（同点は山分け、端数はディーラーの左隣から）
+ */
+function settleByShowdown(state: TexasHoldemState): TexasHoldemState {
+  const inShowdown = contenders(state);
+  const ranks: Record<string, HandRank> = {};
+  for (const p of inShowdown) {
+    ranks[p] = evaluateBestHand([...state.hands[p].value, ...state.communityCards]);
+  }
+
+  // 席順（ディーラーの左隣から）: 端数チップの配り先を決めるため
+  const n = state.playerIds.length;
+  const seatOrder = Array.from(
+    { length: n },
+    (_, k) => state.playerIds[(state.dealerIndex + 1 + k) % n],
+  );
+  const bestOf = (players: string[]): string[] => {
+    let best: string[] = [];
+    for (const p of players) {
+      if (best.length === 0) best = [p];
+      else {
+        const cmp = compareHandRanks(ranks[p], ranks[best[0]]);
+        if (cmp > 0) best = [p];
+        else if (cmp === 0) best.push(p);
       }
     }
+    return seatOrder.filter((p) => best.includes(p));
+  };
+
+  const payouts: Record<string, number> = {};
+  const playerChips = { ...state.playerChips };
+  let remaining = state.pot;
+  const levels = [...new Set(inShowdown.map((p) => state.totalBets[p]))].sort((a, b) => a - b);
+  let prev = 0;
+  for (const level of levels) {
+    // この閾値帯のポット: 全員（フォールド済み含む）の投入額のうち prev〜level の部分
+    let amount = 0;
+    for (const p of state.playerIds) {
+      amount += Math.max(0, Math.min(state.totalBets[p], level) - prev);
+    }
+    prev = level;
+    if (amount === 0) continue;
+    const eligible = inShowdown.filter((p) => state.totalBets[p] >= level);
+    const winners = bestOf(eligible);
+    const share = Math.floor(amount / winners.length);
+    let odd = amount - share * winners.length;
+    for (const w of winners) {
+      const gain = share + (odd > 0 ? 1 : 0);
+      if (odd > 0) odd--;
+      payouts[w] = (payouts[w] ?? 0) + gain;
+      playerChips[w] += gain;
+      remaining -= gain;
+    }
+  }
+  // 誰の投入額よりも多い分（理論上は発生しない）は最強の役に渡す
+  if (remaining > 0) {
+    const w = bestOf(inShowdown)[0];
+    payouts[w] = (payouts[w] ?? 0) + remaining;
+    playerChips[w] += remaining;
+  }
+
+  // 残った人の手札を公開する（フォールドした人の手札は伏せたまま）
+  const hands = { ...state.hands };
+  for (const p of inShowdown) hands[p] = createSecret(state.hands[p].value, ["*"]);
+
+  return {
+    ...state,
+    phase: "SHOWDOWN",
+    hands,
+    playerChips,
+    pot: 0,
+    activePlayers: [],
+    result: {
+      reason: "SHOWDOWN",
+      winnerIds: bestOf(inShowdown),
+      payouts,
+      showdown: seatOrder
+        .filter((p) => inShowdown.includes(p))
+        .map((p) => ({ playerId: p, handName: ranks[p].name, bestCards: ranks[p].cards })),
+    },
+  };
+}
+
+/** 次のフェーズへ。コミュニティカードを配り、ベットをリセットして最初の手番を決める */
+function advancePhase(state: TexasHoldemState): TexasHoldemState {
+  const nextPhase = PHASE_ORDER[PHASE_ORDER.indexOf(state.phase) + 1];
+  if (nextPhase === "SHOWDOWN") return settleByShowdown(state);
+
+  const deck = [...state.deck.value];
+  const dealt = deck.splice(deck.length - CARDS_DEALT_ON_ENTER[nextPhase]!).reverse();
+  const next: TexasHoldemState = {
+    ...state,
+    phase: nextPhase,
+    deck: hiddenDeck(deck),
+    communityCards: [...state.communityCards, ...dealt],
+    currentBet: 0,
+    minRaise: state.bigBlind,
+    playerBets: Object.fromEntries(state.playerIds.map((p) => [p, 0])),
+    actedPlayers: [],
+  };
+  return proceed(next, next.dealerIndex);
+}
+
+/**
+ * アクション後の進行: 残り 1 人なら終了、ラウンドが終わっていれば次のフェーズ、
+ * そうでなければ seatIndex の次に行動できるプレイヤーへ手番を移す
+ */
+function proceed(state: TexasHoldemState, seatIndex: number): TexasHoldemState {
+  if (contenders(state).length === 1) return settleByFold(state);
+  if (isBettingRoundComplete(state)) return advancePhase(state);
+  const next = firstActorAfter(state, seatIndex);
+  return { ...state, activePlayers: next ? [next] : [] };
+}
+
+/** START: 配札してブラインドを投入し、プリフロップの手番を決める */
+function startHand(state: TexasHoldemState, rng?: IGameRNG): TexasHoldemState {
+  const playerIds = seatedPlayers(state).slice(0, MAX_PLAYERS);
+  // 開始後の飛び入りを防ぐため空席は閉じる
+  const players: Record<string, string | null> = {};
+  for (const [slot, id] of Object.entries(state.players ?? {})) {
+    if (id !== null) players[slot] = id;
+  }
+
+  const deck = createDeck(rng);
+  const hands: Record<string, Secret<string[]>> = {};
+  for (const pId of playerIds) {
+    const hand = [deck.pop()!, deck.pop()!];
+    hands[pId] = createSecret(hand, [pId], ["?", "?"]);
+  }
+
+  const next: TexasHoldemState = {
+    ...state,
+    status: "PLAYING",
+    players,
+    playerIds,
+    dealerIndex: state.dealerIndex % playerIds.length,
+    deck: hiddenDeck(deck),
+    communityCards: [],
+    hands,
+    pot: 0,
+    currentBet: state.bigBlind,
+    minRaise: state.bigBlind,
+    playerBets: Object.fromEntries(playerIds.map((p) => [p, 0])),
+    totalBets: Object.fromEntries(playerIds.map((p) => [p, 0])),
+    playerChips: Object.fromEntries(playerIds.map((p) => [p, state.initialChips])),
+    foldedPlayers: [],
+    allInPlayers: [],
+    actedPlayers: [],
+    phase: "PRE_FLOP",
+    result: null,
+    message: undefined,
+  };
+
+  const { sb, bb } = blindSeats(next);
+  commitChips(next, playerIds[sb], next.smallBlind);
+  commitChips(next, playerIds[bb], next.bigBlind);
+  // ブラインドは強制ベットなので「行動済み」にはしない（BB には最後にオプションがある）
+  return proceed(next, bb);
+}
+
+// --- 4. ルールセット本体 ---
+
+export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction> = {
+  getInitialState: (options?: TexasHoldemOptions, _rng?: IGameRNG): TexasHoldemState => {
+    const opts = options ?? {};
+    const playerIds = (opts.playerIds ?? []).filter((id) => !!id).slice(0, MAX_PLAYERS);
+    const initialChips =
+      opts.initialChips && opts.initialChips > 0 ? opts.initialChips : DEFAULT_INITIAL_CHIPS;
+    const bigBlind = opts.bigBlind && opts.bigBlind > 0 ? opts.bigBlind : DEFAULT_BIG_BLIND;
+    const smallBlind =
+      opts.smallBlind && opts.smallBlind > 0
+        ? opts.smallBlind
+        : Math.max(1, Math.floor(bigBlind / 2));
+
+    // playerIds が渡されていれば着席済みとして扱う（配札・ブラインドは START）
+    const players: Record<string, string | null> = {};
+    for (let i = 0; i < MAX_PLAYERS; i++) players[String(i + 1)] = playerIds[i] ?? null;
 
     return {
       status: "WAITING",
-      players:
-        playerIds.length > 0
-          ? playerIds.reduce((acc: Record<string, string>, p: string) => ({ ...acc, [p]: p }), {})
-          : { 1: null, 2: null, 3: null, 4: null, 5: null, 6: null }, // Default 6 slots
-      activePlayers: playerIds.length > 0 ? [playerIds[0]] : [],
-      playerIds,
-      deck: createSecret(
-        deckArr,
-        [],
-        deckArr.map(() => "?"),
-      ),
+      players,
+      activePlayers: [],
+      playerIds: [],
+      deck: hiddenDeck([]),
       communityCards: [],
-      hands,
+      hands: {},
       pot: 0,
       currentBet: 0,
-      playerBets,
-      playerChips,
+      minRaise: bigBlind,
+      playerBets: {},
+      totalBets: {},
+      playerChips: {},
       foldedPlayers: [],
+      allInPlayers: [],
+      actedPlayers: [],
       phase: "PRE_FLOP",
-      dealerIndex: 0,
+      dealerIndex: opts.dealerIndex && opts.dealerIndex > 0 ? Math.floor(opts.dealerIndex) : 0,
+      smallBlind,
+      bigBlind,
+      initialChips,
+      result: null,
     };
   },
 
-  isValidAction: (state: TexasHoldemState, action: TexasHoldemAction) => {
-    if (state.status !== "PLAYING") return false;
+  isValidAction: (state, action) => {
+    if (action.type === "START") {
+      return state.status === "WAITING" && seatedPlayers(state).length >= MIN_PLAYERS;
+    }
+    if (state.status !== "PLAYING" || state.result) return false;
 
-    // アクティブなプレイヤーからの（手番の）アクションか？
-    if (!state.activePlayers || !state.activePlayers.includes(action.playerId!)) return false;
+    const pId = action.playerId;
+    if (!pId || !state.activePlayers?.includes(pId)) return false;
+    if (!actors(state).includes(pId)) return false;
 
-    const pId = action.playerId!;
-
-    // フォールド済みのプレイヤーは行動できない
-    if (state.foldedPlayers.includes(pId)) return false;
-
-    const playerChips = state.playerChips[pId];
-    const playerCurrentBet = state.playerBets[pId];
-    const callAmount = state.currentBet - playerCurrentBet;
+    const chips = state.playerChips[pId];
+    const callAmount = callAmountOf(state, pId);
 
     switch (action.type) {
       case "FOLD":
         return true;
       case "CHECK":
-        // コール額が0（つまり現在最高ベット額に追いついている）場合のみチェック可能
         return callAmount === 0;
       case "CALL":
-        // チップがコール額以上あること
-        // （オールインは簡略化のため今回は考慮外とするか、全額コールできるかチェックが必要）
-        return playerChips >= callAmount;
-      case "RAISE":
-        // レイズ額が存在し、コール額＋レイズ額以上のチップを持っていること
-        if (!action.amount || action.amount <= 0) return false;
-        return playerChips >= callAmount + action.amount;
+        // チップが足りなければ持っている分だけでコール（オールイン）
+        return callAmount > 0 && chips > 0;
+      case "RAISE": {
+        const amount = action.amount;
+        if (typeof amount !== "number" || !Number.isInteger(amount) || amount <= 0) return false;
+        const total = callAmount + amount;
+        if (total > chips) return false;
+        // 直前のフルレイズ以降に行動済みなら再レイズ不可
+        // （自分のベットへの上乗せや、ショートオールインに対する再レイズを防ぐ）
+        if (state.actedPlayers.includes(pId)) return false;
+        // ミニマムレイズ未満はオールインの場合のみ許可
+        return amount >= state.minRaise || total === chips;
+      }
       default:
         return false;
     }
   },
 
-  reduce: (
-    state: TexasHoldemState,
-    action: TexasHoldemAction,
-    _rng?: IGameRNG,
-  ): TexasHoldemState => {
-    // 浅いコピーだとネストした playerChips / playerBets 等を直接書き換えてしまう（凍結された state では例外）
-    const newState: TexasHoldemState = structuredClone(state);
+  reduce: (state, action, rng) => {
+    if (action.type === "START") return startHand(state, rng);
+
+    // ネストした playerChips / playerBets 等を書き換えるので深いコピーにする（凍結された state 対策）
+    const next = structuredClone(state);
     const pId = action.playerId!;
-    const _playerChips = newState.playerChips[pId];
-    const playerCurrentBet = newState.playerBets[pId];
-    const callAmount = newState.currentBet - playerCurrentBet;
+    const callAmount = callAmountOf(next, pId);
+    const seatIndex = next.playerIds.indexOf(pId);
 
     switch (action.type) {
-      case "FOLD": {
-        newState.foldedPlayers = [...newState.foldedPlayers, pId];
+      case "FOLD":
+        next.foldedPlayers.push(pId);
         break;
-      }
-      case "CHECK": {
-        // 何もしない
+      case "CHECK":
+        next.actedPlayers.push(pId);
         break;
-      }
-      case "CALL": {
-        newState.playerChips[pId] -= callAmount;
-        newState.playerBets[pId] += callAmount;
-        newState.pot += callAmount;
+      case "CALL":
+        commitChips(next, pId, callAmount);
+        if (!next.actedPlayers.includes(pId)) next.actedPlayers.push(pId);
         break;
-      }
       case "RAISE": {
-        const raiseAmount = action.amount!;
-        const totalAmount = callAmount + raiseAmount;
-        newState.playerChips[pId] -= totalAmount;
-        newState.playerBets[pId] += totalAmount;
-        newState.pot += totalAmount;
-        newState.currentBet += raiseAmount;
+        const amount = action.amount!;
+        commitChips(next, pId, callAmount + amount);
+        next.currentBet = next.playerBets[pId];
+        if (amount >= next.minRaise) {
+          // フルレイズ: 他の全員に行動権が戻る
+          next.minRaise = amount;
+          next.actedPlayers = [pId];
+        } else {
+          // ショートオールイン: 行動済みの人の再レイズ権は復活しない
+          next.actedPlayers.push(pId);
+        }
         break;
       }
     }
 
-    // 次のプレイヤーを探すロジック（簡略化：全員が現在ベット額に追いつくかフォールドするまで回る）
-    // 完全なフェーズ進行（PRE_FLOP -> FLOPなど）ロジックは非常に複雑なため、
-    // 今回のサンプルでは「1ターン進める」部分のインターフェース例を示します。
-
-    // 次の生きてるプレイヤーへ手番を移す
-    let nextIdx = (newState.playerIds.indexOf(pId) + 1) % newState.playerIds.length;
-    // 簡易的な無限ループ防止策（全員フォールド時は後述のwinCheckを通る）
-    while (newState.foldedPlayers.includes(newState.playerIds[nextIdx])) {
-      nextIdx = (nextIdx + 1) % newState.playerIds.length;
-    }
-    newState.activePlayers = [newState.playerIds[nextIdx]];
-
-    return newState;
+    return proceed(next, seatIndex);
   },
 
-  checkWinCondition: (state: TexasHoldemState) => {
-    // 全員フォールドして残り1人になったらゲーム終了
-    const activeCount = state.playerIds.length - state.foldedPlayers.length;
-    if (activeCount <= 1) {
-      const winner = state.playerIds.find((id) => !state.foldedPlayers.includes(id));
+  checkWinCondition: (state) => {
+    const result = state.result;
+    if (!result) return { isFinished: false };
+
+    if (result.reason === "FOLD") {
+      const winner = result.winnerIds[0];
       return {
         isFinished: true,
-        winnerIds: winner ? [winner] : [],
-        message: `Game over. Player won by fold.`,
+        winnerIds: result.winnerIds,
+        message: `${winner} wins ${result.payouts[winner]} chips (everyone else folded)`,
       };
     }
-
-    // 本当は `SHOWDOWN` フェーズでの役判定ロジックなどが必要だが簡略化
-    if (state.phase === "SHOWDOWN") {
-      const winners = state.playerIds.filter((id) => !state.foldedPlayers.includes(id));
-      return {
-        isFinished: true,
-        winnerIds: winners,
-        message: `Game over. Showdown.`,
-      };
-    }
-
-    return { isFinished: false };
+    const showdown = result.showdown ?? [];
+    const hands = showdown.map((e) => `${e.playerId}: ${e.handName}`).join(", ");
+    const winner = result.winnerIds[0];
+    const winnerHand = showdown.find((e) => e.playerId === winner)?.handName;
+    return {
+      isFinished: true,
+      winnerIds: result.winnerIds,
+      message:
+        result.winnerIds.length > 1
+          ? `Showdown! ${result.winnerIds.join(", ")} split the pot with ${winnerHand} (${hands})`
+          : `Showdown! ${winner} wins with ${winnerHand} (${hands})`,
+    };
   },
 
-  applyWinResult: (state, winResult) => {
-    const newState = structuredClone(state);
-    newState.status = "FINISHED";
-    newState.activePlayers = [];
+  applyWinResult: (state, winResult) => ({
+    ...state,
+    status: "FINISHED",
+    activePlayers: [],
+    message: winResult.message,
+  }),
 
-    // フォールド勝ち: 残った一人がポットをすべて獲得
-    const activePlayers = newState.playerIds.filter((id) => !newState.foldedPlayers.includes(id));
-    if (activePlayers.length === 1) {
-      const winner = activePlayers[0];
-      newState.playerChips[winner] = (newState.playerChips[winner] ?? 0) + newState.pot;
-      newState.pot = 0;
-      newState.message = `${winner} wins the pot of ${newState.pot} chips! (Others folded)`;
-    } else {
-      // SHOWDOWN ケース: 本来は手の強さ判定が必要だが、ここでは均等分配で簡略化
-      const share = Math.floor(newState.pot / activePlayers.length);
-      for (const pid of activePlayers) {
-        newState.playerChips[pid] = (newState.playerChips[pid] ?? 0) + share;
-      }
-      newState.pot = 0;
-      newState.message = winResult.message ?? "Showdown! Pot split.";
+  // 制限時間切れ: チェックできるならチェック、できなければフォールド
+  getTimeoutAction: (state, playerId) =>
+    callAmountOf(state, playerId) === 0 ? { type: "CHECK", playerId } : { type: "FOLD", playerId },
+
+  getLegalActions: (state, playerId) => {
+    if (state.status === "WAITING") {
+      const seated = seatedPlayers(state);
+      return seated.length >= MIN_PLAYERS && seated.includes(playerId)
+        ? [{ type: "START", playerId }]
+        : [];
     }
-
-    return newState;
-  },
-
-  getLegalActions: (state: TexasHoldemState, playerId: string): TexasHoldemAction[] => {
-    if (state.status !== "PLAYING") return [];
-    if (!state.activePlayers || !state.activePlayers.includes(playerId)) return [];
+    if (state.status !== "PLAYING" || state.result) return [];
+    if (!state.activePlayers?.includes(playerId)) return [];
 
     const actions: TexasHoldemAction[] = [];
     const baseActions: TexasHoldemAction[] = [
@@ -236,28 +514,19 @@ export const TexasHoldemRuleset: GameRuleset<TexasHoldemState, TexasHoldemAction
       { type: "CHECK", playerId },
       { type: "CALL", playerId },
     ];
-
     for (const action of baseActions) {
-      if (TexasHoldemRuleset.isValidAction(state, action)) {
-        actions.push(action);
-      }
+      if (TexasHoldemRuleset.isValidAction(state, action)) actions.push(action);
     }
 
-    // RAISEオプション（AI等が選べるように代表的な額をいくつか提示）
-    const playerChips = state.playerChips[playerId];
-    const amounts = [10, 50, 100, playerChips]; // 簡易的な選択肢
-    for (const amt of amounts) {
-      const raiseAction: TexasHoldemAction = {
-        type: "RAISE",
-        amount: amt,
-        playerId,
-      };
-      if (TexasHoldemRuleset.isValidAction(state, raiseAction)) {
-        // 重複排除（同じアクション）
-        if (!actions.some((a) => a.type === "RAISE" && a.amount === amt)) {
-          actions.push(raiseAction);
-        }
-      }
+    // RAISE は代表的な額だけ提示する（AI 用）: ミニマム / ポットサイズ / オールイン
+    const chips = state.playerChips[playerId];
+    const callAmount = callAmountOf(state, playerId);
+    const allIn = chips - callAmount;
+    const potSized = state.pot + callAmount;
+    const candidates = [...new Set([state.minRaise, potSized, allIn])].sort((a, b) => a - b);
+    for (const amount of candidates) {
+      const raise: TexasHoldemAction = { type: "RAISE", amount, playerId };
+      if (TexasHoldemRuleset.isValidAction(state, raise)) actions.push(raise);
     }
 
     return actions;
