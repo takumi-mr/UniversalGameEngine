@@ -19,11 +19,28 @@ export interface DaifugoState extends BaseGameState {
   // 進行状態
   turnIndex: number; // 現在の手番のインデックス
   ranks: string[]; // あがったプレイヤーのリスト（1位、2位...の順）
+
+  // --- ローカルルール（フィーチャーフラグ） ---
+  // オプションで有効化された場合、開始時に true が焼き込まれる。以後 reduce 等は
+  // options ではなく必ずこの state フィールドを参照する（決定論のため）。
+  kakumei: boolean; // 革命ルールが有効か（4枚以上の同ランク出しで強弱が反転する）
+  revolution: boolean; // 現在「革命」が発動中か（3〜2の強弱が反転している状態）
+  eightGiri: boolean; // 8切りルールが有効か（8を出すと場が流れ、続けて手番を持てる）
 }
 
 export interface DaifugoAction extends BaseGameAction {
   type: "PLAY" | "PASS";
   cards?: Card[]; // PLAYの場合に出すカードの配列
+}
+
+export interface DaifugoOptions {
+  // エンジンのシード（serverSeed / clientSeed）などもこのオブジェクトで渡される
+  [key: string]: unknown;
+  playerIds?: string[];
+  /** 革命ルールを有効にするか（デフォルト: false = 標準ルール） */
+  kakumei?: boolean;
+  /** 8切りルールを有効にするか（デフォルト: false = 標準ルール） */
+  eightGiri?: boolean;
 }
 
 // --- ヘルパー関数群 ---
@@ -42,6 +59,7 @@ function getCardStrength(card: Card): number {
 }
 
 // 出されたカードのセットを評価し、強さを返す（不正な出し方なら null）
+// ※ここでの strength は「革命」を考慮しない素の強さ。比較時に applyRevolution() で反転させる。
 function evaluatePlay(cards: Card[]): { size: number; strength: number } | null {
   if (cards.length === 0) return null;
 
@@ -52,7 +70,7 @@ function evaluatePlay(cards: Card[]): { size: number; strength: number } | null 
     return { size: 1, strength: strengths[0] };
   }
 
-  // 複数枚出し（ペア、スリーカード等）。ローカルルールなしなので、階段（シークエンス）は非対応とする。
+  // 複数枚出し（ペア、スリーカード等）。階段（シークエンス）は本実装では非対応とする。
   // ジョーカーをワイルドカードとして扱う判定
   const nonJokers = strengths.filter((s) => s !== 16);
   const _jokersCount = strengths.length - nonJokers.length;
@@ -65,6 +83,17 @@ function evaluatePlay(cards: Card[]): { size: number; strength: number } | null 
   const strength = nonJokers.length > 0 ? nonJokers[0] : 16;
 
   return { size: cards.length, strength };
+}
+
+// 革命中の強さ反転。ジョーカー（16）は反転の対象外とし、3〜2（3〜15）の範囲だけを反転する。
+function applyRevolution(strength: number, revolution: boolean): number {
+  if (!revolution || strength === 16) return strength;
+  return 18 - strength;
+}
+
+// 革命の発動条件（4枚以上の同ランク出し）を満たすか
+function triggersKakumei(cards: Card[]): boolean {
+  return cards.length >= 4 && evaluatePlay(cards) !== null;
 }
 
 // ジョーカー2枚を含む54枚のデッキ（未シャッフル）
@@ -92,10 +121,10 @@ function createDeck(rng?: IGameRNG): Card[] {
 
 // --- ルールセット本体 ---
 
-export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
-  getInitialState: (options: any, rng?: IGameRNG): DaifugoState => {
+export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction, DaifugoOptions> = {
+  getInitialState: (options, rng?: IGameRNG): DaifugoState => {
     const opts = options || {};
-    const playerIds = (opts.playerIds || []).filter((id: any) => !!id);
+    const playerIds = (opts.playerIds || []).filter((id): id is string => !!id);
     const deck = createDeck(rng);
     const hands: Record<string, Secret<Card[]>> = {};
 
@@ -139,6 +168,9 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
       passedPlayers: [],
       turnIndex: 0,
       ranks: [],
+      kakumei: opts.kakumei === true,
+      revolution: false,
+      eightGiri: opts.eightGiri === true,
     };
   },
 
@@ -169,7 +201,11 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
       // 場にカードがある場合は、枚数が同じで、かつ「より強い」必要がある
       const tableEvaluation = evaluatePlay(state.tableCards)!;
       if (playEvaluation.size !== tableEvaluation.size) return false;
-      if (playEvaluation.strength <= tableEvaluation.strength) return false;
+
+      // 革命中は 3〜2 の強弱が反転する（ジョーカーは常に最強のまま）
+      const playStrength = applyRevolution(playEvaluation.strength, state.revolution);
+      const tableStrength = applyRevolution(tableEvaluation.strength, state.revolution);
+      if (playStrength <= tableStrength) return false;
 
       return true;
     }
@@ -203,6 +239,24 @@ export const DaifugoRuleset: GameRuleset<DaifugoState, DaifugoAction> = {
       // あがり判定
       if (newState.hands[pId].value.length === 0) {
         newState.ranks.push(pId);
+      }
+
+      // 革命判定（4枚以上の同ランク出しで、以後の強弱が反転する）
+      if (newState.kakumei && triggersKakumei(playCards)) {
+        newState.revolution = !newState.revolution;
+      }
+
+      // 8切り判定（8を含む出し方をすると場が流れる）
+      if (newState.eightGiri && playCards.some((c) => c !== "JR" && c.charAt(0) === "8")) {
+        newState.tableCards = [];
+        newState.lastPlayedPlayerId = null;
+        newState.passedPlayers = [];
+
+        // まだ上がっていなければ、場を流したまま自分の手番を継続する
+        if (newState.hands[pId].value.length > 0) {
+          newState.activePlayers = [pId];
+          return newState;
+        }
       }
     } else if (action.type === "PASS") {
       newState.passedPlayers.push(pId);
