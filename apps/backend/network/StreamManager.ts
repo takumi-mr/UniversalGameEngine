@@ -126,6 +126,7 @@ class StreamManager {
     playerId: string,
     stateTensor: number[],
     legalActionIds: number[],
+    stateJson: string,
   ) {
     const gameStreams = this.botStreams.get(gameId);
     if (gameStreams) {
@@ -135,6 +136,7 @@ class StreamManager {
           stream.write({
             stateTensor,
             legalActionIds,
+            stateJson,
           });
         } catch (err) {
           console.error(
@@ -158,7 +160,8 @@ export function notifyBotTurn(
   playerId: string,
   stateTensor: number[],
   legalActionIds: number[],
+  stateJson: string,
 ): void {
-  streamManager.notifyBotTurn(gameId, playerId, stateTensor, legalActionIds);
-  publishClusterEvent("uge:bot-turn", { gameId, playerId, stateTensor, legalActionIds });
+  streamManager.notifyBotTurn(gameId, playerId, stateTensor, legalActionIds, stateJson);
+  publishClusterEvent("uge:bot-turn", { gameId, playerId, stateTensor, legalActionIds, stateJson });
 }

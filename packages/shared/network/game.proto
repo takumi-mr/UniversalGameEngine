@@ -142,6 +142,8 @@ message WaitForTurnRequest {
 message WaitForTurnResponse {
     repeated float state_tensor = 1;
     repeated int32 legal_action_ids = 2;
+    // 完全な局面（Simulate の親局面として渡せる。AlphaZero 風エージェントの木探索用）
+    string state_json = 3;
 }
 
 message SubmitTurnRequest {

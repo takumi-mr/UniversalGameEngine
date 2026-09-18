@@ -146,6 +146,7 @@ class DQNConfig:
     grad_clip: float = 10.0
     double_dqn: bool = True
     train_every: int = 4  # 環境ステップ何回ごとに勾配更新するか
+    max_moves: int = 0  # 1 エピソードの手数上限（0 = 無制限）。超えたら引き分けとして打ち切る
 
 
 class DQNAgent:

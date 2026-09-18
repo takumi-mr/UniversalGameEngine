@@ -45,7 +45,12 @@ LLM（Large Language Model）を使用してゲームの指し手を決定する
 
 ### [TensorAdapter/](./TensorAdapter/)
 
-組み込みの `IAITensorAdapter` 実装（現在は `OthelloTensorAdapter`）と、それらを `aiTensorRegistry` に登録する `index.ts`。gRPC の `Reset`/`Step`（強化学習ループ）はここに登録されたゲームでのみ使えます。学習側のコードは [`apps/ml`](../../../apps/ml/README.md) を参照。
+組み込みの `IAITensorAdapter` 実装と、それらを `aiTensorRegistry` に登録する `index.ts`。gRPC の `Reset`/`Step`（強化学習ループ）と `WaitForTurn`/`SubmitTurn`（実対局の外部ボット）はここに登録されたゲームでのみ使えます。学習側のコードは [`apps/ml`](../../../apps/ml/README.md) を参照。
+
+| アダプタ                                                           | ゲーム               | 観測                                                                           | 行動 ID                                                                       |
+| ------------------------------------------------------------------ | -------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| [OthelloTensorAdapter.ts](./TensorAdapter/OthelloTensorAdapter.ts) | `othello`            | `size*size`（自分=+1 / 相手=-1 / 空=0）                                        | `y * size + x`                                                                |
+| [ShogiTensorAdapter.ts](./TensorAdapter/ShogiTensorAdapter.ts)     | `shogi` / `shogi_3d` | 95 = 自分視点の盤 81（後手は 180 度回転。自分=+駒種 / 相手=-駒種）+ 持ち駒 7×2 | `移動先マス × 27 + 種別`（0-9 移動方向 / 10-19 成り / 20-26 打つ）= 2187 通り |
 
 ## テスト
 

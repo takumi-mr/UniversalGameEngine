@@ -1,7 +1,8 @@
 # 🧠 apps/ml — 強化学習クライアント (Python)
 
 Universal Game Engine の gRPC RL API（`Reset` / `Step`）を使って、ゲーム AI を自己対戦で学習させる Python パッケージです。
-オセロ用に **DQN**（Double DQN + 合法手マスク）と **AlphaZero 風**（Policy/Value ネット + MCTS、探索は gRPC `BatchSimulate`）の 2 方式を実装しています。
+**DQN**（Double DQN + 合法手マスク）と **AlphaZero 風**（Policy/Value ネット + MCTS、探索は gRPC `BatchSimulate`）の 2 方式を実装しており、
+対応ゲームは **オセロ** と **将棋**（`shogi` / `shogi_3d`）です。学習したモデルは `uge_rl.serve` で実際の対局相手として動かせます。
 
 ```
 apps/ml/
@@ -15,19 +16,22 @@ apps/ml/
 │   ├── az_agent.py    # AlphaZero: 自己対戦・学習・対局
 │   ├── train_az.py    # AlphaZero の学習 CLI
 │   ├── checkpoint.py  # モデルの保存・読み込み (.pt + .json)。format で DQN / AZ を判別
-│   └── evaluate.py    # 評価 CLI（対ランダム勝率）。両方式共通
-├── tests/test_mcts.py # MCTS のバックアップ規約の単体テスト（サーバー不要。CI では pytest で実行）
+│   ├── evaluate.py    # 評価 CLI（対ランダム勝率）。両方式共通
+│   └── serve.py       # 学習済みモデルを実対局の「gRPC External」席の指し手として動かすボットサーバー
+├── tests/test_mcts.py  # MCTS のバックアップ規約の単体テスト（サーバー不要。CI では pytest で実行）
+├── tests/test_games.py # GameSpec（観測 → NN 入力）の単体テスト
 ├── proto/             # game.proto から生成した Python スタブ（コミット済み）
 ├── scripts/gen_proto.py            # proto から Python スタブを再生成
 ├── scripts/bench_simulate.py       # Simulate / BatchSimulate のスループット計測
-├── notebooks/othello_dqn_colab.ipynb        # Google Colab 用ノートブック (DQN)
-├── notebooks/othello_alphazero_colab.ipynb  # Google Colab 用ノートブック (AlphaZero)
+├── notebooks/othello_dqn_colab.ipynb        # Google Colab 用ノートブック (オセロ DQN)
+├── notebooks/othello_alphazero_colab.ipynb  # Google Colab 用ノートブック (オセロ AlphaZero)
+├── notebooks/shogi_alphazero_colab.ipynb    # Google Colab 用ノートブック (将棋 AlphaZero)
 └── requirements.txt
 ```
 
 ## Google Colab で学習する（推奨）
 
-[notebooks/othello_dqn_colab.ipynb](./notebooks/othello_dqn_colab.ipynb)（DQN）または [notebooks/othello_alphazero_colab.ipynb](./notebooks/othello_alphazero_colab.ipynb)（AlphaZero）を Colab で開き、上から順に実行してください。
+[notebooks/othello_dqn_colab.ipynb](./notebooks/othello_dqn_colab.ipynb)（オセロ DQN）、[notebooks/othello_alphazero_colab.ipynb](./notebooks/othello_alphazero_colab.ipynb)（オセロ AlphaZero）、[notebooks/shogi_alphazero_colab.ipynb](./notebooks/shogi_alphazero_colab.ipynb)（将棋 AlphaZero）を Colab で開き、上から順に実行してください。
 ノートブックが Colab 内で Bun とバックエンドを起動し、学習済みモデルを **Google Drive** (`MyDrive/UniversalGameEngine/models/`) に保存します。
 
 ## ローカルで学習する
@@ -46,6 +50,9 @@ python -m uge_rl.train --game othello --episodes 2000 --out ../../models/othello
 
 # 3b. AlphaZero の学習（1 イテレーション = 自己対戦 N 局 + 勾配更新）
 python -m uge_rl.train_az --game othello --iterations 30 --games-per-iter 20 --simulations 100 --out ../../models/othello_az.pt
+
+# 3c. 将棋の AlphaZero（1 局が長いので --max-moves で打ち切る。task ml:train-az-shogi と同じ）
+python -m uge_rl.train_az --game shogi --iterations 30 --games-per-iter 10 --simulations 100 --max-moves 256 --dirichlet-alpha 0.15 --out ../../models/shogi_az.pt
 
 # 4. 評価（どちらの形式でも同じコマンド。format を見て復元する）
 python -m uge_rl.evaluate --checkpoint ../../models/othello_az.pt --games 100
@@ -76,7 +83,36 @@ python -m pytest tests -q
 | `--train-steps-per-iter`  | 200    | 1 イテレーションの勾配更新回数                                   |
 | `--eval-simulations`      | 25     | 評価・対局時の探索回数                                           |
 | `--temp-moves`            | 10     | 序盤この手数までは温度 1 でサンプリング（以降 argmax）           |
+| `--max-moves`             | 0      | 1 局の手数上限（0 = 無制限）。超えたら引き分けとして打ち切る     |
+| `--dirichlet-alpha`       | 0.3    | ルートノイズの Dirichlet α（合法手が多い将棋は 0.15 程度）       |
 | `--channels` / `--blocks` | 64 / 4 | ResNet の幅と深さ                                                |
+
+`--max-moves` は DQN（`train.py`）と `evaluate.py` にもあります（評価時は省略するとチェックポイントの設定を使う）。
+
+## 学習済みモデルと対局する（`serve.py`）
+
+学習したモデルを、フロントエンドで作った部屋の **☁️ gRPC External (`grpc_bot`)** 席の指し手として動かします。
+
+```bash
+task rl                                    # バックエンド（RL_MODE=true）。AlphaZero の MCTS が使う Simulate はこのモードでだけ有効
+cd apps/frontend && bun dev                # フロントエンド
+cd apps/ml && python -m uge_rl.serve --checkpoint ../../models/shogi_az.pt   # = task ml:serve
+```
+
+フロントエンドで将棋の「カスタムマッチ」→ 相手を **☁️ gRPC External** にして部屋を作ると、`serve` が
+`GET /rooms/<game_type>` で `grpc_bot` の席を見つけ、gRPC `WaitForTurn` で手番を待ち、モデルで選んだ手を `SubmitTurn` で指します。
+同じゲーム種別の部屋なら何部屋でも同時に担当します（思考は 1 局ずつ直列）。
+
+| オプション      | 既定値                  | 説明                                                           |
+| --------------- | ----------------------- | -------------------------------------------------------------- |
+| `--checkpoint`  | –                       | `.pt`（`game_type` はチェックポイントから読む）                |
+| `--address`     | `localhost:50051`       | バックエンドの gRPC                                            |
+| `--http`        | `http://localhost:3000` | バックエンドの HTTP（部屋一覧の取得用）                        |
+| `--simulations` | チェックポイントの設定  | AlphaZero の探索回数。`0` で policy head の argmax（探索なし） |
+| `--game-id`     | –                       | 指定した部屋だけを担当する                                     |
+
+通常モード（`RL_MODE` なし）のバックエンドに繋ぐと `Simulate` が `PERMISSION_DENIED` になるため、その場合は自動的に探索なしへ切り替えます。
+DQN のチェックポイントは常に探索なし（Q 値の argmax）です。
 
 ## モデルの保存形式
 
@@ -114,6 +150,7 @@ for res in children:
 - **自己対戦 (`az_agent.py`)**: 局面は `Simulate` の結果だけで進める（`Step` は使わない）。各局面の (obs, 訪問回数分布 π, 手番) を記録し、終局後に手番視点の結果 z を付けてバッファへ
 - **学習**: `loss = CE(π, policy logits[合法手のみ]) + MSE(z, value)`
 - **対局 (`select_action`)**: ノイズなし・温度 0 で `eval_simulations` 回探索して最善手
+- **手数上限 (`max_moves`)**: 超えた自己対戦は引き分け（全局面の z = 0）として打ち切る。将棋のように弱いうちは終局しないゲームで使う
 
 ### DQN（`train.py`）
 
@@ -122,11 +159,19 @@ for res in children:
 - 終局時は、最後に指した側に `r`、その相手の最後の遷移に `-r` を書き戻します（引き分けは 0）。
 - 観測: 8×8 の `{自分=+1, 相手=-1, 空=0}` → `(2, 8, 8)` プレーン → 小さな CNN → 64 個の Q 値。合法手以外は `-inf` でマスク。
 
+### 将棋の観測と行動（`ShogiTensorAdapter` / `games.py`）
+
+- **観測（95 要素）**: 自分視点の盤面 81 マス（後手は 180 度回転。自分の駒 = +駒種 1〜14、相手の駒 = -駒種）+ 自分の持ち駒 7 枠 + 相手の持ち駒 7 枠（歩 香 桂 銀 金 角 飛の枚数）。
+  `games.py` で駒種ごとの one-hot 28 プレーン + 持ち駒枚数（上限で正規化）を盤全体に敷いた 14 プレーン = `(42, 9, 9)` に展開する。
+- **行動（2187 通り）**: `移動先マス（自分視点）× 27 + 種別`。種別は 0-9 が移動方向（上, 左上, 右上, 左, 右, 下, 左下, 右下, 桂左, 桂右）、10-19 が同方向 + 成り、20-26 が持ち駒を打つ（歩〜飛）。
+  移動元は「移動先から方向を逆にたどって最初にある駒」なので符号化は合法手と 1 対 1（dlshogi と同じ方式）。投了・入玉宣言は行動空間に含めない。
+- 終局はサーバーの `ShogiRuleset`（詰み・千日手・連続王手）に従う。弱いうちは終局しないので `--max-moves` で引き分け打ち切りにする。
+
 ## 別のゲームを学習させるには
 
 1. `packages/shared/ai/TensorAdapter/` に `IAITensorAdapter` を実装し、`TensorAdapter/index.ts` で登録する
-2. `uge_rl/games.py` に `GameSpec`（観測 → NN 入力の整形）を追加する（未登録ゲームは 1 次元ベクトル + MLP で動く）
-3. `python -m uge_rl.train --game <game_type>`
+2. `uge_rl/games.py` に `GameSpec`（観測 → NN 入力の整形、行動数）を追加する（未登録ゲームは 1 次元ベクトル + MLP、行動数 = 観測次元で動く）
+3. `python -m uge_rl.train --game <game_type>`（学習したモデルは `uge_rl.serve` でそのまま対局相手になる）
 
 ## proto を変更したとき
 

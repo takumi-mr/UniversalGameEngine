@@ -37,6 +37,8 @@ export interface ClusterEvents {
     playerId: string;
     stateTensor: number[];
     legalActionIds: number[];
+    /** 完全な局面の JSON（ボットが Simulate で木探索するときの親局面） */
+    stateJson: string;
   };
 }
 
