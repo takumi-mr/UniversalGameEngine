@@ -25,13 +25,14 @@ apps/ml/
 ├── scripts/bench_simulate.py       # Simulate / BatchSimulate のスループット計測
 ├── notebooks/othello_dqn_colab.ipynb        # Google Colab 用ノートブック (オセロ DQN)
 ├── notebooks/othello_alphazero_colab.ipynb  # Google Colab 用ノートブック (オセロ AlphaZero)
+├── notebooks/shogi_dqn_colab.ipynb          # Google Colab 用ノートブック (将棋 DQN)
 ├── notebooks/shogi_alphazero_colab.ipynb    # Google Colab 用ノートブック (将棋 AlphaZero)
 └── requirements.txt
 ```
 
 ## Google Colab で学習する（推奨）
 
-[notebooks/othello_dqn_colab.ipynb](./notebooks/othello_dqn_colab.ipynb)（オセロ DQN）、[notebooks/othello_alphazero_colab.ipynb](./notebooks/othello_alphazero_colab.ipynb)（オセロ AlphaZero）、[notebooks/shogi_alphazero_colab.ipynb](./notebooks/shogi_alphazero_colab.ipynb)（将棋 AlphaZero）を Colab で開き、上から順に実行してください。
+[notebooks/othello_dqn_colab.ipynb](./notebooks/othello_dqn_colab.ipynb)（オセロ DQN）、[notebooks/othello_alphazero_colab.ipynb](./notebooks/othello_alphazero_colab.ipynb)（オセロ AlphaZero）、[notebooks/shogi_dqn_colab.ipynb](./notebooks/shogi_dqn_colab.ipynb)（将棋 DQN）、[notebooks/shogi_alphazero_colab.ipynb](./notebooks/shogi_alphazero_colab.ipynb)（将棋 AlphaZero）を Colab で開き、上から順に実行してください。
 ノートブックが Colab 内で Bun とバックエンドを起動し、学習済みモデルを **Google Drive** (`MyDrive/UniversalGameEngine/models/`) に保存します。
 
 ## ローカルで学習する
@@ -51,7 +52,10 @@ python -m uge_rl.train --game othello --episodes 2000 --out ../../models/othello
 # 3b. AlphaZero の学習（1 イテレーション = 自己対戦 N 局 + 勾配更新）
 python -m uge_rl.train_az --game othello --iterations 30 --games-per-iter 20 --simulations 100 --out ../../models/othello_az.pt
 
-# 3c. 将棋の AlphaZero（1 局が長いので --max-moves で打ち切る。task ml:train-az-shogi と同じ）
+# 3c. 将棋の DQN（task ml:train-shogi と同じ。1 局が長いので --max-moves で引き分け打ち切り）
+python -m uge_rl.train --game shogi --episodes 3000 --max-moves 256 --eps-decay-steps 200000 --out ../../models/shogi_dqn.pt
+
+# 3d. 将棋の AlphaZero（task ml:train-az-shogi と同じ）
 python -m uge_rl.train_az --game shogi --iterations 30 --games-per-iter 10 --simulations 100 --max-moves 256 --dirichlet-alpha 0.15 --out ../../models/shogi_az.pt
 
 # 4. 評価（どちらの形式でも同じコマンド。format を見て復元する）
