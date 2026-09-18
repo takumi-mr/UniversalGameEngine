@@ -13,11 +13,8 @@ export class ReplayEngine<
   TOptions = Record<string, unknown>,
 > {
   private engine: UniversalEngine<TState, TAction, TOptions>;
-  private rules: GameRuleset<TState, TAction, TOptions>;
 
   constructor(rules: GameRuleset<TState, TAction, TOptions>, record: GameRecord<TState, TAction>) {
-    this.rules = rules;
-
     // 初期状態のRNG設定を確認
     const options = {
       clientSeed: record.clientSeed,

@@ -18,7 +18,6 @@ export class Go3DUI {
   private hitBoxes: THREE.Mesh[] = [];
 
   private currentState: GoState | null = null;
-  private currentHovered: THREE.Mesh | null = null;
   private ghostStone: THREE.Mesh | null = null;
 
   private animationId: number | null = null;

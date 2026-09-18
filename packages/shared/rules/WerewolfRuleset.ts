@@ -167,11 +167,6 @@ function allVotesCollected(state: WerewolfState): boolean {
   return true;
 }
 
-/** 人狼プレイヤーIDリストを取得 */
-function _getWerewolfIds(state: WerewolfState): string[] {
-  return state.playerIds.filter((id) => state.roles[id].value === "werewolf");
-}
-
 /** 投票結果から最多票のプレイヤーを決定（同率なら先頭を選択） */
 function resolveVote(votes: Record<string, string>): string | null {
   const tally: Record<string, number> = {};

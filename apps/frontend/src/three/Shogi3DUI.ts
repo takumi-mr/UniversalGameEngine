@@ -273,13 +273,13 @@ export class Shogi3DUI {
       return group;
     } catch (e) {
       console.warn(`Failed to load shogi model: ${modelPath}`, e);
-      const placeholder = this.createPlaceholderPiece(type, color);
+      const placeholder = this.createPlaceholderPiece(color);
       this.modelCache.set(cacheKey, placeholder);
       return placeholder;
     }
   }
 
-  private createPlaceholderPiece(type: number, color: number): THREE.Object3D {
+  private createPlaceholderPiece(color: number): THREE.Object3D {
     const group = new THREE.Group();
     const geom = new THREE.BoxGeometry(0.7, 0.15, 0.85);
     const mat = new THREE.MeshPhysicalMaterial({

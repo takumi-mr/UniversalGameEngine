@@ -23,10 +23,12 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
 
+    // 未使用の変数・引数はエラー（引数は _ 接頭辞で免除。ローカル変数は免除されないので削除する）
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
     // 意図的に無効にしているもの（有効化は別 PR で）
     "noUncheckedIndexedAccess": false,
-    "noPropertyAccessFromIndexSignature": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noPropertyAccessFromIndexSignature": false
   }
 }

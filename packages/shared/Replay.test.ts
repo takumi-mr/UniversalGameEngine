@@ -75,7 +75,7 @@ describe("Replay System", () => {
   test("should handle RNG consistency (Provably Fair)", () => {
     const rulesWithRNG: GameRuleset<MockState, MockAction, MockOptions> = {
       ...mockRules,
-      reduce: (state, action, rng) => {
+      reduce: (state, _action, rng) => {
         const roll = rng ? rng.nextInt(1, 10) : 1;
         return {
           ...state,

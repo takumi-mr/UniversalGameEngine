@@ -57,7 +57,7 @@
     </div>
 
     <!-- Main Canvas Arena -->
-    <div ref="arenaWrapperRef" class="arena-wrapper">
+    <div class="arena-wrapper">
       <canvas
         ref="canvasRef"
         :width="ARENA_WIDTH"
@@ -247,7 +247,6 @@ const TICK_MS = 1000 / TICK_RATE;
 const HEARTBEAT_MS = 100;
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
-const arenaWrapperRef = ref<HTMLDivElement | null>(null);
 
 const simulatedLatency = ref<number>(50); // 人工遅延（RTT, ms）
 const showServerGhost = ref<boolean>(true);

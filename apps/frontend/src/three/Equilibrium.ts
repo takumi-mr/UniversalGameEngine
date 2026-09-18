@@ -81,9 +81,9 @@ export class Equilibrium {
 
     // 1. 中央のオークションプール
     if (state.phase === "AUCTION") {
-      state.auctionPool.forEach((card, i) => {
+      state.auctionPool.forEach((_card, i) => {
         const offset = (i - (state.auctionPool.length - 1) / 2) * 2.5;
-        this.createCard(card.name, offset, 0, 0, 0xffd700); // ゴールド
+        this.createCard(offset, 0, 0, 0xffd700); // ゴールド
       });
     }
 
@@ -92,14 +92,14 @@ export class Equilibrium {
       const isMe = pId === myPlayerId;
       const zBase = isMe ? 6 : -6; // 自分は手前、相手は奥
 
-      pData.board.forEach((card, i) => {
+      pData.board.forEach((_card, i) => {
         const offset = (i - (pData.board.length - 1) / 2) * 2;
-        this.createCard(card.name, offset, 0, zBase, isMe ? 0x4ade80 : 0xf87171);
+        this.createCard(offset, 0, zBase, isMe ? 0x4ade80 : 0xf87171);
       });
     });
   }
 
-  private createCard(name: string, x: number, y: number, z: number, colorHex: number) {
+  private createCard(x: number, y: number, z: number, colorHex: number) {
     const geo = new THREE.BoxGeometry(1.5, 0.05, 2.2);
     const mat = new THREE.MeshStandardMaterial({
       color: colorHex,

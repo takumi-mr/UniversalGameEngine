@@ -73,7 +73,6 @@ function evaluatePlay(cards: Card[]): { size: number; strength: number } | null 
   // 複数枚出し（ペア、スリーカード等）。階段（シークエンス）は本実装では非対応とする。
   // ジョーカーをワイルドカードとして扱う判定
   const nonJokers = strengths.filter((s) => s !== 16);
-  const _jokersCount = strengths.length - nonJokers.length;
 
   // ジョーカー以外がすべて同じランク（強さ）であれば有効
   const isSameRank = nonJokers.every((s) => s === nonJokers[0]);

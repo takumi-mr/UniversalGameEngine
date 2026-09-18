@@ -145,7 +145,7 @@ export const PokemonTCGRegistry: Record<string, CardDefinition> = {
     id: "t_potion",
     name: "Potion",
     category: "TRAINER",
-    onPlay: (state, playerId, targetInstanceId) => {
+    onPlay: (state, _playerId, targetInstanceId) => {
       // 対象のポケモンのHPを30回復（最大HPは超えない処理が必要だがここでは簡略化）
       state.effectStack.push({ type: "HEAL", targetInstanceId, amount: 30 });
     },
