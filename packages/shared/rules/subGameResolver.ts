@@ -5,10 +5,13 @@
 // 循環になる。GameRegistry が起動時にここへリゾルバを登録し、メタ系ルールセットはこれだけに依存する。
 import type { BaseGameAction, BaseGameState, GameRuleset } from "@engine/shared/GameRules";
 
+/** 具体的な State / Action 型を消した（レジストリ経由で扱う）ルールセット */
+export type AnyRuleset = GameRuleset<BaseGameState, BaseGameAction>;
+
 export interface SubGameDefinition {
   type: string;
   name: string;
-  ruleset: GameRuleset<any, any>;
+  ruleset: AnyRuleset;
   minPlayers: number;
   maxPlayers: number;
 }
@@ -29,5 +32,3 @@ export function resolveSubGame(type: string): SubGameDefinition | undefined {
   }
   return resolver(type);
 }
-
-export type AnyRuleset = GameRuleset<BaseGameState, BaseGameAction>;

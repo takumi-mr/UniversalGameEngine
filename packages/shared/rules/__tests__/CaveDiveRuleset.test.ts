@@ -1,8 +1,8 @@
 // packages/shared/rules/__tests__/CaveDiveRuleset.test.ts
 import { describe, it, expect } from "bun:test";
-import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { UniversalEngine, type InternalGameState } from "@engine/shared/UniversalEngine";
 import { ReplayEngine } from "@engine/shared/ReplayEngine";
-import { createSecret } from "@engine/shared/GameRules";
+import { createSecret, type Masked } from "@engine/shared/GameRules";
 import {
   CaveDiveRuleset,
   TOTAL_ROUNDS,
@@ -28,6 +28,9 @@ function started(seed = "cave", players = P): Engine {
 }
 
 const S = (e: Engine) => e.getState();
+/** playerId から見えるマスク済み状態（Secret は展開されているので Masked 型で扱う） */
+const masked = (e: Engine, playerId: string) =>
+  e.getMaskedState(playerId) as unknown as Masked<CaveDiveState>;
 
 /**
  * 残り山札を差し替える（末尾が次にめくられる）。テストで展開を固定するため
@@ -68,12 +71,12 @@ describe("CaveDiveRuleset", () => {
   it("山札と他人の選択は見えない。自分の選択は見える", () => {
     const engine = started();
     engine.dispatch({ type: "CHOOSE", playerId: "a", choice: "LEAVE" });
-    const forB = engine.getMaskedState("b") as any;
-    const forA = engine.getMaskedState("a") as any;
+    const forB = masked(engine, "b");
+    const forA = masked(engine, "a");
     expect(forB.deck).toEqual({ remaining: 29 });
     expect(forB.choices.a).toBe("?");
     expect(forA.choices.a).toBe("LEAVE");
-    expect((engine.getMaskedState("SPECTATOR") as any).choices.a).toBe("?");
+    expect(masked(engine, "SPECTATOR").choices.a).toBe("?");
     // 選択済みの人は手番から外れ、二重に選べない
     expect(S(engine).activePlayers).toEqual(["b", "c"]);
     expect(engine.getLegalActions("a")).toEqual([]);
@@ -146,9 +149,9 @@ describe("CaveDiveRuleset", () => {
     expect(engine.dispatch({ type: "TORCH", playerId: "a" })).toBe(true);
     const s = S(engine);
     expect(s.torchUsed.a).toBe(true);
-    expect((engine.getMaskedState("a") as any).peek.a).toEqual(TRAP("FIRE"));
-    expect((engine.getMaskedState("b") as any).peek.a).toBe("?");
-    expect((engine.getMaskedState("b") as any).torchUsed.a).toBe(true);
+    expect(masked(engine, "a").peek.a).toEqual(TRAP("FIRE"));
+    expect(masked(engine, "b").peek.a).toBe("?");
+    expect(masked(engine, "b").torchUsed.a).toBe(true);
     // 覗いた後も選択はできる。松明は二度使えない
     expect(engine.getLegalActions("a").map((x) => x.type)).toEqual(["CHOOSE", "CHOOSE"]);
     expect(engine.dispatch({ type: "TORCH", playerId: "a" })).toBe(false);
@@ -201,7 +204,7 @@ describe("CaveDiveRuleset", () => {
     const record = engine.getGameRecord("g");
     const replay = new ReplayEngine(CaveDiveRuleset, {
       ...record,
-      finalServerSeed: (fin as any).prngSecret,
+      finalServerSeed: (fin as InternalGameState).prngSecret,
     });
     expect(replay.verify(record)).toBe(true);
     expect(replay.getState().bank).toEqual(fin.bank);

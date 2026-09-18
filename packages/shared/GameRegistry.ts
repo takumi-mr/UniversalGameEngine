@@ -44,8 +44,14 @@ export interface GameDefinition<TState extends BaseGameState, TAction extends Ba
   rules?: string;
 }
 
+/**
+ * レジストリから取り出した定義。具体的な State / Action 型は登録時に消えているので、
+ * 利用側はエンジン共通の BaseGameState / BaseGameAction として扱う。
+ */
+export type AnyGameDefinition = GameDefinition<BaseGameState, BaseGameAction>;
+
 class GameRegistry {
-  private games = new Map<string, GameDefinition<any, any>>();
+  private games = new Map<string, AnyGameDefinition>();
 
   constructor() {
     this.register({
@@ -406,10 +412,11 @@ class GameRegistry {
   register<TState extends BaseGameState, TAction extends BaseGameAction>(
     def: GameDefinition<TState, TAction>,
   ) {
-    this.games.set(def.type, def);
+    // 型ごとに異なるルールセットを 1 つの Map に入れるため、ここで型を消す
+    this.games.set(def.type, def as unknown as AnyGameDefinition);
   }
 
-  getDefinition(type: string): GameDefinition<any, any> | undefined {
+  getDefinition(type: string): AnyGameDefinition | undefined {
     return this.games.get(type);
   }
 

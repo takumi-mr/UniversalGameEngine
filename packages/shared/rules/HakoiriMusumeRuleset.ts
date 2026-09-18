@@ -46,7 +46,7 @@ const INITIAL_BLOCKS: Block[] = [
 ];
 
 export const HakoiriMusumeRuleset: GameRuleset<HakoiriMusumeState, HakoiriMusumeAction> = {
-  getInitialState: (_options?: any, _rng?: IGameRNG): HakoiriMusumeState => ({
+  getInitialState: (_options?: unknown, _rng?: IGameRNG): HakoiriMusumeState => ({
     status: "PLAYING",
     blocks: structuredClone(INITIAL_BLOCKS),
     moveCount: 0,

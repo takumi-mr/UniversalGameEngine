@@ -10,7 +10,7 @@ import {
   type OthelloAction,
   type OthelloOptions,
 } from "@engine/shared/rules/OthelloRuleset";
-import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { UniversalEngine, type InternalGameState } from "@engine/shared/UniversalEngine";
 import { ReplayEngine } from "@engine/shared/ReplayEngine";
 
 const B = "black";
@@ -52,9 +52,9 @@ function startedEngine(seed = "othello", options: Record<string, unknown> = {}) 
     serverSeed: seed,
     ...options,
   } as OthelloOptions);
-  engine.dispatch({ type: "JOIN", playerId: B } as any);
-  engine.dispatch({ type: "JOIN", playerId: W } as any);
-  engine.dispatch({ type: "START", playerId: B } as any);
+  engine.dispatch({ type: "JOIN", playerId: B });
+  engine.dispatch({ type: "JOIN", playerId: W });
+  engine.dispatch({ type: "START", playerId: B });
   return engine;
 }
 
@@ -218,7 +218,7 @@ describe("OthelloRuleset: 対局", () => {
     const record = engine.getGameRecord("g");
     const replay = new ReplayEngine(OthelloRuleset, {
       ...record,
-      finalServerSeed: (fin as any).prngSecret,
+      finalServerSeed: (fin as InternalGameState).prngSecret,
     });
     expect(replay.verify(record)).toBe(true);
     expect(replay.getState().board).toEqual(fin.board);

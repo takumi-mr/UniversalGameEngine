@@ -147,12 +147,18 @@ const LIFE_BOARD: Board<LifeState> = {
 
 // --- Ruleset ---
 
-export const TheGameOfLifeRuleset: GameRuleset<LifeState, LifeAction> = {
-  getInitialState: (options?: any, _rng?: IGameRNG): LifeState => {
+export interface LifeOptions {
+  // エンジンのシード（serverSeed / clientSeed）などもこのオブジェクトで渡される
+  [key: string]: unknown;
+  playerIds?: string[];
+}
+
+export const TheGameOfLifeRuleset: GameRuleset<LifeState, LifeAction, LifeOptions> = {
+  getInitialState: (options?: LifeOptions, _rng?: IGameRNG): LifeState => {
     const playerIds = options?.playerIds || ["P1", "P2"];
     const boardPlayers: Record<string, LifePlayer> = {};
 
-    playerIds.forEach((id: string) => {
+    playerIds.forEach((id) => {
       boardPlayers[id] = {
         id,
         position: "START",
@@ -166,7 +172,7 @@ export const TheGameOfLifeRuleset: GameRuleset<LifeState, LifeAction> = {
 
     return {
       status: "WAITING",
-      players: Object.fromEntries(playerIds.map((id: string) => [id, id])),
+      players: Object.fromEntries(playerIds.map((id) => [id, id])),
       activePlayers: playerIds.length > 0 ? [playerIds[0]] : [],
       boardPlayers,
       turnOrder: playerIds,

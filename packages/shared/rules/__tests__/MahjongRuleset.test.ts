@@ -933,7 +933,7 @@ describe("MahjongRuleset: 合法手・タイムアウト・評価", () => {
       clientSeed: "mahjong-timeout-client",
     });
     for (const playerId of PLAYERS) {
-      expect(engine.dispatch({ type: "JOIN", playerId } as any)).toBe(true);
+      expect(engine.dispatch({ type: "JOIN", playerId })).toBe(true);
     }
     expect(engine.dispatch({ type: "START", playerId: "p1", timestamp: 1_000 })).toBe(true);
     expect(engine.getState().hands.p1.value).toHaveLength(14);
@@ -958,7 +958,7 @@ describe("MahjongRuleset: 合法手・タイムアウト・評価", () => {
     const deadline = state.turnDeadline!;
     expect(deadline).toBe(12_000);
     for (const playerId of state.activePlayers!) {
-      expect(engine.dispatch({ type: "TIMEOUT", playerId, timestamp: deadline } as any)).toBe(true);
+      expect(engine.dispatch({ type: "TIMEOUT", playerId, timestamp: deadline })).toBe(true);
     }
     expect(engine.getState().phase).toBe("PLAYING");
     expect(engine.getState().turnDeadline).toBeUndefined();

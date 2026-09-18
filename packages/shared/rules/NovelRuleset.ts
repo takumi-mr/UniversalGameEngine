@@ -1,14 +1,18 @@
 // packages/shared/rules/NovelRuleset.ts
 import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
 import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
-import { ScenarioEngine, type ScenarioNode } from "@engine/shared/utils/ScenarioEngine";
+import {
+  ScenarioEngine,
+  type ScenarioFlags,
+  type ScenarioNode,
+} from "@engine/shared/utils/ScenarioEngine";
 
 /**
  * ノベルゲームの状態
  */
 export interface NovelState extends BaseGameState {
   currentNodeId: string;
-  flags: Record<string, any>;
+  flags: ScenarioFlags;
   scenario: Record<string, ScenarioNode>;
 }
 
@@ -24,9 +28,18 @@ export interface NovelAction extends BaseGameAction {
  * ノベルゲーム用ルールセット
  * シナリオデータを解釈し、状態を遷移させる
  */
-export const NovelRuleset: GameRuleset<NovelState, NovelAction, any> = {
-  getInitialState: (options?: any, _rng?: IGameRNG): NovelState => {
-    const scenario = options?.scenario || {
+export interface NovelOptions {
+  // エンジンのシード（serverSeed / clientSeed）などもこのオブジェクトで渡される
+  [key: string]: unknown;
+  scenario?: Record<string, ScenarioNode>;
+  startNodeId?: string;
+  initialFlags?: ScenarioFlags;
+  players?: Record<string, string | null>;
+}
+
+export const NovelRuleset: GameRuleset<NovelState, NovelAction, NovelOptions> = {
+  getInitialState: (options?: NovelOptions, _rng?: IGameRNG): NovelState => {
+    const scenario: Record<string, ScenarioNode> = options?.scenario || {
       start: { type: "text", text: "No scenario provided." },
     };
     const startNodeId = options?.startNodeId || "start";

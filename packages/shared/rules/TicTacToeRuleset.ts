@@ -26,7 +26,7 @@ const WIN_LINES = [
 ];
 
 export const TicTacToeRuleset: GameRuleset<TicTacToeState, TicTacToeAction> = {
-  getInitialState: (_options?: any, _rng?: IGameRNG): TicTacToeState => ({
+  getInitialState: (_options?: unknown, _rng?: IGameRNG): TicTacToeState => ({
     status: "WAITING",
     board: Array(9).fill(0),
     turn: 1,

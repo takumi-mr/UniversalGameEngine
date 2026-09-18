@@ -1,8 +1,15 @@
 // apps/backend/network/StreamManager.ts
 import * as grpc from "@grpc/grpc-js";
 import { publishClusterEvent } from "@engine/backend/network/io";
+import type { GameEvent } from "@engine/shared/network/generated/universal_game_engine/GameEvent";
+import type { JoinGameRequest__Output } from "@engine/shared/network/generated/universal_game_engine/JoinGameRequest";
+import type { WaitForTurnRequest__Output } from "@engine/shared/network/generated/universal_game_engine/WaitForTurnRequest";
+import type { WaitForTurnResponse } from "@engine/shared/network/generated/universal_game_engine/WaitForTurnResponse";
 
-type GrpcStream = grpc.ServerWritableStream<any, any>;
+/** StreamEvents のサーバーストリーム（対局イベントの購読） */
+type GrpcStream = grpc.ServerWritableStream<JoinGameRequest__Output, GameEvent>;
+/** WaitForTurn のサーバーストリーム（gRPC ボットの手番待ち） */
+type BotStream = grpc.ServerWritableStream<WaitForTurnRequest__Output, WaitForTurnResponse>;
 
 interface StreamInfo {
   userId: string;
@@ -13,7 +20,7 @@ class StreamManager {
   private activeStreams = new Map<string, Set<StreamInfo>>();
 
   // AI用待機ストリーム (gameId -> playerId -> stream)
-  private botStreams = new Map<string, Map<string, GrpcStream>>();
+  private botStreams = new Map<string, Map<string, BotStream>>();
 
   /**
    * ストリームを登録する
@@ -52,7 +59,7 @@ class StreamManager {
    * ゲーム内の全gRPCストリームに通知を送る
    * eventGenerator は各ユーザーのIDを受け取り、そのユーザー向けにマスクされたイベントオブジェクトを返す
    */
-  public notify(gameId: string, eventGenerator: (userId: string) => any) {
+  public notify(gameId: string, eventGenerator: (userId: string) => GameEvent) {
     const streams = this.activeStreams.get(gameId);
     if (streams) {
       for (const info of streams) {
@@ -72,7 +79,7 @@ class StreamManager {
   /**
    * 特定のイベント（チャットなど、全員共通のもの）を全gRPCストリームに通知する
    */
-  public broadcast(gameId: string, event: any) {
+  public broadcast(gameId: string, event: GameEvent) {
     const streams = this.activeStreams.get(gameId);
     if (streams) {
       for (const info of streams) {
@@ -91,7 +98,7 @@ class StreamManager {
   /**
    * AIボットのターン待ち受けストリームを登録する
    */
-  public addBotStream(gameId: string, playerId: string, stream: GrpcStream) {
+  public addBotStream(gameId: string, playerId: string, stream: BotStream) {
     if (!this.botStreams.has(gameId)) {
       this.botStreams.set(gameId, new Map());
     }

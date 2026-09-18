@@ -1,7 +1,7 @@
 // packages/shared/rules/__tests__/DecathlonRuleset.test.ts
 import { describe, it, expect } from "bun:test";
 import "@engine/shared/GameRegistry"; // サブゲームのリゾルバを登録する
-import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { UniversalEngine, type InternalGameState } from "@engine/shared/UniversalEngine";
 import { ReplayEngine } from "@engine/shared/ReplayEngine";
 import {
   DecathlonRuleset,
@@ -10,9 +10,13 @@ import {
   type DecathlonAction,
 } from "@engine/shared/rules/DecathlonRuleset";
 import type { TicTacToeAction } from "@engine/shared/rules/TicTacToeRuleset";
+import type { Masked } from "@engine/shared/GameRules";
 
 type Engine = UniversalEngine<DecathlonState, DecathlonAction>;
 const S = (e: Engine) => e.getState();
+/** playerId から見えるマスク済み状態（Secret は展開されているので Masked 型で扱う） */
+const masked = (e: Engine, playerId: string) =>
+  e.getMaskedState(playerId) as unknown as Masked<DecathlonState>;
 
 function started(players: string[], options: Record<string, unknown> = {}, seed = "deca"): Engine {
   const engine = new UniversalEngine<DecathlonState, DecathlonAction>(DecathlonRuleset, {
@@ -82,8 +86,8 @@ describe("DecathlonRuleset", () => {
     expect(engine.dispatch({ type: "DECLARE", playerId: "b", declaration: "SAFE" })).toBe(false);
 
     engine.dispatch({ type: "DECLARE", playerId: "a", declaration: "BOLD" });
-    expect((engine.getMaskedState("c") as any).declarations.a).toBe("?");
-    expect((engine.getMaskedState("a") as any).declarations.a).toBe("BOLD");
+    expect(masked(engine, "c").declarations.a).toBe("?");
+    expect(masked(engine, "a").declarations.a).toBe("BOLD");
     expect(S(engine).activePlayers).toEqual(["c"]);
 
     engine.dispatch({ type: "DECLARE", playerId: "c", declaration: "SAFE" });
@@ -218,7 +222,7 @@ describe("DecathlonRuleset", () => {
     const record = engine.getGameRecord("g");
     const replay = new ReplayEngine(DecathlonRuleset, {
       ...record,
-      finalServerSeed: (fin as any).prngSecret,
+      finalServerSeed: (fin as InternalGameState).prngSecret,
     });
     expect(replay.verify(record)).toBe(true);
     expect(replay.getState().scores).toEqual(fin.scores);

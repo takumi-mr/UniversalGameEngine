@@ -24,10 +24,10 @@
       <!-- Side Piles (Used when stuck) -->
       <div class="side-pile-group">
         <div
-          v-if="(state.sidePiles as any)?.value?.[0]?.length > 0"
+          v-if="(revealed(state.sidePiles)?.[0]?.length ?? 0) > 0"
           class="card back mini pile-shadow"
         >
-          <span class="count">{{ (state.sidePiles as any).value[0].length }}</span>
+          <span class="count">{{ revealed(state.sidePiles)?.[0]?.length }}</span>
         </div>
         <div v-else class="empty-slot mini" />
       </div>
@@ -50,10 +50,10 @@
 
       <div class="side-pile-group">
         <div
-          v-if="(state.sidePiles as any)?.value?.[1]?.length > 0"
+          v-if="(revealed(state.sidePiles)?.[1]?.length ?? 0) > 0"
           class="card back mini pile-shadow"
         >
-          <span class="count">{{ (state.sidePiles as any).value[1].length }}</span>
+          <span class="count">{{ revealed(state.sidePiles)?.[1]?.length }}</span>
         </div>
         <div v-else class="empty-slot mini" />
       </div>
@@ -108,6 +108,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import type { SpeedState, SpeedAction, Card } from "@engine/shared/rules/SpeedRuleset";
+import { revealed } from "@/utils/revealed";
 
 const props = defineProps<{
   state: SpeedState;
@@ -127,18 +128,18 @@ const isHost = computed(() => props.state.playerIds[0] === myPlayerId.value);
 
 const opponentId = computed(() => props.state.playerIds.find((id) => id !== myPlayerId.value));
 
-const myHand = computed(() => (props.state.hands[myPlayerId.value] as any)?.value || []);
+const myHand = computed(() => revealed(props.state.hands[myPlayerId.value]) ?? []);
 const myDeckCount = computed(
-  () => (props.state.personalDecks[myPlayerId.value] as any)?.value?.length || 0,
+  () => revealed(props.state.personalDecks[myPlayerId.value])?.length ?? 0,
 );
 
 const opponentHandCount = computed(() => {
   if (!opponentId.value) return 0;
-  return (props.state.hands[opponentId.value] as any)?.value?.length || 0;
+  return revealed(props.state.hands[opponentId.value])?.length ?? 0;
 });
 const opponentDeckCount = computed(() => {
   if (!opponentId.value) return 0;
-  return (props.state.personalDecks[opponentId.value] as any)?.value?.length || 0;
+  return revealed(props.state.personalDecks[opponentId.value])?.length ?? 0;
 });
 
 const isStuck = computed(() => props.state.isStuck[myPlayerId.value] || false);

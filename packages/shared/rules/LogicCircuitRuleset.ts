@@ -40,8 +40,8 @@ function nextBlockId(blocks: Record<string, unknown>, prefix: string): string {
   return `${prefix}_${n}`;
 }
 
-export const LogicCircuitRuleset: GameRuleset<LogicCircuitState, any> = {
-  getInitialState: (_options?: any, _rng?: IGameRNG): LogicCircuitState => {
+export const LogicCircuitRuleset: GameRuleset<LogicCircuitState, LogicCircuitAction> = {
+  getInitialState: (_options?: unknown, _rng?: IGameRNG): LogicCircuitState => {
     return {
       status: "PLAYING",
       blocks: {},

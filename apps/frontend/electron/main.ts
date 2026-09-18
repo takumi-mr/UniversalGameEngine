@@ -2,6 +2,7 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import path from "node:path";
 import { GrpcNetworkClient } from "../network/GrpcNetworkClient";
+import type { BaseGameAction, BaseGameState } from "@engine/shared/GameRules";
 
 // ESM環境で __dirname を使えるようにする
 import { fileURLToPath } from "node:url";
@@ -10,7 +11,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
-let grpcClient: GrpcNetworkClient<any, any> | null = null;
+// Renderer 側でゲームごとの型に解釈するので、ここでは共通の基底型で扱う
+let grpcClient: GrpcNetworkClient<BaseGameState, BaseGameAction> | null = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({

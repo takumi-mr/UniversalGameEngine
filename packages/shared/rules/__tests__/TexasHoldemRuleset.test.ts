@@ -1,7 +1,7 @@
 // packages/shared/rules/__tests__/TexasHoldemRuleset.test.ts
 import { describe, it, expect } from "bun:test";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
-import { createSecret } from "@engine/shared/GameRules";
+import { createSecret, type Masked } from "@engine/shared/GameRules";
 import {
   TexasHoldemRuleset,
   type TexasHoldemState,
@@ -10,6 +10,9 @@ import {
 } from "@engine/shared/rules/TexasHoldemRuleset";
 
 type Engine = UniversalEngine<TexasHoldemState, TexasHoldemAction>;
+/** playerId から見えるマスク済み状態（Secret は展開されているので Masked 型で扱う） */
+const masked = (e: Engine, playerId: string) =>
+  e.getMaskedState(playerId) as unknown as Masked<TexasHoldemState>;
 const P = ["p1", "p2", "p3"];
 
 /** JOIN → START 済みのエンジン。dealer は p1（index 0）、SB = p2、BB = p3 */
@@ -122,11 +125,11 @@ describe("TexasHoldemRuleset: 開始とブラインド", () => {
 
   it("自分の手札だけ見える。山札と相手の手札は伏せられる", () => {
     const e = started();
-    const forP1 = e.getMaskedState("p1") as any;
+    const forP1 = masked(e, "p1");
     expect(forP1.hands.p1).toEqual(S(e).hands.p1.value);
     expect(forP1.hands.p2).toEqual(["?", "?"]);
     expect(forP1.deck).toEqual(S(e).deck.value.map(() => "?"));
-    expect((e.getMaskedState("SPECTATOR") as any).hands.p1).toEqual(["?", "?"]);
+    expect(masked(e, "SPECTATOR").hands.p1).toEqual(["?", "?"]);
   });
 });
 
@@ -259,7 +262,7 @@ describe("TexasHoldemRuleset: フェーズ進行", () => {
     expect(s.result?.showdown?.length).toBe(3);
     expect(s.result?.winnerIds.length).toBeGreaterThan(0);
     // ショーダウンでは残った全員の手札が公開される
-    const spectator = e.getMaskedState("SPECTATOR") as any;
+    const spectator = masked(e, "SPECTATOR");
     for (const p of P) expect(spectator.hands[p]).toEqual(s.hands[p].value);
   });
 
@@ -301,7 +304,7 @@ describe("TexasHoldemRuleset: 精算", () => {
     expect(s.playerChips).toEqual({ p1: 1030, p2: 990, p3: 980 });
     expect(s.pot).toBe(0);
     expect(s.message).toContain("p1 wins 90 chips");
-    expect((e.getMaskedState("p2") as any).hands.p1).toEqual(["?", "?"]);
+    expect(masked(e, "p2").hands.p1).toEqual(["?", "?"]);
     expect(act(e, "p1", "CHECK")).toBe(false);
   });
 
@@ -438,7 +441,7 @@ describe("TexasHoldemRuleset: 精算", () => {
     expect(s.playerChips).toEqual({ p1: 1003, p2: 993, p3: 1004 });
     expect(s.message).toContain("split the pot");
     // フォールドした p2 の手札は公開されない
-    expect((e.getMaskedState("SPECTATOR") as any).hands.p2).toEqual(["?", "?"]);
+    expect(masked(e, "SPECTATOR").hands.p2).toEqual(["?", "?"]);
   });
 
   it("同じシードなら同じ配札・同じ展開になる", () => {

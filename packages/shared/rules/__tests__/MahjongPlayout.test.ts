@@ -82,7 +82,7 @@ describe("Mahjong random playout", () => {
         serverSeed: `hand-${seed}`,
         clientSeed: "mahjong",
       });
-      for (const playerId of PLAYERS) engine.dispatch({ type: "JOIN", playerId } as any);
+      for (const playerId of PLAYERS) engine.dispatch({ type: "JOIN", playerId });
       expect(engine.dispatch({ type: "START", playerId: "p1" })).toBe(true);
       const picker = new MersenneTwisterRNG(seed);
       for (let step = 0; step < 1_000 && engine.getState().status === "PLAYING"; step++) {

@@ -7,10 +7,10 @@ import { withTestRng } from "@engine/shared/testing/withTestRng";
 
 // ルールセットを直接呼ぶテストなので、固定シードの RNG を補う
 const WerewolfRuleset = withTestRng(RealWerewolfRuleset);
-import type { WerewolfState } from "@engine/shared/rules/WerewolfRuleset";
+import type { WerewolfRole, WerewolfState } from "@engine/shared/rules/WerewolfRuleset";
 
 // テスト用ヘルパー: 特定の役職配分で状態を作成
-function createTestState(roleAssignment: Record<string, string>): WerewolfState {
+function createTestState(roleAssignment: Record<string, WerewolfRole>): WerewolfState {
   const playerIds = Object.keys(roleAssignment);
   const state = WerewolfRuleset.getInitialState({ playerIds });
   state.status = "PLAYING";
@@ -19,7 +19,7 @@ function createTestState(roleAssignment: Record<string, string>): WerewolfState 
   for (const [pId, role] of Object.entries(roleAssignment)) {
     state.roles[pId] = {
       __isSecret: true,
-      value: role as any,
+      value: role,
       visibleTo: [pId],
     };
   }

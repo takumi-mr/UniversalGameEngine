@@ -31,6 +31,7 @@ describe("LogicCircuitRuleset", () => {
     state = LogicCircuitRuleset.reduce(state, {
       type: "CONNECT",
       fromBlockId: swId,
+      fromPinIndex: 0,
       toBlockId: andId,
       toPinIndex: 0,
     });

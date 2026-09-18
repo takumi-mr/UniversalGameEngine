@@ -272,12 +272,12 @@ export class Chess3DUI {
         clearcoatRoughness: 0.05,
       });
 
-      group.traverse((node: any) => {
-        if (node.isMesh) {
+      group.traverse((node) => {
+        if (node instanceof THREE.Mesh) {
           node.material = glassMaterial;
-          node.material.map = null;
-          node.material.vertexColors = false;
-          node.material.needsUpdate = true;
+          glassMaterial.map = null;
+          glassMaterial.vertexColors = false;
+          glassMaterial.needsUpdate = true;
 
           node.castShadow = true;
           node.receiveShadow = true;

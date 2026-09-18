@@ -7,13 +7,24 @@ import { UniversalEngine } from "@engine/shared/UniversalEngine";
  * UniversalEngineをラップし、WebSocketのPush通信（Broadcast）と、
  * Polling通信（Get）の両方に対応できる抽象化された通信層を提供します。
  */
+/** クライアントへ送る通知（状態更新） */
+export interface StateUpdatePayload<TState> {
+  type: "STATE_UPDATE";
+  state: TState;
+}
+
+/** プレイヤーへの通信手段。WebSocket など send(text) を持つものを想定 */
+export interface ClientConnection {
+  send?: (data: string) => void;
+}
+
 export class GenericGameServer<TState extends BaseGameState, TAction extends BaseGameAction> {
   public engine: UniversalEngine<TState, TAction>;
   public roomId: string;
 
   // プレイヤーIDと、そのプレイヤーへの通信手段（コールバック等）の管理
   // WebSocketなどの場合はここに接続クライアントの参照を保持する
-  private connectionMapping: Map<string, any> = new Map();
+  private connectionMapping: Map<string, ClientConnection> = new Map();
 
   constructor(roomId: string, engine: UniversalEngine<TState, TAction>) {
     this.roomId = roomId;
@@ -86,7 +97,7 @@ export class GenericGameServer<TState extends BaseGameState, TAction extends Bas
    */
 
   // 特定のプレイヤーにメッセージを送信する処理
-  private sendToClient(playerId: string, payload: any) {
+  private sendToClient(playerId: string, payload: StateUpdatePayload<TState>) {
     // 例: ws.send(JSON.stringify(payload))
     const connection = this.connectionMapping.get(playerId);
     if (connection && typeof connection.send === "function") {
@@ -99,13 +110,13 @@ export class GenericGameServer<TState extends BaseGameState, TAction extends Bas
   }
 
   // 観戦者全体にメッセージを送信する処理
-  private sendToSpectators(_payload: any) {
+  private sendToSpectators(_payload: StateUpdatePayload<TState>) {
     // 例: broadcast to all non-player connections
     console.log(`[GenericGameServer] 観戦者に状態を送信`);
   }
 
   // （参考）クライアント接続時の登録処理
-  public registerConnection(playerId: string, connection: any) {
+  public registerConnection(playerId: string, connection: ClientConnection) {
     this.connectionMapping.set(playerId, connection);
   }
 }

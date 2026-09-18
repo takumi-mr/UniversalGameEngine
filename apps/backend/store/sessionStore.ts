@@ -7,6 +7,7 @@
 //   withSession(gameId): ロック → キャッシュ（なければ復元） → ストアより古ければ再読込 → 処理 → commit（配信 + 保存）
 // の手順で対局を進めるので、クライアントがどのインスタンスに接続していても同じ結果になる。
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import type { BaseGameAction, BaseGameState } from "@engine/shared/GameRules";
 import { InMemoryDummyRepository } from "@engine/backend/infra/InMemoryDummyRepository";
 import { HybridGameRepository } from "@engine/backend/infra/HybridGameRepository";
 import { GenericGameServer } from "@engine/shared/network/GenericGameServer";
@@ -22,29 +23,37 @@ import { fetchLocalSockets, publishClusterEvent } from "@engine/backend/network/
 
 export const normalizeGameType = (type: string) => type.toLowerCase().replace(/-/g, "_");
 
+/**
+ * サーバーが扱うエンジン / AI プレイヤー。
+ * ゲームごとの State / Action 型はレジストリ（gameRegistry.getDefinition）で消えているので、
+ * ここではエンジン共通の BaseGameState / BaseGameAction として扱う。
+ */
+export type SessionEngine = UniversalEngine<BaseGameState, BaseGameAction>;
+export type SessionAIPlayer = IAIPlayer<BaseGameState, BaseGameAction>;
+
 /** broadcastLocal で targetId（プレイヤー / SPECTATOR）ごとに 1 回だけ用意する配信用データ */
 interface PreparedState {
   targetId: string;
   /** マスク済み状態（version / hash 付与済み） */
-  maskedState: any;
+  maskedState: BaseGameState;
   /** maskedState の JSON */
   json: string;
   /** クライアントが受け取る形（JSON 経由）の状態。lastSentState に共有で保持する */
-  sent: any;
+  sent: BaseGameState;
   /** 基準バージョン → その版からの差分（同じ targetId のソケットで共有） */
   patches: Map<number, { patch: Operation[]; payload: string }>;
 }
 
-export class SocketGameServer extends GenericGameServer<any, any> {
+export class SocketGameServer extends GenericGameServer<BaseGameState, BaseGameAction> {
   // ソケットごとに最後に送信した「マスク済み状態」を記録する（差分送信用。インスタンスローカル）
-  private lastSentState: Map<string, any> = new Map();
+  private lastSentState: Map<string, BaseGameState> = new Map();
 
   // ゲームタイプ（正規化済み）
   public gameType: string;
 
   // AI プレイヤー。bots が永続化される定義、aiPlayers はそこから生成した実行時オブジェクト
   public bots: BotSpec[] = [];
-  public aiPlayers: Map<string, IAIPlayer<any, any>> = new Map();
+  public aiPlayers: Map<string, SessionAIPlayer> = new Map();
   private computingAIPlayers: Set<string> = new Set();
 
   // 終局時のリプレイ記録の追記が済んだか（重複追記を避けるためのフラグ）
@@ -53,13 +62,13 @@ export class SocketGameServer extends GenericGameServer<any, any> {
   /** 何手溜まったらリプレイ記録へ追記して履歴を切り詰めるか（テストで差し替え可能） */
   public static replayFlushSize = REPLAY_FLUSH_SIZE;
 
-  constructor(roomId: string, engine: UniversalEngine<any, any>, gameType: string) {
+  constructor(roomId: string, engine: SessionEngine, gameType: string) {
     super(roomId, engine);
     this.gameType = normalizeGameType(gameType);
   }
 
   /** ボットを追加する（定義と実行時オブジェクトの両方） */
-  public addBot(spec: BotSpec): IAIPlayer<any, any> | null {
+  public addBot(spec: BotSpec): SessionAIPlayer | null {
     const player = createBotPlayer(spec, this.roomId, this.gameType);
     if (!player) return null;
     this.bots.push(spec);
@@ -74,7 +83,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
     for (const spec of bots) this.addBot(spec);
   }
 
-  public toRecord(): SessionRecord<any> {
+  public toRecord(): SessionRecord<BaseGameState> {
     return {
       type: this.gameType,
       state: this.engine.getState(),
@@ -170,7 +179,10 @@ export class SocketGameServer extends GenericGameServer<any, any> {
    * アクションを 1 手適用する。ロック → 最新化 → dispatch → 配信 → 保存 までを行う。
    * Socket.io / HTTP / gRPC / AI のすべての着手はここを通る。
    */
-  public async dispatchAction(playerId: string, action: any): Promise<boolean> {
+  public async dispatchAction<TAction extends BaseGameAction>(
+    playerId: string,
+    action: TAction,
+  ): Promise<boolean> {
     return repo.withSessionLock(this.roomId, async () => {
       await this.refreshFromStore();
       // セキュリティ: 送信元の playerId をアクションに強制付与（改ざん防止）
@@ -183,7 +195,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
   }
 
   /** @deprecated ロックと保存を伴わないので使わない。dispatchAction を使うこと */
-  public override handleAction(_playerId: string, _action: any): boolean {
+  public override handleAction(_playerId: string, _action: BaseGameAction): boolean {
     throw new Error("SocketGameServer.handleAction is disabled; use dispatchAction()");
   }
 
@@ -214,6 +226,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
    */
   public broadcastLocal(targetSocketId?: string): void {
     const state = this.engine.getState();
+    const version = state.version ?? 0;
     const players = state.players ? (Object.values(state.players).filter(Boolean) as string[]) : [];
     const isForceFull = !!targetSocketId;
 
@@ -224,7 +237,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
       if (!entry) {
         const maskedState = this.engine.getMaskedState(targetId);
         // version と hash を付与
-        maskedState.version = state.version;
+        maskedState.version = version;
         maskedState.hash = calculateStateHash(maskedState);
         const json = JSON.stringify(maskedState);
         // 「最後に送った状態」はクライアントが受け取ったものと同じ（JSON を経由した）形で持つ。
@@ -252,7 +265,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
             !isForceFull &&
             previousState &&
             previousState.version !== undefined &&
-            previousState.version < maskedState.version
+            previousState.version < version
           ) {
             // 差分（パッチ）を生成（同じ基準バージョンのソケット同士では共有）
             let cached = entry.patches.get(previousState.version);
@@ -268,7 +281,7 @@ export class SocketGameServer extends GenericGameServer<any, any> {
               socket.emit("state-patch", {
                 patch: cached.patch,
                 baseVersion: previousState.version,
-                targetVersion: maskedState.version,
+                targetVersion: version,
                 hash: maskedState.hash,
               });
               this.lastSentState.set(socketId, entry.sent);
@@ -371,14 +384,14 @@ export const sessions = new Map<string, GameSession>();
 export const EMPTY_ROOM_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 // ★ 環境によってリポジトリの実装を切り替えるファクトリ関数
-function createRepository(): IGameRepository<any> {
+function createRepository(): IGameRepository<BaseGameState> {
   if (useInMemoryStore()) {
     console.log("🚀 Initializing repository in-memory (RL_MODE / test)");
     return new InMemoryDummyRepository();
   }
 
   console.log("🌍 Initializing repository in PRODUCTION_MODE (HybridGameRepository)");
-  return new HybridGameRepository<any>(REDIS_URL, MONGO_URL);
+  return new HybridGameRepository<BaseGameState>(REDIS_URL, MONGO_URL);
 }
 
 export const repo = createRepository();
@@ -386,8 +399,13 @@ export const repo = createRepository();
 /**
  * 新しいセッションを作る。エンジンを組み立てた後（ボット着席・自動開始など）に commit するのは呼び出し側。
  */
-export function createSession(gameId: string, engine: UniversalEngine<any, any>, type: string) {
-  const server = new SocketGameServer(gameId, engine, type);
+export function createSession<TState extends BaseGameState, TAction extends BaseGameAction>(
+  gameId: string,
+  engine: UniversalEngine<TState, TAction>,
+  type: string,
+) {
+  // ゲームごとの型はここで消す（サーバーはどのゲームも共通の基底型で扱う）
+  const server = new SocketGameServer(gameId, engine as unknown as SessionEngine, type);
   const session: GameSession = { server, type: server.gameType };
   sessions.set(gameId, session);
   return session;
@@ -401,7 +419,7 @@ export async function ensureSession(gameId: string): Promise<GameSession | null>
   const existing = sessions.get(gameId);
   if (existing) return existing;
 
-  let saved: SessionRecord<any> | null = null;
+  let saved: SessionRecord<BaseGameState> | null = null;
   try {
     saved = await repo.loadSession(gameId);
   } catch (err) {

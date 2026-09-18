@@ -1,7 +1,7 @@
 // packages/shared/__tests__/timeout.test.ts
 // エンジン組み込みの TIMEOUT: 時間切れは「アクション」として状態に入り、リプレイで再現できる。
 import { describe, it, expect } from "bun:test";
-import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { UniversalEngine, type InternalGameState } from "@engine/shared/UniversalEngine";
 import { ReplayEngine } from "@engine/shared/ReplayEngine";
 import {
   CaveDiveRuleset,
@@ -83,7 +83,7 @@ describe("UniversalEngine builtin TIMEOUT", () => {
     const record = engine.getGameRecord("g");
     const replay = new ReplayEngine(CaveDiveRuleset, {
       ...record,
-      finalServerSeed: (s as any).prngSecret,
+      finalServerSeed: (s as InternalGameState).prngSecret,
     });
     expect(replay.verify(record)).toBe(true);
     expect(replay.getState().revealedChoices).toEqual({ a: "STAY", b: "LEAVE" });
@@ -91,14 +91,12 @@ describe("UniversalEngine builtin TIMEOUT", () => {
 
   it("getTimeoutAction が無ければ RESIGN として扱う（将棋）", () => {
     const engine = new UniversalEngine(ShogiRuleset, {});
-    engine.dispatch({ type: "JOIN", playerId: "sente" } as any);
-    engine.dispatch({ type: "JOIN", playerId: "gote" } as any);
-    engine.dispatch({ type: "START", playerId: "sente" } as any);
+    engine.dispatch({ type: "JOIN", playerId: "sente" });
+    engine.dispatch({ type: "JOIN", playerId: "gote" });
+    engine.dispatch({ type: "START", playerId: "sente" });
     engine.loadState({ ...engine.getState(), turnDeadline: T0 }, engine.getReplayData());
 
-    expect(engine.dispatch({ type: "TIMEOUT", playerId: "sente", timestamp: T0 } as any)).toBe(
-      true,
-    );
+    expect(engine.dispatch({ type: "TIMEOUT", playerId: "sente", timestamp: T0 })).toBe(true);
     const s = engine.getState();
     expect(s.status).toBe("FINISHED");
     expect(s.resignedBy).toBe(1);
@@ -108,14 +106,12 @@ describe("UniversalEngine builtin TIMEOUT", () => {
 
   it("RESIGN も無ければ手番側の負けとして強制終了する（三目並べ）", () => {
     const engine = new UniversalEngine(TicTacToeRuleset, {});
-    engine.dispatch({ type: "JOIN", playerId: "x" } as any);
-    engine.dispatch({ type: "JOIN", playerId: "o" } as any);
-    engine.dispatch({ type: "START", playerId: "x" } as any);
+    engine.dispatch({ type: "JOIN", playerId: "x" });
+    engine.dispatch({ type: "JOIN", playerId: "o" });
+    engine.dispatch({ type: "START", playerId: "x" });
     engine.loadState({ ...engine.getState(), turnDeadline: T0 }, engine.getReplayData());
 
-    expect(engine.dispatch({ type: "TIMEOUT", playerId: "x", timestamp: T0 + 5 } as any)).toBe(
-      true,
-    );
+    expect(engine.dispatch({ type: "TIMEOUT", playerId: "x", timestamp: T0 + 5 })).toBe(true);
     const s = engine.getState();
     expect(s.status).toBe("FINISHED");
     expect(s.message).toContain("timed out");

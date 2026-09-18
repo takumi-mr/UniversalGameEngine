@@ -55,15 +55,21 @@ function createDeck(rng?: IGameRNG): Card[] {
   return deck;
 }
 
-export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction> = {
-  getInitialState: (options?: any, _rng?: IGameRNG): SpeedState => {
+export interface SpeedOptions {
+  // エンジンのシード（serverSeed / clientSeed）などもこのオブジェクトで渡される
+  [key: string]: unknown;
+  playerIds?: string[];
+}
+
+export const SpeedRuleset: GameRuleset<SpeedState, SpeedAction, SpeedOptions> = {
+  getInitialState: (options?: SpeedOptions, _rng?: IGameRNG): SpeedState => {
     const playerIds = options?.playerIds || [];
     return {
       status: "WAITING",
       playerIds,
       players:
         playerIds.length > 0
-          ? playerIds.reduce((acc: any, id: string) => ({ ...acc, [id]: id }), {})
+          ? Object.fromEntries(playerIds.map((id) => [id, id]))
           : { 0: null, 1: null },
       hands: {},
       personalDecks: {},

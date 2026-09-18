@@ -14,8 +14,13 @@ import { gameRegistry } from "@engine/shared/GameRegistry";
 import { aiTensorRegistry } from "@engine/shared/ai/AITensorAdapterRegistry";
 // 組み込みテンソルアダプタ（othello 等）を aiTensorRegistry に登録する
 import "@engine/shared/ai/TensorAdapter";
-import { UniversalEngine, type UniversalEngineOptions } from "@engine/shared/UniversalEngine";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import type { BaseGameAction, BaseGameState } from "@engine/shared/GameRules";
+import type { AnyRuleset } from "@engine/shared/rules/subGameResolver";
+import { GrpcBotPlayer } from "@engine/shared/ai/AIPlayer/GrpcBotPlayer";
+import type { ProtoGrpcType } from "@engine/shared/network/generated/game";
 import type { GameServiceHandlers } from "@engine/shared/network/generated/universal_game_engine/GameService";
+import type { CreateGameRequest__Output } from "@engine/shared/network/generated/universal_game_engine/CreateGameRequest";
 import type { SimulateRequest } from "@engine/shared/network/generated/universal_game_engine/SimulateRequest";
 import type { SimulateResponse } from "@engine/shared/network/generated/universal_game_engine/SimulateResponse";
 import {
@@ -35,12 +40,14 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
   oneofs: true,
 });
 
-const protoDescriptor = grpc.loadPackageDefinition(packageDefinition);
-const universal_game_engine = (protoDescriptor as any).universal_game_engine;
+const protoDescriptor = grpc.loadPackageDefinition(packageDefinition) as unknown as ProtoGrpcType;
+const universal_game_engine = protoDescriptor.universal_game_engine;
 
-const authenticate = (
-  call: grpc.ServerUnaryCall<any, any> | grpc.ServerWritableStream<any, any>,
-): string | null => {
+/** 例外からクライアントへ返すメッセージを取り出す */
+const errorMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err));
+
+/** 認証はメタデータだけを見る（Unary / ストリームのどちらの call でも可） */
+const authenticate = (call: { metadata: grpc.Metadata }): string | null => {
   const metadata = call.metadata.get("authorization");
   if (metadata.length === 0) return "anonymous"; // モック環境や開発用
   const authHeader = metadata[0] as string;
@@ -56,13 +63,14 @@ const authenticate = (
 // Simulate 用のエンジンをゲームタイプごとに使い回す。
 // 生成コストが 1 回あたり約 25µs と大きく、ハンドラは同期実行なので共有しても安全。
 // ハッシュ計算は探索には不要なので autoHash を切っておく。
-type SimulationEngine = UniversalEngine<any, any, UniversalEngineOptions>;
+type SimulationEngine = UniversalEngine<BaseGameState, BaseGameAction>;
 const simulationEngines = new Map<string, SimulationEngine>();
-const getSimulationEngine = (gameType: string, ruleset: any): SimulationEngine => {
+const getSimulationEngine = (gameType: string, ruleset: AnyRuleset): SimulationEngine => {
   const cached = simulationEngines.get(gameType);
   if (cached) return cached;
-  const options: UniversalEngineOptions = { autoHash: false };
-  const engine: SimulationEngine = new UniversalEngine(ruleset, options);
+  const engine: SimulationEngine = new UniversalEngine<BaseGameState, BaseGameAction>(ruleset, {
+    autoHash: false,
+  });
   simulationEngines.set(gameType, engine);
   return engine;
 };
@@ -92,7 +100,7 @@ const simulateOnce = (req: SimulateRequest): SimulateResponse => {
   if (!adapter) return fail("AI Tensor Adapter not found for this game type");
   if (!req.stateJson) return fail("state_json is required");
 
-  let state: any;
+  let state: BaseGameState;
   try {
     state = JSON.parse(req.stateJson);
   } catch {
@@ -102,11 +110,11 @@ const simulateOnce = (req: SimulateRequest): SimulateResponse => {
   const engine = getSimulationEngine(gameType, def.ruleset);
   engine.loadState(state);
 
-  let action: any;
+  let action: BaseGameAction;
   try {
     action = adapter.decodeAction(engine.getState(), actionId, playerId);
-  } catch (err: any) {
-    return fail(err.message);
+  } catch (err) {
+    return fail(errorMessage(err));
   }
   action.playerId = playerId;
   if (!engine.dispatch(action)) return fail("Invalid action or not your turn");
@@ -138,7 +146,9 @@ const simulateOnce = (req: SimulateRequest): SimulateResponse => {
 };
 
 /** RL 専用 RPC のガード。RL_MODE でなければ PERMISSION_DENIED を返し、ハンドラ本体は実行しない */
-const requireRlMode = (callback: (err: any) => void): boolean => {
+const requireRlMode = (
+  callback: (err: Partial<grpc.StatusObject> & { message?: string }) => void,
+): boolean => {
   if (isRlMode()) return true;
   callback({
     code: grpc.status.PERMISSION_DENIED,
@@ -157,7 +167,10 @@ const gameServiceHandlers: GameServiceHandlers = {
       });
 
     // gameType と game_type、どちらの形式でリクエストが来ても受け取れるようにする
-    const req = call.request as any;
+    const req = call.request as CreateGameRequest__Output & {
+      game_type?: string;
+      options_json?: string;
+    };
     const rawGameType = req.gameType || req.game_type;
     const rawOptionsJson = req.optionsJson || req.options_json;
 
@@ -187,8 +200,8 @@ const gameServiceHandlers: GameServiceHandlers = {
 
       await scheduleRoomCleanup(gameId);
       callback(null, { gameId: gameId });
-    } catch (err: any) {
-      callback({ code: grpc.status.INTERNAL, message: err.message } as any);
+    } catch (err) {
+      callback({ code: grpc.status.INTERNAL, message: errorMessage(err) });
     }
   },
 
@@ -222,8 +235,8 @@ const gameServiceHandlers: GameServiceHandlers = {
           message: "Invalid action or not your turn",
         });
       }
-    } catch (err: any) {
-      callback({ code: grpc.status.INTERNAL, message: err.message } as any);
+    } catch (err) {
+      callback({ code: grpc.status.INTERNAL, message: errorMessage(err) });
     }
   },
 
@@ -267,10 +280,9 @@ const gameServiceHandlers: GameServiceHandlers = {
   StreamEvents: async (call) => {
     const userId = authenticate(call);
     if (!userId) {
-      call.destroy({
-        code: grpc.status.UNAUTHENTICATED,
-        message: "Invalid token",
-      } as any);
+      call.destroy(
+        Object.assign(new Error("Invalid token"), { code: grpc.status.UNAUTHENTICATED }),
+      );
       return;
     }
 
@@ -337,10 +349,10 @@ const gameServiceHandlers: GameServiceHandlers = {
         const slotKeys = Object.keys(state.players);
         const seated = slotKeys.map((_, i) => playerIds?.[i] || `player_${i + 1}`);
         slotKeys.forEach((slotKey, i) => {
-          engine.dispatch({ type: "JOIN", playerId: seated[i], slot: slotKey } as any);
+          engine.dispatch({ type: "JOIN", playerId: seated[i], slot: slotKey });
         });
         if (engine.getState().status === "WAITING") {
-          engine.dispatch({ type: "START", playerId: seated[0], timestamp: Date.now() } as any);
+          engine.dispatch({ type: "START", playerId: seated[0], timestamp: Date.now() });
         }
       }
       await session.server.commit();
@@ -366,8 +378,8 @@ const gameServiceHandlers: GameServiceHandlers = {
         stateJson: JSON.stringify(started),
       });
       return true;
-    }).catch((err: any) => {
-      callback({ code: grpc.status.INTERNAL, message: err.message } as any);
+    }).catch((err: unknown) => {
+      callback({ code: grpc.status.INTERNAL, message: errorMessage(err) });
       return true;
     });
 
@@ -453,8 +465,8 @@ const gameServiceHandlers: GameServiceHandlers = {
         activePlayers: activePlayers,
         stateJson: JSON.stringify(nextState),
       });
-    } catch (err: any) {
-      callback({ code: grpc.status.INTERNAL, message: err.message } as any);
+    } catch (err) {
+      callback({ code: grpc.status.INTERNAL, message: errorMessage(err) });
     }
   },
 
@@ -462,8 +474,8 @@ const gameServiceHandlers: GameServiceHandlers = {
     if (!requireRlMode(callback)) return;
     try {
       callback(null, simulateOnce(call.request));
-    } catch (err: any) {
-      callback({ code: grpc.status.INTERNAL, message: err.message } as any);
+    } catch (err) {
+      callback({ code: grpc.status.INTERNAL, message: errorMessage(err) });
     }
   },
 
@@ -472,8 +484,8 @@ const gameServiceHandlers: GameServiceHandlers = {
     try {
       const items = (call.request.items ?? []).map((req) => simulateOnce(req));
       callback(null, { items });
-    } catch (err: any) {
-      callback({ code: grpc.status.INTERNAL, message: err.message } as any);
+    } catch (err) {
+      callback({ code: grpc.status.INTERNAL, message: errorMessage(err) });
     }
   },
 
@@ -505,7 +517,7 @@ const gameServiceHandlers: GameServiceHandlers = {
         });
 
       const aiPlayer = session.server.aiPlayers.get(playerId);
-      if (!aiPlayer || typeof (aiPlayer as any).submitMove !== "function") {
+      if (!(aiPlayer instanceof GrpcBotPlayer)) {
         return callback({
           code: grpc.status.INVALID_ARGUMENT,
           message: "Player is not a GrpcBotPlayer or has no submitMove method",
@@ -515,7 +527,7 @@ const gameServiceHandlers: GameServiceHandlers = {
       const state = session.server.engine.getState();
       const action = adapter.decodeAction(state, actionId, playerId);
 
-      const success = (aiPlayer as any).submitMove(action);
+      const success = aiPlayer.submitMove(action);
       if (success) {
         callback(null, { success: true, message: "Bot Move Submitted" });
       } else {
@@ -524,8 +536,8 @@ const gameServiceHandlers: GameServiceHandlers = {
           message: "Bot is not waiting for a move",
         });
       }
-    } catch (err: any) {
-      callback({ code: grpc.status.INTERNAL, message: err.message } as any);
+    } catch (err) {
+      callback({ code: grpc.status.INTERNAL, message: errorMessage(err) });
     }
   },
 };
@@ -534,7 +546,7 @@ export const startGrpcServer = (
   port: number | string,
 ): Promise<{ server: grpc.Server; port: number }> => {
   const server = new grpc.Server();
-  server.addService(universal_game_engine.GameService.service, gameServiceHandlers as any);
+  server.addService(universal_game_engine.GameService.service, gameServiceHandlers);
   return new Promise((resolve, reject) => {
     server.bindAsync(
       `0.0.0.0:${port}`,

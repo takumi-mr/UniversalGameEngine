@@ -33,7 +33,7 @@ task ml:test                        # apps/ml の単体テスト（pytest、サ�
 
 bun run test                        # bun:test（packages/ と apps/backend）。パッケージ内で `bun test <pattern>` も可
 bun run test:frontend               # vitest（apps/frontend: jsdom + @vue/test-utils）。`cd apps/frontend && bun run test:watch` で watch
-bun run lint                        # eslint（warning は多数あるが error 0 が基準）
+bun run lint                        # eslint（error 0・warning 0 が基準。`any` は使わず、型を消す境界では `as unknown as X` と理由コメント）
 bun run type-check                  # vue-tsc --noEmit（ルート tsconfig で apps/** と packages/** を tsconfig.base.json の厳しさで検査）
 bun x prettier --check .            # フォーマット
 ```
@@ -57,7 +57,7 @@ applyWinResult?, getTimeoutAction?              // 任意
 ```
 
 - `BaseGameState` は `status: "WAITING" | "PLAYING" | "FINISHED"`, `players` (`{ "1": userId, "-1": userId }` のようなスロット→ID), `activePlayers`, `version`, `hash` を持つ。
-- **着席と開始はエンジンの組み込みアクション** `JOIN` / `START` で行う（`UniversalEngine.dispatch`）。`JOIN {playerId, slot?}` は `state.players` の空席に着席させ（ルールセットが JOIN を受け付ければその reduce も走る）、`START` はルールセットが START を持たなければ `status = "PLAYING"` にして合法手を持つプレイヤーを `activePlayers` にする。どちらも `history` / `version` に記録されるので、リプレイは着席から再現できる。サーバー（`join-game`、gRPC `Reset`）は必ず `dispatch` 経由で行い、`state.players[...] = ...` や `state.status = ...` を直接書かない（例外: `leave-game` の離席は未対応）。`isValidAction` は通常 `status !== "PLAYING"` なら false を返すため、ルールセットの単体テストでは `state.status = "PLAYING"; state.players = {...}` を手で設定する。
+- **着席と開始はエンジンの組み込みアクション** `JOIN` / `START` で行う（`UniversalEngine.dispatch`）。`JOIN {playerId, slot?}` は `state.players` の空席に着席させ（ルールセットが JOIN を受け付ければその reduce も走る）、`START` はルールセットが START を持たなければ `status = "PLAYING"` にして合法手を持つプレイヤーを `activePlayers` にする。どちらも `history` / `version` に記録されるので、リプレイは着席から再現できる。`dispatch` は `TAction | BuiltinAction`（`GameRules.ts`）を受け付けるので、`{ type: "JOIN", playerId }` をキャストなしで渡せる。サーバー（`join-game`、gRPC `Reset`）は必ず `dispatch` 経由で行い、`state.players[...] = ...` や `state.status = ...` を直接書かない（例外: `leave-game` の離席は未対応）。`isValidAction` は通常 `status !== "PLAYING"` なら false を返すため、ルールセットの単体テストでは `state.status = "PLAYING"; state.players = {...}` を手で設定する。
 - パス処理（オセロ等）は `reduce` 内で完結させる。手番プレイヤーには必ず合法手がある状態を返す。
 - 秘匿情報は `Secret<T>` / `createSecret()` で宣言し、`engine.getMaskedState(playerId)` に任せる（`maskState` は deprecated）。
 - 乱数は `IGameRNG` 経由のみ。**エンジンは常に RNG を渡す**（シード未指定でも自動生成し `prngConfig` / `prngSecret` に記録するので、あらゆる対局が再現可能）。ルールセットでは `requireRng(rng)`（`utils/requireRng.ts`）で受け取り、`Math.random` へのフォールバックは書かない — `determinism.test.ts` が全ゲームで `Math.random` 呼び出しを検出して落とす。ルールセットを直接呼ぶテストでは `testing/withTestRng.ts` でラップする。ID 生成も乱数に頼らない（`nextBlockId` のように既存キーから決定論的に採番する）。
@@ -104,7 +104,14 @@ applyWinResult?, getTimeoutAction?              // 任意
 - **コミット前フック**: `simple-git-hooks` + `lint-staged` が `prettier --write` と `eslint --fix` を staged ファイルに実行する。
 - **CI（`.github/workflows/pr-check.yml`）**: PR で 2 ジョブ。`test-and-lint` は `bun install --frozen-lockfile --ignore-scripts` → `prettier --check .` → `bun run lint` → `bun run type-check` → `bun run test`（bun:test） → `bun run test:frontend`（vitest）。`ml-test` は Python 3.12 + CPU 版 torch で `apps/ml` の `pytest tests`。`bun install` を prettier より先に走らせるのは、**package.json で固定した prettier（3.8.x）を使うため**。順序を変えると最新 prettier のルール差で既存ファイルが落ちる。
 - コミットメッセージは `feat:` / `fix:` / `refactor:` / `ci:` + 日本語の要約（既存ログに倣う）。マージは squash。
-- コードコメントは日本語、識別子は英語。ESLint の `any` 警告は既存コードに多いが、新規コードでは避ける。
+- コードコメントは日本語、識別子は英語。
+- **Lint は error 0 が必須**（CI の `bun run lint` で落ちる）。`@typescript-eslint/no-explicit-any` は error なので `any` は書かない。
+  - 型が本当に不明な値は `unknown` にして、使う場所で絞り込む（`err instanceof Error`, `typeof`, `instanceof THREE.Mesh` など）。
+  - ゲームごとの型を消す境界（`GameRegistry.register`, `createSession`, `aiTensorRegistry`）では `BaseGameState` / `BaseGameAction` を使い、どうしても互換が取れない箇所だけ `as unknown as X` と理由コメントを書く。
+  - 組み込みアクションは `engine.dispatch({ type: "JOIN", playerId })` とそのまま書く（`dispatch` は `TAction | BuiltinAction` を受け付ける）。マスク済み状態を読むテストは `Masked<TState>`、`prngSecret` は `InternalGameState` にキャストする。
+  - Vue コンポーネントでサーバーから届く `Secret<T>` は展開済みなので、`(x as any).value` ではなく `revealed(x)`（`apps/frontend/src/utils/revealed.ts`）で読む。
+  - テストのモック（Socket.IO の `Server` など）は `as unknown as Server` のように実際の型へキャストする。
+  - 無効化（`eslint-disable`）で回避しない。
 - **TypeScript の厳しさはルートの `tsconfig.base.json` で一元管理**し、全パッケージの tsconfig はそれを `extends` して lib / types / include だけを上書きする（frontend は `@vue/tsconfig` と base の多段 extends で、後者が優先）。有効: `strict`, `verbatimModuleSyntax`（型は `import type`）, `erasableSyntaxOnly`（`constructor(private x)` のようなパラメータプロパティ禁止）, `noImplicitOverride`, `noFallthroughCasesInSwitch`, `noUncheckedSideEffectImports`。無効: `noUncheckedIndexedAccess`（有効化すると repo 全体で 800 件超のエラーが出るため別 PR 扱い）, `noUnusedLocals/Parameters`（eslint に任せる）。フラグを足すときは base に足し、`bun run type-check` が通ることを確認する。
 - **import は相対パスでなくワークスペースごとのエイリアスを使う**（同一パッケージ内でも）。`@/*` → `apps/frontend/src/*`、`@engine/backend/*` → `apps/backend/*`、`@engine/shared/*` → `packages/shared/*`、`@engine/input-prediction(/*)` → `packages/input-prediction/*`。例外は frontend の `src` 外（`network/`, `electron/`）との行き来と `packages/shared/network/generated/`（`task proto` の生成物）だけ相対パス。
   - 型検査はルート `tsconfig.json` の paths（apps と packages を 1 プログラムで検査するので接頭辞は被らせない）。各パッケージの tsconfig にも同じ paths をエディタ用に置いてある。

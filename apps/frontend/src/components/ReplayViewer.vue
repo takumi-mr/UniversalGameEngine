@@ -87,9 +87,10 @@ import type {
 import { ProvablyFairRNG } from "@engine/shared/utils/ProvablyFairRNG";
 import { deepFreeze } from "@engine/shared/utils/freeze";
 
+// リプレイはゲーム種別を問わず再生するので、レジストリ由来の共通型で受け取る
 const props = defineProps<{
-  record: GameRecord<any, any>;
-  ruleset: GameRuleset<any, any>;
+  record: GameRecord<BaseGameState, BaseGameAction>;
+  ruleset: GameRuleset<BaseGameState, BaseGameAction>;
   playSpeedMs?: number;
 }>();
 
@@ -108,7 +109,7 @@ const reconstructStates = () => {
 
   // First state is exactly the initialState logged
   // Note: we deep clone to avoid mutating it later just in case
-  let state = JSON.parse(JSON.stringify(props.record.initialState));
+  let state: BaseGameState = JSON.parse(JSON.stringify(props.record.initialState));
   reconstructed.push(state);
 
   // Re-instantiate the exact RNG if we have the server seed

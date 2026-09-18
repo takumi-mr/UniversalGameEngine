@@ -70,7 +70,7 @@
             :class="{ 'is-active': isMyTurn && state.phase === 'DRAW_DECK' }"
             @click="drawDeck"
           >
-            <div class="deck-text">山札<br />({{ (state.deck as any)?.value?.length }})</div>
+            <div class="deck-text">山札<br />({{ revealed(state.deck)?.length }})</div>
           </div>
           <div v-if="isMyTurn" class="action-prompt">
             {{ turnPromptMessage }}
@@ -111,6 +111,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { HanafudaState, HanafudaAction, Card } from "@engine/shared/rules/HanafudaRuleset";
+import { revealed } from "@/utils/revealed";
 
 const props = defineProps<{
   state: HanafudaState;
@@ -136,8 +137,8 @@ const isMyTurn = computed(() => {
   return isPlayer.value && props.state.playerIds[props.state.turnIndex] === myId.value;
 });
 
-const myHand = computed(() => (props.state.hands[myId.value] as any)?.value || []);
-const oppHand = computed(() => (props.state.hands[oppId.value] as any)?.value || []);
+const myHand = computed(() => revealed(props.state.hands[myId.value]) ?? []);
+const oppHand = computed(() => revealed(props.state.hands[oppId.value]) ?? []);
 const myCaptured = computed(() => props.state.captured[myId.value] || []);
 const oppCaptured = computed(() => props.state.captured[oppId.value] || []);
 

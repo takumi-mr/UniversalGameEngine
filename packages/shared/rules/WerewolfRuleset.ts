@@ -259,10 +259,15 @@ function resolveNightActions(state: WerewolfState): {
 
 // --- ルールセット本体 ---
 
-export const WerewolfRuleset: GameRuleset<WerewolfState, WerewolfAction> = {
-  getInitialState: (options: any, rng?: IGameRNG): WerewolfState => {
-    const opts = options || {};
-    const playerIds: string[] = (opts.playerIds || []).filter((id: any) => !!id);
+export interface WerewolfOptions {
+  // エンジンのシード（serverSeed / clientSeed）などもこのオブジェクトで渡される
+  [key: string]: unknown;
+  playerIds?: (string | null | undefined)[];
+}
+
+export const WerewolfRuleset: GameRuleset<WerewolfState, WerewolfAction, WerewolfOptions> = {
+  getInitialState: (options?: WerewolfOptions, rng?: IGameRNG): WerewolfState => {
+    const playerIds = (options?.playerIds ?? []).filter((id): id is string => !!id);
 
     // 役職配分
     const rawRoles = playerIds.length > 0 ? assignRoles(playerIds, rng) : {};

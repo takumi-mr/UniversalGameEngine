@@ -54,7 +54,7 @@ const getRankLabel = (rank: number) => {
 
 // --- 4. ルールセット本体 ---
 export const HighLowRuleset: GameRuleset<HighLowState, HighLowAction> = {
-  getInitialState: (_options?: any, _rng?: IGameRNG) => {
+  getInitialState: (_options?: unknown, _rng?: IGameRNG) => {
     return {
       status: "WAITING",
       message: "Waiting for players...",
@@ -144,9 +144,7 @@ export const HighLowRuleset: GameRuleset<HighLowState, HighLowAction> = {
     newState.currentTurn = nextTurn;
 
     // 手番プレイヤーのIDを設定（AIの自動実行に必要）
-    const nextPlayerId = newState.players
-      ? newState.players[nextTurn] || newState.players[nextTurn.toString() as any]
-      : null;
+    const nextPlayerId = newState.players ? newState.players[nextTurn] : null;
     newState.activePlayers = nextPlayerId ? [nextPlayerId] : [];
 
     return newState;
@@ -201,9 +199,7 @@ export const HighLowRuleset: GameRuleset<HighLowState, HighLowAction> = {
     if (state.status !== "PLAYING") return [];
 
     const turn = state.currentTurn;
-    const currentPlayerId = state.players
-      ? state.players[turn] || state.players[turn.toString() as any]
-      : null;
+    const currentPlayerId = state.players ? state.players[turn] : null;
     if (currentPlayerId && currentPlayerId !== playerId) {
       return [];
     }

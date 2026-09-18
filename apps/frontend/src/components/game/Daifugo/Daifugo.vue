@@ -90,6 +90,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import type { DaifugoState, DaifugoAction, Card } from "@engine/shared/rules/DaifugoRuleset";
+import { revealed } from "@/utils/revealed";
 import CardFace from "@/components/game/Daifugo/DaifugoCardFace.vue"; // 後述のカードコンポーネント
 
 const props = defineProps<{
@@ -110,7 +111,7 @@ const isPlayer = computed(() => {
 const isMyTurn = computed(() => {
   return isPlayer.value && props.state.playerIds[props.state.turnIndex] === myId.value;
 });
-const myHand = computed(() => (props.state.hands[myId.value] as any)?.value || []);
+const myHand = computed(() => revealed(props.state.hands[myId.value]) ?? []);
 
 // 相手プレイヤーのリスト
 const opponents = computed(() => {
@@ -118,7 +119,7 @@ const opponents = computed(() => {
     .filter((id) => id !== myId.value)
     .map((id) => ({
       id,
-      cardCount: (props.state.hands[id] as any)?.value?.length || 0,
+      cardCount: revealed(props.state.hands[id])?.length ?? 0,
     }));
 });
 

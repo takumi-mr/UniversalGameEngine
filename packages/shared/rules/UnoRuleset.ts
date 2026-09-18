@@ -25,8 +25,14 @@ export interface UnoAction extends BaseGameAction {
   color?: number;
 }
 
-export const UnoRuleset: GameRuleset<UnoState, UnoAction> = {
-  getInitialState: (options?: any, rng?: IGameRNG): UnoState => {
+export interface UnoOptions {
+  // エンジンのシード（serverSeed / clientSeed）などもこのオブジェクトで渡される
+  [key: string]: unknown;
+  players?: string[];
+}
+
+export const UnoRuleset: GameRuleset<UnoState, UnoAction, UnoOptions> = {
+  getInitialState: (options?: UnoOptions, rng?: IGameRNG): UnoState => {
     const players: string[] = options?.players ?? [];
 
     const deck = createDeck();
@@ -248,7 +254,7 @@ function createDeck(): number[] {
   return deck;
 }
 
-function shuffle(array: any[], rng?: IGameRNG) {
+function shuffle(array: number[], rng?: IGameRNG) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = requireRng(rng).nextInt(0, i);
     [array[i], array[j]] = [array[j], array[i]];

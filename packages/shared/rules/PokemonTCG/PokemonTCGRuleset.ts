@@ -41,9 +41,19 @@ export interface PTCGPlayer {
   hasAttachedEnergyThisTurn: boolean; // 1ターンに1枚の制限用フラグ
 }
 
+/** effectStack に積まれ、reduce の最後に順番に解決されるイベント */
+export type PTCGEffectEvent =
+  | { type: "DEAL_DAMAGE"; sourceId: string; targetInstanceId: string; amount: number }
+  | { type: "HEAL"; targetInstanceId?: string; amount: number }
+  | { type: "DRAW_CARDS"; playerId: string; amount: number }
+  | { type: "DISCARD_HAND"; playerId: string }
+  | { type: "SWITCH_ACTIVE_POKEMON"; playerId: string; targetInstanceId: string }
+  | { type: "RESOLVE_ABILITY"; cardDefId: string; targetInstanceId: string }
+  | { type: "RESOLVE_END_TURN"; playerId: string };
+
 export interface PokemonTCGState extends BaseGameState {
   turnCount: number;
-  effectStack: any[];
+  effectStack: PTCGEffectEvent[];
   playerData: Record<string, PTCGPlayer>;
 }
 
@@ -253,7 +263,7 @@ export class PokemonTCGRuleset implements GameRuleset<PokemonTCGState, PokemonTC
     return nextState;
   }
 
-  private processEvent(state: PokemonTCGState, event: any) {
+  private processEvent(state: PokemonTCGState, event: PTCGEffectEvent) {
     if (event.type === "DEAL_DAMAGE") {
       // ダメージ適用
       let targetPlayer: PTCGPlayer | undefined;

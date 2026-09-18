@@ -143,8 +143,15 @@ export function scoreGame(state: GoState): { black: number; white: number; winne
   return { black, white, winner: black > white ? 1 : -1 };
 }
 
-export const GoRuleset: GameRuleset<GoState, GoAction> = {
-  getInitialState: (options?: any, _rng?: IGameRNG): GoState => {
+export interface GoOptions {
+  // エンジンのシード（serverSeed / clientSeed）などもこのオブジェクトで渡される
+  [key: string]: unknown;
+  size?: number; // 盤のサイズ（既定 9）
+  komi?: number; // コミ（既定 DEFAULT_KOMI）
+}
+
+export const GoRuleset: GameRuleset<GoState, GoAction, GoOptions> = {
+  getInitialState: (options?: GoOptions, _rng?: IGameRNG): GoState => {
     const size = options?.size ?? 9;
     return {
       status: "WAITING",

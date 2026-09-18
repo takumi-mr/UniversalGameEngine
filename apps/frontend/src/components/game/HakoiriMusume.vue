@@ -80,7 +80,11 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import type { HakoiriMusumeState, Block } from "@engine/shared/rules/HakoiriMusumeRuleset";
+import type {
+  HakoiriMusumeState,
+  HakoiriMusumeAction,
+  Block,
+} from "@engine/shared/rules/HakoiriMusumeRuleset";
 
 const props = defineProps<{
   state: HakoiriMusumeState;
@@ -88,7 +92,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "action", action: any): void;
+  (e: "action", action: HakoiriMusumeAction): void;
 }>();
 
 const selectedBlockId = ref<string | null>(null);

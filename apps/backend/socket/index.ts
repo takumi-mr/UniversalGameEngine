@@ -89,7 +89,7 @@ export const setupSocketIO = (io: Server) => {
             if (!isBotType(aiType)) return;
             const botId = `bot_${idx}_` + Math.random().toString(36).substring(7);
             // 着席はエンジンの組み込み JOIN（history に記録される）
-            engine.dispatch({ type: "JOIN", playerId: botId, slot: slotKey } as any);
+            engine.dispatch({ type: "JOIN", playerId: botId, slot: slotKey });
             if (server.addBot({ playerId: botId, aiType, name: `${aiType} ${idx}` })) {
               console.log(`[AI] Spawned ${aiType} ${botId} in slot ${slotKey} for game ${gameId}`);
             }
@@ -116,9 +116,7 @@ export const setupSocketIO = (io: Server) => {
             // START はエンジンの組み込みアクション。ルールセットが START を持てばその初期化（Speed, Mahjong 等）が走り、
             // 持たなければ status を PLAYING にして手番を設定する
             // サーバー発のアクションにも時刻を付ける（時刻駆動のルールセットが開始時刻を記録できるように）
-            if (
-              engine.dispatch({ type: "START", playerId: seated[0], timestamp: Date.now() } as any)
-            ) {
+            if (engine.dispatch({ type: "START", playerId: seated[0], timestamp: Date.now() })) {
               console.log(`[AI] All slots filled — game ${gameId} auto-started`);
             }
           }
@@ -154,8 +152,7 @@ export const setupSocketIO = (io: Server) => {
         // 着席・開始はエンジンの組み込み JOIN / START で行い、history に記録する（リプレイで再現可能にするため）
         if (state.players && !asSpectator) {
           const isAlreadyAssigned = Object.values(state.players).includes(userId);
-          const joined =
-            !isAlreadyAssigned && engine.dispatch({ type: "JOIN", playerId: userId } as any);
+          const joined = !isAlreadyAssigned && engine.dispatch({ type: "JOIN", playerId: userId });
 
           if (joined) {
             console.log(`User ${userId} joined game ${gameId}`);
@@ -172,7 +169,7 @@ export const setupSocketIO = (io: Server) => {
                   type: "START",
                   playerId: firstPlayerId,
                   timestamp: Date.now(),
-                } as any)
+                })
               ) {
                 console.log(`Game ${gameId} started (by ${firstPlayerId})`);
               }

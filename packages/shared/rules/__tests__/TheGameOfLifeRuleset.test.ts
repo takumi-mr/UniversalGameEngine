@@ -1,6 +1,13 @@
 import { describe, it, expect } from "bun:test";
 import { TheGameOfLifeRuleset as RealTheGameOfLifeRuleset } from "@engine/shared/rules/TheGameOfLifeRuleset";
 import { withTestRng } from "@engine/shared/testing/withTestRng";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
+
+/** nextFloat だけ固定値を返すテスト用 RNG（SPIN は nextFloat しか使わない） */
+const fixedRng = (value: number): IGameRNG => ({
+  nextFloat: () => value,
+  nextInt: (min, max) => min + Math.floor(value * (max - min + 1)),
+});
 
 // ルールセットを直接呼ぶテストなので、固定シードの RNG を補う
 const TheGameOfLifeRuleset = withTestRng(RealTheGameOfLifeRuleset);
@@ -19,9 +26,9 @@ describe("TheGameOfLifeRuleset", () => {
     state.status = "PLAYING";
 
     // Mock RNG to return 0.1 (spin = 1*10 + 1 = 2)
-    const mockRNG = { nextFloat: () => 0.1 };
+    const mockRNG = fixedRng(0.1);
 
-    state = TheGameOfLifeRuleset.reduce(state, { type: "SPIN", playerId: "A" }, mockRNG as any);
+    state = TheGameOfLifeRuleset.reduce(state, { type: "SPIN", playerId: "A" }, mockRNG);
 
     // SPIN result is floor(0.1 * 10) + 1 = 2
     expect(state.lastSpin).toBe(2);
@@ -36,9 +43,9 @@ describe("TheGameOfLifeRuleset", () => {
 
     // From START to JOB_HUNT is 3 steps.
     // If spin is 5, it should stop at JOB_HUNT (index 3).
-    const mockRNG = { nextFloat: () => 0.4 }; // floor(0.4 * 10) + 1 = 5
+    const mockRNG = fixedRng(0.4); // floor(0.4 * 10) + 1 = 5
 
-    state = TheGameOfLifeRuleset.reduce(state, { type: "SPIN", playerId: "A" }, mockRNG as any);
+    state = TheGameOfLifeRuleset.reduce(state, { type: "SPIN", playerId: "A" }, mockRNG);
 
     expect(state.lastSpin).toBe(5);
     expect(state.boardPlayers["A"].position).toBe("JOB_HUNT");
@@ -52,8 +59,8 @@ describe("TheGameOfLifeRuleset", () => {
     // Jump to near the end
     state.boardPlayers["A"].position = "S11";
 
-    const mockRNG = { nextFloat: () => 0.1 }; // spin = 2
-    state = TheGameOfLifeRuleset.reduce(state, { type: "SPIN", playerId: "A" }, mockRNG as any);
+    const mockRNG = fixedRng(0.1); // spin = 2
+    state = TheGameOfLifeRuleset.reduce(state, { type: "SPIN", playerId: "A" }, mockRNG);
 
     expect(state.boardPlayers["A"].position).toBe("GOAL");
     expect(state.boardPlayers["A"].isFinished).toBe(true);

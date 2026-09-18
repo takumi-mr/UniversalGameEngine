@@ -27,9 +27,17 @@ export interface PocketPlayer {
   energyZoneType: EnergyType; // このデッキが毎ターン発生させるエネルギのタイプ(簡易化)
 }
 
+/** effectStack に積まれ、reduce の最後に順番に解決されるイベント */
+export type PocketEffectEvent =
+  | { type: "DEAL_DAMAGE"; sourceId: string; targetInstanceId: string; amount: number }
+  | { type: "HEAL"; targetInstanceId?: string; amount: number }
+  | { type: "DRAW_CARDS"; playerId: string; amount: number }
+  | { type: "RESOLVE_ABILITY"; cardDefId: string; targetInstanceId: string }
+  | { type: "RESOLVE_END_TURN"; playerId: string };
+
 export interface PokemonPocketState extends BaseGameState {
   turnCount: number;
-  effectStack: any[];
+  effectStack: PocketEffectEvent[];
   playerData: Record<string, PocketPlayer>;
 }
 
@@ -266,7 +274,7 @@ export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, Pok
     return nextState;
   }
 
-  private processEvent(state: PokemonPocketState, event: any) {
+  private processEvent(state: PokemonPocketState, event: PocketEffectEvent) {
     if (event.type === "DEAL_DAMAGE") {
       let targetPlayer: PocketPlayer | undefined;
       let targetPokemon: PokemonInstance | undefined;
