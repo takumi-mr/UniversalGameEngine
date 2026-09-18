@@ -281,6 +281,20 @@ describe("ShogiRuleset: 王手・詰み", () => {
     expect(result.message).toContain("Checkmate");
   });
 
+  test("詰みの判定は FINISHED になった後の状態でも同じ結果を返す（gRPC Step / Simulate の報酬計算用）", () => {
+    const state = position(
+      { [I(4, 0)]: -8, [I(4, 1)]: 5, [I(4, 3)]: 7, [I(4, 8)]: 8 },
+      { turn: -1 },
+    );
+    state.status = "FINISHED";
+    const result = ShogiRuleset.checkWinCondition(state);
+    expect(result.isFinished).toBe(true);
+    expect(result.winnerIds).toEqual([P1]);
+    // 開始前は評価しない
+    state.status = "WAITING";
+    expect(ShogiRuleset.checkWinCondition(state).isFinished).toBe(false);
+  });
+
   test("王手でなくても合法手が無ければ負け（将棋ではステイルメイトも負け）", () => {
     // 後手玉 9一。先手の金 7二 が 8一・8二 を、銀 9三 が 9二 を押さえ、王手はかかっていない。後手に他の駒なし
     const state = position(
