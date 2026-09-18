@@ -308,7 +308,6 @@ export const GoRuleset: GameRuleset<GoState, GoAction, GoOptions> = {
  */
 function calculateTrompTaylor(board: number[], color: number, size: number): number {
   let score = 0;
-  const _reach = new Set<number>();
 
   // 指定した色の石の数
   for (let i = 0; i < board.length; i++) {

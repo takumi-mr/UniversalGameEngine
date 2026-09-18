@@ -31,7 +31,7 @@ const mockRules: GameRuleset<MockState, MockAction, MockOptions> = {
     version: 0,
     count: options?.initialCount ?? 0,
   }),
-  isValidAction: (state, action) => {
+  isValidAction: (_state, action) => {
     if (action.type === "INCREMENT") return true;
     if (action.type === "SET_SECRET") return true;
     return false;
@@ -51,7 +51,7 @@ const mockRules: GameRuleset<MockState, MockAction, MockOptions> = {
     }
     return { isFinished: false };
   },
-  getLegalActions: (state, playerId) => {
+  getLegalActions: (_state, playerId) => {
     return [{ type: "INCREMENT", playerId }];
   },
 };

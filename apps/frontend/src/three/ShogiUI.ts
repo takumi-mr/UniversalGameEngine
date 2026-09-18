@@ -26,11 +26,6 @@ export class ShogiUI {
 
   // マテリアル
   private matBoard = new THREE.MeshLambertMaterial({ color: 0xdeb887 }); // 木目色
-  private matHighlightValid = new THREE.MeshBasicMaterial({
-    color: 0x00ffff,
-    transparent: true,
-    opacity: 0.5,
-  });
   private matHighlightSelected = new THREE.MeshBasicMaterial({
     color: 0xff0000,
     transparent: true,

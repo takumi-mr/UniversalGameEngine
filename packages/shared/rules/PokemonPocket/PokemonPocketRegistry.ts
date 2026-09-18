@@ -104,7 +104,7 @@ export const PokemonPocketRegistry: Record<string, CardDefinition> = {
     id: "t_potion",
     name: "Potion",
     category: "TRAINER",
-    onPlay: (state, playerId, targetInstanceId) => {
+    onPlay: (state, _playerId, targetInstanceId) => {
       // HP20回復
       state.effectStack.push({ type: "HEAL", targetInstanceId, amount: 20 });
     },

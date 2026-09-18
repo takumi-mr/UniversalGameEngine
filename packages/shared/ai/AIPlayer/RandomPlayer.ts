@@ -18,7 +18,7 @@ export class RandomPlayer<
     this.thinkDelayMs = thinkDelayMs;
   }
 
-  public async computeNextMove(state: TState, legalActions: TAction[]): Promise<TAction | null> {
+  public async computeNextMove(_state: TState, legalActions: TAction[]): Promise<TAction | null> {
     // 1. 合法手が無い場合は何もしない
     if (!legalActions || legalActions.length === 0) {
       return null;

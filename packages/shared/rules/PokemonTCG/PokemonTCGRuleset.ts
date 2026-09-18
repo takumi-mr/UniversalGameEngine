@@ -173,7 +173,6 @@ export class PokemonTCGRuleset implements GameRuleset<PokemonTCGState, PokemonTC
       const handIdx = player.hand.indexOf(action.cardDefId);
       if (handIdx > -1) {
         player.hand.splice(handIdx, 1);
-        const _def = PokemonTCGRegistry[action.cardDefId];
 
         const newPokemon: PokemonInstance = {
           instanceId: Math.floor(requireRng(rng, "PokemonTCG").nextFloat() * 1000000).toString(),
