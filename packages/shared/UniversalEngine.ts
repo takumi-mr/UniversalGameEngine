@@ -3,6 +3,7 @@ import { isSecret } from "@engine/shared/GameRules";
 import type {
   BaseGameState,
   BaseGameAction,
+  BuiltinAction,
   GameRuleset,
   GameRecord,
 } from "@engine/shared/GameRules";
@@ -12,7 +13,8 @@ import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 import { calculateStateHash } from "@engine/shared/utils/hash";
 import { type CloneStrategy, StructuredCloneStrategy } from "@engine/shared/utils/CloneStrategy";
 
-interface InternalGameState extends BaseGameState {
+/** エンジンが状態に追加する内部フィールド（サーバーシード）。テストで参照する場合はこの型にキャストする */
+export interface InternalGameState extends BaseGameState {
   prngSecret?: string;
 }
 
@@ -272,7 +274,10 @@ export class UniversalEngine<
   }
 
   // クライアントからの通信を受け取る汎用エンドポイント
-  public dispatch(action: TAction): boolean {
+  // 組み込みアクション（JOIN / START / TIMEOUT）はルールセットの TAction に含まれていなくても受け付ける
+  public dispatch(input: TAction | BuiltinAction): boolean {
+    // 組み込みアクションもルールセットに渡す（受け付けないルールセットは isValidAction で false を返す）
+    const action = input as TAction;
     const base = this.cloneStrategy.clone(this.state);
 
     // 0. 組み込みアクション（着席・開始）

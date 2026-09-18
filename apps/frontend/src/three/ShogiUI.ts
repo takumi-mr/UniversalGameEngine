@@ -277,7 +277,7 @@ export class ShogiUI {
         object.geometry.dispose();
         const materials = Array.isArray(object.material) ? object.material : [object.material];
         materials.forEach((m) => {
-          if ((m as any).map) (m as any).map.dispose();
+          if ("map" in m && m.map instanceof THREE.Texture) m.map.dispose();
           m.dispose();
         });
       }

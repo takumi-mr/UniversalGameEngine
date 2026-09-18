@@ -10,13 +10,13 @@ import {
 // Mock types
 interface MockState extends BaseGameState {
   count: number;
-  secretData?: any;
+  secretData?: unknown;
 }
 
 interface MockAction extends BaseGameAction {
   type: "INCREMENT" | "SET_SECRET";
   value?: number;
-  data?: any;
+  data?: unknown;
 }
 
 interface MockOptions {
@@ -124,7 +124,7 @@ describe("UniversalEngine", () => {
   });
 
   test("should reject invalid actions", () => {
-    const success = engine.dispatch({ type: "UNKNOWN" as any });
+    const success = engine.dispatch({ type: "UNKNOWN" as MockAction["type"] });
     expect(success).toBe(false);
     expect(engine.getState().count).toBe(5);
   });
@@ -153,7 +153,7 @@ describe("UniversalEngine", () => {
     engine.dispatch({ type: "SET_SECRET", data: secret });
 
     const stateForP1 = engine.getMaskedState("player1");
-    expect(stateForP1.secretData.nested).toBe("Deep Secret");
+    expect(stateForP1.secretData).toEqual({ nested: "Deep Secret" });
 
     const stateForP2 = engine.getMaskedState("player2");
     expect(stateForP2.secretData).toBe("?");
@@ -186,7 +186,7 @@ describe("UniversalEngine", () => {
     const mutatingRules: GameRuleset<MockState, MockAction, MockOptions> = {
       ...mockRules,
       reduce: (state, _action) => {
-        (state as any).count += 1; // Mutation!
+        (state as { count: number }).count += 1; // Mutation!
         return state;
       },
     };

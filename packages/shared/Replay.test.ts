@@ -12,7 +12,13 @@ interface MockAction extends BaseGameAction {
   value?: number;
 }
 
-const mockRules: GameRuleset<MockState, MockAction, { initial: number }> = {
+interface MockOptions {
+  initial?: number;
+  clientSeed?: string;
+  serverSeed?: string;
+}
+
+const mockRules: GameRuleset<MockState, MockAction, MockOptions> = {
   getInitialState: (options) => ({
     status: "PLAYING",
     version: 0,
@@ -67,7 +73,7 @@ describe("Replay System", () => {
   });
 
   test("should handle RNG consistency (Provably Fair)", () => {
-    const rulesWithRNG: GameRuleset<MockState, MockAction, any> = {
+    const rulesWithRNG: GameRuleset<MockState, MockAction, MockOptions> = {
       ...mockRules,
       reduce: (state, action, rng) => {
         const roll = rng ? rng.nextInt(1, 10) : 1;

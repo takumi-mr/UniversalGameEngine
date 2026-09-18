@@ -15,12 +15,14 @@ import {
 import { InMemoryDummyRepository } from "@engine/backend/infra/InMemoryDummyRepository";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import { TicTacToeRuleset } from "@engine/shared/rules/TicTacToeRuleset";
+import type { BaseGameState } from "@engine/shared/GameRules";
+import type { Server } from "socket.io";
 
 // bun test では NODE_ENV=test なのでリポジトリはインメモリ実装になる
-const memRepo = repo as InMemoryDummyRepository<any>;
+const memRepo = repo as InMemoryDummyRepository<BaseGameState>;
 
 describe("RoomManager", () => {
-  let mockIo: any;
+  let mockIo: { to: ReturnType<typeof mock> } & Record<string, unknown>;
   let emitMock: ReturnType<typeof mock>;
   // ルームごとの（クラスタ全体の）ソケット一覧を模す
   let roomSockets: Map<string, { id: string }[]>;
@@ -33,7 +35,7 @@ describe("RoomManager", () => {
       in: (room: string) => ({ fetchSockets: async () => roomSockets.get(room) ?? [] }),
       local: { in: (room: string) => ({ fetchSockets: async () => roomSockets.get(room) ?? [] }) },
     };
-    setIoInstance(mockIo);
+    setIoInstance(mockIo as unknown as Server);
     sessions.clear();
     for (const { gameId } of await memRepo.listSessions()) await memRepo.deleteSession(gameId);
     // 他のテストファイルが残した予約を捨てる

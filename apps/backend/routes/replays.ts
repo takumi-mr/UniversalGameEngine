@@ -15,7 +15,7 @@ router.get("/:gameId", async (req, res) => {
     }
 
     res.json(record);
-  } catch (err: any) {
+  } catch (err) {
     console.error(`[Replay API] Error loading record ${gameId}:`, err);
     res.status(500).json({ error: "Failed to load replay" });
   }

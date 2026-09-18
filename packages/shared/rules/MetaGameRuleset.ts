@@ -33,7 +33,7 @@ export function createSubGame(
 ): SubGameEntry {
   const def = resolveSubGame(type);
   if (!def) throw new Error(`Unknown sub-game type: ${type}`);
-  const ruleset = def.ruleset as GameRuleset<BaseGameState, BaseGameAction>;
+  const ruleset = def.ruleset;
 
   let state = ruleset.getInitialState(options, rng);
 
@@ -121,8 +121,24 @@ export function collectActivePlayers(subGames: Record<string, SubGameEntry>): st
   return [...active];
 }
 
-export const MetaGameRuleset: GameRuleset<MetaGameState, MetaGameAction, any> = {
-  getInitialState: (options?: any, rng?: IGameRNG): MetaGameState => {
+export interface MetaGameOptions {
+  // エンジンのシード（serverSeed / clientSeed）などもこのオブジェクトで渡される
+  [key: string]: unknown;
+  /** スロット → プレイヤーID。全サブゲームの既定の参加者になる */
+  players?: Record<string, string | null>;
+  /** 開始時に生成するサブゲーム */
+  initialSubGames?: {
+    id: string;
+    type: string;
+    playerIds?: string[];
+    options?: Record<string, unknown>;
+  }[];
+  /** この勝利数に達したプレイヤーの勝ち（既定 3） */
+  targetScore?: number;
+}
+
+export const MetaGameRuleset: GameRuleset<MetaGameState, MetaGameAction, MetaGameOptions> = {
+  getInitialState: (options?: MetaGameOptions, rng?: IGameRNG): MetaGameState => {
     const players: Record<string, string | null> = options?.players ?? {};
     const playerIds = Object.values(players).filter((p): p is string => typeof p === "string");
     const subGames: Record<string, SubGameEntry> = {};

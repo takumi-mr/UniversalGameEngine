@@ -22,7 +22,7 @@ export class ReplayEngine<
     const options = {
       clientSeed: record.clientSeed,
       serverSeed: record.finalServerSeed, // 公開されている場合のみ完全再現可能
-      ...((record.initialState as any).options || {}), // オプションが保存されている場合
+      ...((record.initialState as { options?: Record<string, unknown> }).options || {}), // オプションが保存されている場合
     } as TOptions;
 
     this.engine = new UniversalEngine(rules, options);

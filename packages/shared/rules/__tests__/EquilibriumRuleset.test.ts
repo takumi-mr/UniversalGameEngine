@@ -2,6 +2,7 @@
 // JOIN → START → 封印入札 → メインフェーズ → 勝利条件 までを、エンジン経由で実際に通す。
 import { describe, it, expect } from "bun:test";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import type { Masked } from "@engine/shared/GameRules";
 import {
   EquilibriumRuleset,
   cardNeedsTarget,
@@ -18,6 +19,11 @@ function newEngine(seed = "eq-test") {
     clientSeed: seed,
     serverSeed: seed,
   });
+}
+
+/** playerId から見えるマスク済み状態（Secret は展開されているので Masked 型で扱う） */
+function masked(engine: UniversalEngine<EquilibriumState, EquilibriumAction>, playerId: string) {
+  return engine.getMaskedState(playerId) as unknown as Masked<EquilibriumState>;
 }
 
 /** JOIN × 3 → START 済みのエンジン */
@@ -100,8 +106,8 @@ describe("EquilibriumRuleset", () => {
     const engine = startedEngine();
     engine.dispatch({ type: "BID", playerId: "alice", amount: 3 });
     // 他人からは額が見えない
-    expect((engine.getMaskedState("bob") as any).currentBids.alice).toBe("?");
-    expect((engine.getMaskedState("alice") as any).currentBids.alice).toBe(3);
+    expect(masked(engine, "bob").currentBids.alice).toBe("?");
+    expect(masked(engine, "alice").currentBids.alice).toBe(3);
 
     engine.dispatch({ type: "BID", playerId: "bob", amount: 3 });
     engine.dispatch({ type: "BID", playerId: "carol", amount: 2 });
@@ -226,7 +232,7 @@ describe("EquilibriumRuleset", () => {
       true,
     );
     expect(state(engine).playerData.alice.hiddenGoal.value?.name).toBe("Sudden_Death");
-    expect((engine.getMaskedState("bob") as any).playerData.alice.hiddenGoal).toBeNull();
+    expect(masked(engine, "bob").playerData.alice.hiddenGoal).toBeNull();
 
     engine.dispatch({ type: "PLAY_CARD", playerId: "alice", cardId: "strike", targetId: "bob" });
     expect(cardNeedsTarget(echo, state(engine).lastPlayedCard)).toBe(true);
@@ -320,7 +326,7 @@ describe("EquilibriumRuleset", () => {
 
     const fake: Card = { id: "whatever", type: "ATTACK", name: "Hellfire", value: 1, cost: 1 };
     expect(engine.dispatch({ type: "BLUFF_REVEAL", playerId: "alice", fakeCard: fake })).toBe(true);
-    const seen = (engine.getMaskedState("bob") as any).playerData.alice.hand;
+    const seen = masked(engine, "bob").playerData.alice.hand as Card[];
     expect(seen[0]).toEqual({ id: "bluff", type: "ATTACK", name: "Hellfire", value: 8, cost: 3 }); // 値はカタログ準拠
     expect(seen[1].id).toBe("hidden");
     expect(state(engine).playerData.alice.soulPoints).toBe(9);
@@ -333,10 +339,10 @@ describe("EquilibriumRuleset", () => {
     const mc: Card = { id: "mc", type: "TRICK", name: "Mind_Control", value: 0, cost: 4 };
     giveCards(engine, "alice", [peep, mc]);
 
-    expect((engine.getMaskedState("alice") as any).playerData.bob.hiddenGoal).toBeNull();
+    expect(masked(engine, "alice").playerData.bob.hiddenGoal).toBeNull();
     engine.dispatch({ type: "PLAY_CARD", playerId: "alice", cardId: "peep", targetId: "bob" });
-    expect((engine.getMaskedState("alice") as any).playerData.bob.hiddenGoal?.type).toBe("GOAL");
-    expect((engine.getMaskedState("carol") as any).playerData.bob.hiddenGoal).toBeNull();
+    expect(masked(engine, "alice").playerData.bob.hiddenGoal).toMatchObject({ type: "GOAL" });
+    expect(masked(engine, "carol").playerData.bob.hiddenGoal).toBeNull();
 
     const bobBefore = hand(engine, "bob").length;
     engine.dispatch({ type: "PLAY_CARD", playerId: "alice", cardId: "mc", targetId: "bob" });

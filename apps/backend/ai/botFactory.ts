@@ -1,6 +1,7 @@
 // apps/backend/ai/botFactory.ts
 import type { BotSpec } from "@engine/shared/stores/repository";
 import type { IAIPlayer } from "@engine/shared/ai/IAIPlayer";
+import type { BaseGameAction, BaseGameState } from "@engine/shared/GameRules";
 import { GrpcBotPlayer } from "@engine/shared/ai/AIPlayer/GrpcBotPlayer";
 import { RandomPlayer } from "@engine/shared/ai/AIPlayer/RandomPlayer";
 import { aiTensorRegistry } from "@engine/shared/ai/AITensorAdapterRegistry";
@@ -23,7 +24,7 @@ export function createBotPlayer(
   spec: BotSpec,
   gameId: string,
   gameType: string,
-): IAIPlayer<any, any> | null {
+): IAIPlayer<BaseGameState, BaseGameAction> | null {
   const { playerId: botId, aiType } = spec;
   const idx = spec.name ?? botId;
 

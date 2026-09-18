@@ -16,7 +16,7 @@ export function deepFreeze<T>(obj: T): T {
     // Handle objects
     const propNames = Object.getOwnPropertyNames(obj);
     for (const name of propNames) {
-      const value = (obj as any)[name];
+      const value = (obj as Record<string, unknown>)[name];
       deepFreeze(value);
     }
   }

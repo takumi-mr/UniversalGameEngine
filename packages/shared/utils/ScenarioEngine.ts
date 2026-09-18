@@ -10,8 +10,12 @@ export type ScenarioNode =
   | { type: "condition"; if: string; then: string; else: string }
   | { type: "end"; message?: string };
 
+/** シナリオ中で set / add / 条件評価に使うフラグの値 */
+export type ScenarioFlagValue = string | number | boolean | null;
+export type ScenarioFlags = Record<string, ScenarioFlagValue>;
+
 export type ScenarioAction =
-  | { type: "set"; flag: string; value: any }
+  | { type: "set"; flag: string; value: ScenarioFlagValue }
   | { type: "add"; flag: string; value: number };
 
 /**
@@ -29,10 +33,10 @@ export class ScenarioEngine {
   public step(
     currentNodeId: string,
     actionValue: string | null,
-    flags: Record<string, any>,
+    flags: ScenarioFlags,
   ): {
     nextNodeId: string;
-    nextFlags: Record<string, any>;
+    nextFlags: ScenarioFlags;
     isFinished: boolean;
   } {
     const node = this.scenario[currentNodeId];
@@ -77,18 +81,18 @@ export class ScenarioEngine {
     };
   }
 
-  private applyAction(flags: Record<string, any>, action: ScenarioAction) {
+  private applyAction(flags: ScenarioFlags, action: ScenarioAction) {
     switch (action.type) {
       case "set":
         flags[action.flag] = action.value;
         break;
       case "add":
-        flags[action.flag] = (flags[action.flag] || 0) + action.value;
+        flags[action.flag] = (Number(flags[action.flag]) || 0) + action.value;
         break;
     }
   }
 
-  private evaluateCondition(condition: string, flags: Record<string, any>): boolean {
+  private evaluateCondition(condition: string, flags: ScenarioFlags): boolean {
     try {
       // フラグをスコープに入れて評価
       // keyが英数字のみであることを前提とした簡易的な実装

@@ -49,7 +49,12 @@
 import { ref, computed, onMounted, defineAsyncComponent, type Component } from "vue";
 import ReplayViewer from "@/components/ReplayViewer.vue";
 import { gameRegistry } from "@engine/shared/GameRegistry";
-import type { GameRecord, GameRuleset } from "@engine/shared/GameRules";
+import type {
+  GameRecord,
+  GameRuleset,
+  BaseGameState,
+  BaseGameAction,
+} from "@engine/shared/GameRules";
 
 const props = defineProps<{
   gameType: string;
@@ -61,8 +66,11 @@ defineEmits<{ (e: "back"): void }>();
 
 const loading = ref(true);
 const errorMsg = ref("");
-const gameRecord = ref<GameRecord<any, any> | null>(null);
-const ruleset = ref<GameRuleset<any, any> | null>(null);
+type AnyGameRecord = GameRecord<BaseGameState, BaseGameAction>;
+const gameRecord = ref<AnyGameRecord | null>(null);
+const ruleset = ref<GameRuleset<BaseGameState, BaseGameAction> | null>(null);
+
+const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const components: Record<string, Component> = {
@@ -84,8 +92,8 @@ onMounted(async () => {
     if (props.recordId) {
       fetchGameRecord(props.recordId);
     }
-  } catch (e: any) {
-    errorMsg.value = e.message || "Failed to load replay";
+  } catch (e) {
+    errorMsg.value = errorText(e) || "Failed to load replay";
     loading.value = false;
   }
 });
@@ -101,11 +109,11 @@ const fetchGameRecord = async (id: string) => {
       }
       throw new Error(`Failed to fetch: ${response.statusText}`);
     }
-    const data = await response.json();
+    const data: AnyGameRecord = await response.json();
     gameRecord.value = data;
-  } catch (err: any) {
+  } catch (err) {
     console.error("Fetch error:", err);
-    errorMsg.value = "Failed to load replay from server: " + err.message;
+    errorMsg.value = "Failed to load replay from server: " + errorText(err);
   } finally {
     loading.value = false;
   }
@@ -124,7 +132,7 @@ const onFileSelected = (event: Event) => {
   reader.onload = (e) => {
     try {
       const content = e.target?.result as string;
-      const parsed = JSON.parse(content) as GameRecord<any, any>;
+      const parsed = JSON.parse(content) as AnyGameRecord;
 
       // Basic validation
       if (!parsed.initialState || !Array.isArray(parsed.actions)) {
@@ -133,8 +141,8 @@ const onFileSelected = (event: Event) => {
 
       gameRecord.value = parsed;
       errorMsg.value = "";
-    } catch (err: any) {
-      errorMsg.value = "Failed to parse JSON file: " + err.message;
+    } catch (err) {
+      errorMsg.value = "Failed to parse JSON file: " + errorText(err);
       gameRecord.value = null;
     }
   };

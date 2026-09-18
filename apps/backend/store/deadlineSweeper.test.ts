@@ -4,24 +4,31 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import { sessions, repo, createSession, withSession } from "@engine/backend/store/sessionStore";
 import { sweepDeadlines } from "@engine/backend/store/deadlineSweeper";
 import { setIoInstance } from "@engine/backend/network/io";
-import { UniversalEngine } from "@engine/shared/UniversalEngine";
-import { CaveDiveRuleset, type CaveDiveState } from "@engine/shared/rules/CaveDiveRuleset";
+import { UniversalEngine, type EngineReplayData } from "@engine/shared/UniversalEngine";
+import {
+  CaveDiveRuleset,
+  type CaveDiveAction,
+  type CaveDiveState,
+} from "@engine/shared/rules/CaveDiveRuleset";
 import type { InMemoryDummyRepository } from "@engine/backend/infra/InMemoryDummyRepository";
+import type { Server } from "socket.io";
 
 const mockIo = {
   in: () => ({ fetchSockets: async () => [] }),
   local: { in: () => ({ fetchSockets: async () => [] }) },
   to: () => ({ emit: () => {} }),
-} as any;
+} as unknown as Server;
 
 const memRepo = repo as unknown as InMemoryDummyRepository<CaveDiveState>;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** 2 人で開始した『掘るか、逃げるか』。decisionTimeMs で締切までの時間を指定 */
 async function startCave(gameId: string, decisionTimeMs: number) {
-  const engine = new UniversalEngine<any, any>(CaveDiveRuleset, { decisionTimeMs });
-  engine.dispatch({ type: "JOIN", playerId: "a" } as any);
-  engine.dispatch({ type: "JOIN", playerId: "b" } as any);
+  const engine = new UniversalEngine<CaveDiveState, CaveDiveAction>(CaveDiveRuleset, {
+    decisionTimeMs,
+  });
+  engine.dispatch({ type: "JOIN", playerId: "a" });
+  engine.dispatch({ type: "JOIN", playerId: "b" });
   const { server } = createSession(gameId, engine, "cave_dive");
   // START は dispatchAction 経由で timestamp が付く
   expect(await server.dispatchAction("a", { type: "START" })).toBe(true);
@@ -81,12 +88,18 @@ describe("deadlineSweeper", () => {
     await sleep(40);
 
     // 別インスタンスが両者の選択を進めた（ストアだけ更新）: 新しい締切は未来
-    const other = new UniversalEngine<any, any>(CaveDiveRuleset, { decisionTimeMs: 60_000 });
-    const saved = (await repo.loadSession("d3"))!;
-    other.loadState(structuredClone(saved.state), structuredClone(saved.replay!));
+    const other = new UniversalEngine<CaveDiveState, CaveDiveAction>(CaveDiveRuleset, {
+      decisionTimeMs: 60_000,
+    });
+    // ストアはゲーム共通の BaseGameState で保存しているので CaveDive の型に戻す
+    const saved = (await memRepo.loadSession("d3"))!;
+    other.loadState(
+      structuredClone(saved.state),
+      structuredClone(saved.replay!) as EngineReplayData<CaveDiveState, CaveDiveAction>,
+    );
     const now = Date.now();
-    other.dispatch({ type: "CHOOSE", playerId: "a", choice: "STAY", timestamp: now } as any);
-    other.dispatch({ type: "CHOOSE", playerId: "b", choice: "STAY", timestamp: now } as any);
+    other.dispatch({ type: "CHOOSE", playerId: "a", choice: "STAY", timestamp: now });
+    other.dispatch({ type: "CHOOSE", playerId: "b", choice: "STAY", timestamp: now });
     const advanced = other.getState() as CaveDiveState;
     // decisionTimeMs は元のセッションの値（30ms）なので、締切を明示的に未来へ
     const future = { ...advanced, turnDeadline: now + 60_000 };

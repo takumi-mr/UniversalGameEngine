@@ -45,14 +45,14 @@
         <div class="my-status player-badge">
           <div class="name">You ({{ myPlayerId }})</div>
           <div class="stats">❤️ {{ myData.hp }} | 👻 {{ myData.soulPoints }}</div>
-          <div v-if="(myData.hiddenGoal as any)?.value" class="goal">
-            🎯 Goal: {{ (myData.hiddenGoal as any).value.name }}
+          <div v-if="revealed(myData.hiddenGoal)" class="goal">
+            🎯 Goal: {{ revealed(myData.hiddenGoal)?.name }}
           </div>
         </div>
 
         <div class="hand-container">
           <div
-            v-for="card in (myData.hand as any)?.value"
+            v-for="card in revealed(myData.hand) ?? []"
             :key="card.id"
             class="card"
             :class="{ disabled: state.phase !== 'MAIN' || !isMyTurn }"
@@ -137,14 +137,16 @@ import {
   type EquilibriumState,
   type EquilibriumAction,
   type Card,
+  type PlayerState,
 } from "@engine/shared/rules/EquilibriumRuleset";
+import { revealed } from "@/utils/revealed";
 
 const props = defineProps<{
   state: EquilibriumState;
 }>();
 
 const emit = defineEmits<{
-  (e: "action", action: EquilibriumAction | any): void;
+  (e: "action", action: EquilibriumAction): void;
 }>();
 
 // --- Refs ---
@@ -185,8 +187,8 @@ const isPlayer = computed(() => {
   return !!props.state.playerData[myPlayerId.value];
 });
 
-const getRevealedCard = (opponentData: any) => {
-  return (opponentData.hand as any)?.value?.find((c: any) => c.id !== "hidden");
+const getRevealedCard = (opponentData: PlayerState) => {
+  return revealed(opponentData.hand)?.find((c) => c.id !== "hidden");
 };
 
 // --- Actions ---
@@ -223,7 +225,7 @@ const alterGoal = (newGoalCardId: string) => {
   });
 };
 
-const bluffReveal = (fakeCard: any) => {
+const bluffReveal = (fakeCard: Card) => {
   if (!isPlayer.value) return;
   emit("action", { type: "BLUFF_REVEAL", playerId: myPlayerId.value, fakeCard });
 };

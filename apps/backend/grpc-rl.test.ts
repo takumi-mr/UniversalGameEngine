@@ -4,6 +4,20 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 import path from "path";
+import type { Server } from "socket.io";
+import type { ProtoGrpcType } from "@engine/shared/network/generated/game";
+import type { GameServiceClient } from "@engine/shared/network/generated/universal_game_engine/GameService";
+import type { CreateGameRequest } from "@engine/shared/network/generated/universal_game_engine/CreateGameRequest";
+import type { CreateGameResponse__Output } from "@engine/shared/network/generated/universal_game_engine/CreateGameResponse";
+import type { ResetGameRequest } from "@engine/shared/network/generated/universal_game_engine/ResetGameRequest";
+import type { ResetGameResponse__Output } from "@engine/shared/network/generated/universal_game_engine/ResetGameResponse";
+import type { StepRequest } from "@engine/shared/network/generated/universal_game_engine/StepRequest";
+import type { StepResponse__Output } from "@engine/shared/network/generated/universal_game_engine/StepResponse";
+import type { SimulateRequest } from "@engine/shared/network/generated/universal_game_engine/SimulateRequest";
+import type { SimulateResponse__Output } from "@engine/shared/network/generated/universal_game_engine/SimulateResponse";
+import type { BatchSimulateRequest } from "@engine/shared/network/generated/universal_game_engine/BatchSimulateRequest";
+import type { BatchSimulateResponse__Output } from "@engine/shared/network/generated/universal_game_engine/BatchSimulateResponse";
+import type { OthelloState } from "@engine/shared/rules/OthelloRuleset";
 // Redis/MongoDB へ接続しないよう、モジュール読み込み前に RL_MODE を有効化する
 process.env.RL_MODE = "true";
 const { startGrpcServer } = await import("@engine/backend/grpc-server");
@@ -17,7 +31,7 @@ const mockIo = {
   in: () => ({ fetchSockets: async () => [] }),
   local: { in: () => ({ fetchSockets: async () => [] }) },
   to: () => ({ emit: () => {} }),
-} as any;
+} as unknown as Server;
 
 // grpc の ServiceError は Metadata を含むため、expect().rejects でのマッチングは避けて code だけ取り出す
 async function grpcErrorCode(p: Promise<unknown>): Promise<number | undefined> {
@@ -29,23 +43,24 @@ async function grpcErrorCode(p: Promise<unknown>): Promise<number | undefined> {
   }
 }
 
-function promisify<TReq, TRes>(client: any, method: string) {
+/** コールバック形式の Unary RPC を Promise にする */
+function promisify<TReq, TRes>(
+  rpc: (req: TReq, callback: grpc.requestCallback<TRes>) => grpc.ClientUnaryCall,
+) {
   return (req: TReq) =>
     new Promise<TRes>((resolve, reject) => {
-      client[method](req, (err: grpc.ServiceError | null, res: TRes) =>
-        err ? reject(err) : resolve(res),
-      );
+      rpc(req, (err, res) => (err ? reject(err) : resolve(res!)));
     });
 }
 
 describe("gRPC RL loop (Reset/Step)", () => {
   let server: grpc.Server;
-  let client: any;
-  let createGame: (req: any) => Promise<any>;
-  let reset: (req: any) => Promise<any>;
-  let step: (req: any) => Promise<any>;
-  let simulate: (req: any) => Promise<any>;
-  let batchSimulate: (req: any) => Promise<any>;
+  let client: GameServiceClient;
+  let createGame: (req: CreateGameRequest) => Promise<CreateGameResponse__Output>;
+  let reset: (req: ResetGameRequest) => Promise<ResetGameResponse__Output>;
+  let step: (req: StepRequest) => Promise<StepResponse__Output>;
+  let simulate: (req: SimulateRequest) => Promise<SimulateResponse__Output>;
+  let batchSimulate: (req: BatchSimulateRequest) => Promise<BatchSimulateResponse__Output>;
 
   beforeAll(async () => {
     setIoInstance(mockIo);
@@ -60,16 +75,16 @@ describe("gRPC RL loop (Reset/Step)", () => {
       defaults: true,
       oneofs: true,
     });
-    const proto = grpc.loadPackageDefinition(pkgDef) as any;
+    const proto = grpc.loadPackageDefinition(pkgDef) as unknown as ProtoGrpcType;
     client = new proto.universal_game_engine.GameService(
       `localhost:${started.port}`,
       grpc.credentials.createInsecure(),
     );
-    createGame = promisify(client, "CreateGame");
-    reset = promisify(client, "Reset");
-    step = promisify(client, "Step");
-    simulate = promisify(client, "Simulate");
-    batchSimulate = promisify(client, "BatchSimulate");
+    createGame = promisify(client.CreateGame.bind(client));
+    reset = promisify(client.Reset.bind(client));
+    step = promisify(client.Step.bind(client));
+    simulate = promisify(client.Simulate.bind(client));
+    batchSimulate = promisify(client.BatchSimulate.bind(client));
   });
 
   afterAll(() => {
@@ -149,7 +164,7 @@ describe("gRPC RL loop (Reset/Step)", () => {
 
     expect(legal).toEqual([]);
     expect([1, -1, 0.5]).toContain(lastReward);
-    const state = sessions.get(gameId)!.server.engine.getState() as any;
+    const state = sessions.get(gameId)!.server.engine.getState() as OthelloState;
     expect(state.status).toBe("FINISHED");
     // 最終報酬が最終手番プレイヤーの勝敗と一致すること
     const { 1: b, [-1]: w } = state.scores;
@@ -190,7 +205,7 @@ describe("gRPC RL loop (Reset/Step)", () => {
     expect(JSON.parse(res.stateJson).board[2][3]).toBe(1);
 
     // Simulate はセッションの実局面を変更しない
-    const live = sessions.get(gameId)!.server.engine.getState() as any;
+    const live = sessions.get(gameId)!.server.engine.getState() as OthelloState;
     expect(live.board[2][3]).toBe(0);
     expect(live.version).toBe(JSON.parse(root.stateJson).version);
   });

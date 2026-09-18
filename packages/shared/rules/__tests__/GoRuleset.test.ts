@@ -40,9 +40,9 @@ function startedEngine(seed = "go", options: Record<string, unknown> = {}) {
     serverSeed: seed,
     ...options,
   });
-  engine.dispatch({ type: "JOIN", playerId: BLACK } as any);
-  engine.dispatch({ type: "JOIN", playerId: WHITE } as any);
-  engine.dispatch({ type: "START", playerId: BLACK } as any);
+  engine.dispatch({ type: "JOIN", playerId: BLACK });
+  engine.dispatch({ type: "JOIN", playerId: WHITE });
+  engine.dispatch({ type: "START", playerId: BLACK });
   return engine;
 }
 

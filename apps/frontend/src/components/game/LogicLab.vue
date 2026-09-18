@@ -221,21 +221,30 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { type LogicLabState, LOGIC_LAB_LEVELS } from "@engine/shared/rules/LogicLabRuleset";
-import { type LogicCircuitState } from "@engine/shared/rules/LogicCircuitRuleset";
+import {
+  type LogicLabState,
+  type LogicLabAction,
+  LOGIC_LAB_LEVELS,
+} from "@engine/shared/rules/LogicLabRuleset";
+import {
+  type LogicCircuitState,
+  type LogicCircuitAction,
+} from "@engine/shared/rules/LogicCircuitRuleset";
+import type { LogicBlock, Connection } from "@engine/shared/utils/LogicCircuitEngine";
 
 const props = defineProps<{
   state: LogicLabState | LogicCircuitState;
   myPlayerId?: string;
 }>();
 
-const emit = defineEmits<{ (e: "action", action: any): void }>();
+// LogicLab / LogicCircuit のどちらのルールセットにも使う画面なので、両方のアクションを送れる
+const emit = defineEmits<{ (e: "action", action: LogicLabAction | LogicCircuitAction): void }>();
 
 const canvasContainer = ref<HTMLElement | null>(null);
 const canvasWidth = ref(1500);
 const canvasHeight = ref(1000);
 
-const selectedBlock = ref<any>(null);
+const selectedBlock = ref<LogicBlock | null>(null);
 const romEditorOpen = ref(false);
 const romDataArray = ref<number[]>(new Array(16).fill(0));
 
@@ -276,7 +285,7 @@ const customBlocks = computed(() => {
 });
 
 // Dragging Logic
-const draggingBlock = ref<any>(null);
+const draggingBlock = ref<LogicBlock | null>(null);
 const draggingPin = ref<{
   blockId: string;
   pinIndex: number;
@@ -310,7 +319,7 @@ const onMouseUp = () => {
   draggingPin.value = null;
 };
 
-const startDragBlock = (block: any, _e: MouseEvent) => {
+const startDragBlock = (block: LogicBlock, _e: MouseEvent) => {
   draggingBlock.value = block;
   dragOffset.value = {
     x: mousePos.value.x - (block.x || 100),
@@ -352,7 +361,7 @@ const onPinMouseUp = (blockId: string, pinIndex: number, type: "in" | "out") => 
   draggingPin.value = null;
 };
 
-const onBlockClick = (block: any) => {
+const onBlockClick = (block: LogicBlock) => {
   selectedBlock.value = block;
   if (block.type === "SWITCH") {
     emit("action", { type: "TOGGLE_SWITCH", blockId: block.id });
@@ -385,7 +394,7 @@ const saveRomData = () => {
 };
 
 // Utils
-const getInputPinCount = (block: any) => {
+const getInputPinCount = (block: LogicBlock) => {
   if (block.compound) {
     return Object.keys(block.compound.blocks).filter((id) => id.startsWith("in")).length;
   }
@@ -399,7 +408,7 @@ const getInputPinCount = (block: any) => {
   return 0;
 };
 
-const getOutputPinCount = (block: any) => {
+const getOutputPinCount = (block: LogicBlock) => {
   if (block.compound) {
     return Object.keys(block.compound.blocks).filter((id) => id.startsWith("out")).length;
   }
@@ -412,7 +421,7 @@ const getOutputPinCount = (block: any) => {
   return 1;
 };
 
-const getPinY = (block: any, index: number, total: number) => {
+const getPinY = (block: LogicBlock, index: number, total: number) => {
   const height = Math.max(
     50,
     (Math.max(getInputPinCount(block), getOutputPinCount(block)) || 1) * 20,
@@ -422,7 +431,7 @@ const getPinY = (block: any, index: number, total: number) => {
   return 10 + index * spacing;
 };
 
-const getConnectionPath = (conn: any) => {
+const getConnectionPath = (conn: Connection) => {
   const fromBlock = props.state.blocks[conn.fromBlockId];
   const toBlock = props.state.blocks[conn.toBlockId];
   if (!fromBlock || !toBlock) return "";
@@ -447,7 +456,7 @@ const getDragPath = () => {
   return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
 };
 
-const isWireActive = (conn: any) => {
+const isWireActive = (conn: Connection) => {
   return props.state.blocks[conn.fromBlockId]?.outputs?.[conn.fromPinIndex] === 1;
 };
 
@@ -466,7 +475,7 @@ const removeBlock = (blockId: string) => {
   emit("action", { type: "REMOVE_BLOCK", blockId });
 };
 
-const removeConnection = (conn: any) => {
+const removeConnection = (conn: Connection) => {
   emit("action", { type: "DISCONNECT", ...conn });
 };
 </script>

@@ -6,7 +6,7 @@ import {
 } from "@engine/shared/rules/SugorokuGameEngine";
 
 describe("BoardGameEngine", () => {
-  const mockBoard: Board<any> = {
+  const mockBoard: Board<BaseBoardState> = {
     spaces: [
       { id: "S1", type: "NORMAL", text: "1" },
       { id: "S2", type: "NORMAL", text: "2" },
@@ -57,7 +57,7 @@ describe("BoardGameEngine", () => {
     let passCount = 0;
     let stopCount = 0;
 
-    const hookedBoard: Board<any> = {
+    const hookedBoard: Board<BaseBoardState> = {
       spaces: [
         { id: "S1", type: "NORMAL", text: "1" },
         {
@@ -93,7 +93,7 @@ describe("BoardGameEngine", () => {
     expect(stopCount).toBe(0); // S3 doesn't have onStop, S2 was passed.
 
     // Wait, let's check S3 stop hook
-    const hookedBoard2: Board<any> = {
+    const hookedBoard2: Board<BaseBoardState> = {
       spaces: [
         { id: "S1", type: "NORMAL", text: "1" },
         {

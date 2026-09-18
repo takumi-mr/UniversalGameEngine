@@ -393,10 +393,9 @@ const createNewRoom = async (aiType?: string) => {
   creating.value = true;
   try {
     const hookFn = gameHooks[gameType.value];
-    let gameOptions: any = hookFn ? await hookFn() : {};
+    const gameOptions: Record<string, unknown> = (hookFn ? await hookFn() : undefined) ?? {};
 
     if (aiType) {
-      if (!gameOptions) gameOptions = {};
       gameOptions.addAi = aiType;
     }
 
@@ -421,8 +420,7 @@ const startCustomMatch = async () => {
   creating.value = true;
   try {
     const hookFn = gameHooks[gameType.value];
-    let gameOptions: any = hookFn ? await hookFn() : {};
-    if (!gameOptions) gameOptions = {};
+    const gameOptions: Record<string, unknown> = (hookFn ? await hookFn() : undefined) ?? {};
     gameOptions.playersConfig = customSlots.value;
 
     const token = authStore.token || "";

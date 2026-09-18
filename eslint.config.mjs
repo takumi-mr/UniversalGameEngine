@@ -38,8 +38,8 @@ export default [
     rules: {
       // Vueコンポーネント名を複数単語にしなくてもエラーにしない
       "vue/multi-word-component-names": "off",
-      // any型の使用をエラーではなく警告に留める（既存コードにanyがあるため）
-      "@typescript-eslint/no-explicit-any": "warn",
+      // any型は禁止（型が不明なら unknown にして絞り込む。詳細は AGENTS.md の規約を参照）
+      "@typescript-eslint/no-explicit-any": "error",
       // 空のインターフェースを許可する
       "@typescript-eslint/no-empty-object-type": "off",
       // 未使用変数はエラーにする

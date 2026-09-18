@@ -9,6 +9,7 @@ import { JWT_SECRET } from "@engine/backend/config";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import { TicTacToeRuleset } from "@engine/shared/rules/TicTacToeRuleset";
 import { OthelloRuleset } from "@engine/shared/rules/OthelloRuleset";
+import type { Server } from "socket.io";
 
 // Mock Socket.IO Server（fetchSockets はクラスタ全体のソケットを返す想定）
 const roomSockets = new Map<string, { id: string }[]>([
@@ -19,7 +20,7 @@ const mockIo = {
   in: (room: string) => ({ fetchSockets: async () => roomSockets.get(room) ?? [] }),
   local: { in: () => ({ fetchSockets: async () => [] }) },
   to: () => ({ emit: () => {} }),
-} as any;
+} as unknown as Server;
 
 const app = express();
 app.use(express.json());
@@ -33,13 +34,13 @@ describe("Rooms Routes", () => {
 
     // セッションはストアに保存されたものが一覧に出る（メモリキャッシュではない）
     const engine1 = new UniversalEngine(TicTacToeRuleset, {});
-    engine1.dispatch({ type: "JOIN", playerId: "user1" } as any);
-    engine1.dispatch({ type: "JOIN", playerId: "user2" } as any);
+    engine1.dispatch({ type: "JOIN", playerId: "user1" });
+    engine1.dispatch({ type: "JOIN", playerId: "user2" });
     createSession("room1", engine1, "tictactoe");
     await sessions.get("room1")!.server.commit();
 
     const engine2 = new UniversalEngine(OthelloRuleset, {});
-    engine2.dispatch({ type: "JOIN", playerId: "user3" } as any);
+    engine2.dispatch({ type: "JOIN", playerId: "user3" });
     createSession("room2", engine2, "othello");
     await sessions.get("room2")!.server.commit();
 

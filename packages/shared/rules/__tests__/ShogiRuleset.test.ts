@@ -72,9 +72,9 @@ describe("ShogiRuleset: 初期配置と基本の動き", () => {
 
   test("初期局面の先手の合法手は 30 手", () => {
     const engine = new UniversalEngine(ShogiRuleset, {});
-    engine.dispatch({ type: "JOIN", playerId: P1 } as any);
-    engine.dispatch({ type: "JOIN", playerId: P2 } as any);
-    engine.dispatch({ type: "START", playerId: P1 } as any);
+    engine.dispatch({ type: "JOIN", playerId: P1 });
+    engine.dispatch({ type: "JOIN", playerId: P2 });
+    engine.dispatch({ type: "START", playerId: P1 });
     expect(engine.getState().activePlayers).toEqual([P1]);
     expect(engine.getLegalActions(P1).length).toBe(30);
     expect(engine.getLegalActions(P2)).toEqual([]);
@@ -297,9 +297,9 @@ describe("ShogiRuleset: 王手・詰み", () => {
 
   test("エンジン経由で詰ますと FINISHED になり、王を取る手は生成されない", () => {
     const engine = new UniversalEngine(ShogiRuleset, {});
-    engine.dispatch({ type: "JOIN", playerId: P1 } as any);
-    engine.dispatch({ type: "JOIN", playerId: P2 } as any);
-    engine.dispatch({ type: "START", playerId: P1 } as any);
+    engine.dispatch({ type: "JOIN", playerId: P1 });
+    engine.dispatch({ type: "JOIN", playerId: P2 });
+    engine.dispatch({ type: "START", playerId: P1 });
     // 詰み一歩手前の局面を読み込む: 先手が 5二に金を打てば頭金
     const s = position({ [I(4, 0)]: -8, [I(4, 3)]: 7, [I(4, 8)]: 8 }, { hands: { 1: { 5: 1 } } });
     s.prngConfig = engine.getState().prngConfig;
@@ -405,9 +405,9 @@ describe("ShogiRuleset: 千日手", () => {
 
   test("エンジン経由でも千日手で FINISHED になり、記録に残る", () => {
     const engine = new UniversalEngine(ShogiRuleset, {});
-    engine.dispatch({ type: "JOIN", playerId: P1 } as any);
-    engine.dispatch({ type: "JOIN", playerId: P2 } as any);
-    engine.dispatch({ type: "START", playerId: P1 } as any);
+    engine.dispatch({ type: "JOIN", playerId: P1 });
+    engine.dispatch({ type: "JOIN", playerId: P2 });
+    engine.dispatch({ type: "START", playerId: P1 });
     // 初期局面から飛車を往復させる（初期局面が 4 回目で成立）
     const cycle: ShogiAction[] = [
       move(I(7, 7), I(6, 7)),
@@ -517,9 +517,9 @@ describe("ShogiRuleset: 投了", () => {
 describe("ShogiRuleset: 対局", () => {
   test("合法手だけで進めても玉が取られることはなく、記録から再現できる", () => {
     const engine = new UniversalEngine(ShogiRuleset, { clientSeed: "shogi", serverSeed: "shogi" });
-    engine.dispatch({ type: "JOIN", playerId: P1 } as any);
-    engine.dispatch({ type: "JOIN", playerId: P2 } as any);
-    engine.dispatch({ type: "START", playerId: P1 } as any);
+    engine.dispatch({ type: "JOIN", playerId: P1 });
+    engine.dispatch({ type: "JOIN", playerId: P2 });
+    engine.dispatch({ type: "START", playerId: P1 });
 
     let steps = 0;
     while (engine.getState().status === "PLAYING" && steps < 200) {

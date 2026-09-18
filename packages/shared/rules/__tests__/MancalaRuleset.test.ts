@@ -11,7 +11,7 @@ import {
   type MancalaState,
   type MancalaAction,
 } from "@engine/shared/rules/MancalaRuleset";
-import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { UniversalEngine, type InternalGameState } from "@engine/shared/UniversalEngine";
 import { ReplayEngine } from "@engine/shared/ReplayEngine";
 
 const P1 = "south";
@@ -41,9 +41,9 @@ function startedEngine(seed = "mancala") {
     clientSeed: seed,
     serverSeed: seed,
   });
-  engine.dispatch({ type: "JOIN", playerId: P1 } as any);
-  engine.dispatch({ type: "JOIN", playerId: P2 } as any);
-  engine.dispatch({ type: "START", playerId: P1 } as any);
+  engine.dispatch({ type: "JOIN", playerId: P1 });
+  engine.dispatch({ type: "JOIN", playerId: P2 });
+  engine.dispatch({ type: "START", playerId: P1 });
   return engine;
 }
 
@@ -225,7 +225,7 @@ describe("MancalaRuleset: 対局", () => {
     const record = engine.getGameRecord("g");
     const replay = new ReplayEngine(MancalaRuleset, {
       ...record,
-      finalServerSeed: (fin as any).prngSecret,
+      finalServerSeed: (fin as InternalGameState).prngSecret,
     });
     expect(replay.verify(record)).toBe(true);
     expect(replay.getState().board).toEqual(fin.board);

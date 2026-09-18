@@ -12,7 +12,7 @@ interface MockAction extends BaseGameAction {
   type: "INCREMENT";
 }
 
-const mockRules: GameRuleset<MockState, MockAction, any> = {
+const mockRules: GameRuleset<MockState, MockAction, UniversalEngineOptions> = {
   getInitialState: () => ({ status: "PLAYING", version: 0, count: 0 }),
   isValidAction: () => true,
   reduce: (state) => ({ ...state, count: state.count + 1 }),

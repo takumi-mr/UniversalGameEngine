@@ -10,9 +10,8 @@ describe("CloneStrategy", () => {
   };
 
   describe("JsonCloneStrategy", () => {
-    const strategy = new JsonCloneStrategy<any>();
-
     test("should perform deep clone", () => {
+      const strategy = new JsonCloneStrategy<typeof testData>();
       const cloned = strategy.clone(testData);
       expect(cloned).toEqual(testData);
       expect(cloned).not.toBe(testData);
@@ -25,6 +24,7 @@ describe("CloneStrategy", () => {
         date: new Date(),
         undef: undefined,
       };
+      const strategy = new JsonCloneStrategy<typeof complexData>();
       const cloned = strategy.clone(complexData);
       expect(typeof cloned.date).toBe("string"); // Date becomes ISO string
       expect(cloned.undef).toBeUndefined(); // undefined is removed by stringify (or becomes undefined in parsed object if key was missing)
@@ -33,9 +33,8 @@ describe("CloneStrategy", () => {
   });
 
   describe("StructuredCloneStrategy", () => {
-    const strategy = new StructuredCloneStrategy<any>();
-
     test("should perform deep clone", () => {
+      const strategy = new StructuredCloneStrategy<typeof testData>();
       const cloned = strategy.clone(testData);
       expect(cloned).toEqual(testData);
       expect(cloned).not.toBe(testData);
@@ -49,6 +48,7 @@ describe("CloneStrategy", () => {
         date,
         map,
       };
+      const strategy = new StructuredCloneStrategy<typeof complexData>();
       const cloned = strategy.clone(complexData);
       expect(cloned.date).toBeInstanceOf(Date);
       expect(cloned.date.getTime()).toBe(date.getTime());

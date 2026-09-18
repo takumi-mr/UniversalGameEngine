@@ -13,24 +13,38 @@ import {
   onRemoteStateChanged,
 } from "@engine/backend/store/sessionStore";
 import { setIoInstance } from "@engine/backend/network/io";
-import { UniversalEngine } from "@engine/shared/UniversalEngine";
-import { TicTacToeRuleset } from "@engine/shared/rules/TicTacToeRuleset";
+import { UniversalEngine, type EngineReplayData } from "@engine/shared/UniversalEngine";
+import {
+  TicTacToeRuleset,
+  type TicTacToeAction,
+  type TicTacToeState,
+} from "@engine/shared/rules/TicTacToeRuleset";
 import { ReplayEngine } from "@engine/shared/ReplayEngine";
+import type { BaseGameAction, BaseGameState, GameRecord } from "@engine/shared/GameRules";
+import type { Server } from "socket.io";
 
 // このインスタンスに接続しているソケット（テストごとに差し替える）
-let localSockets: { id: string; data: { userId: string }; emit: (ev: string, p: any) => void }[] =
-  [];
+let localSockets: {
+  id: string;
+  data: { userId: string };
+  emit: (ev: string, p: unknown) => void;
+}[] = [];
 const mockIo = {
   in: () => ({ fetchSockets: async () => localSockets }),
   local: { in: () => ({ fetchSockets: async () => localSockets }) },
   to: () => ({ emit: () => {} }),
-} as any;
+} as unknown as Server;
+
+// ストアはゲーム共通の BaseGameState で保存しているので、テストでは TicTacToe の型に戻して読む
+const asTTT = (state: BaseGameState) => state as TicTacToeState;
+const asTTTRecord = (record: GameRecord<BaseGameState, BaseGameAction>) =>
+  record as GameRecord<TicTacToeState, TicTacToeAction>;
 
 const newTicTacToe = () => {
   const engine = new UniversalEngine(TicTacToeRuleset, {});
-  engine.dispatch({ type: "JOIN", playerId: "p1" } as any);
-  engine.dispatch({ type: "JOIN", playerId: "p2" } as any);
-  engine.dispatch({ type: "START", playerId: "p1" } as any);
+  engine.dispatch({ type: "JOIN", playerId: "p1" });
+  engine.dispatch({ type: "JOIN", playerId: "p2" });
+  engine.dispatch({ type: "START", playerId: "p1" });
   return engine;
 };
 
@@ -45,12 +59,12 @@ describe("sessionStore", () => {
   it("dispatchAction は配信と保存を行い、ストアの状態が進む", async () => {
     const { server } = createSession("g1", newTicTacToe(), "tictactoe");
     await server.commit();
-    const before = (await repo.loadSession("g1"))!.state.version;
+    const before = (await repo.loadSession("g1"))!.state.version!;
 
     expect(await server.dispatchAction("p1", { type: "PLACE", index: 4 })).toBe(true);
     const saved = (await repo.loadSession("g1"))!;
     expect(saved.state.version).toBe(before + 1);
-    expect(saved.state.board[4]).toBe(1);
+    expect(asTTT(saved.state).board[4]).toBe(1);
   });
 
   it("別インスタンスが進めた局面をロック内で読み直してから dispatch する", async () => {
@@ -59,14 +73,14 @@ describe("sessionStore", () => {
 
     // 別インスタンスが p1 の手を進めた（ストアだけが更新され、このインスタンスのキャッシュは古い）
     const other = new UniversalEngine(TicTacToeRuleset, {});
-    other.loadState(structuredClone((await repo.loadSession("g2"))!.state));
-    expect(other.dispatch({ type: "PLACE", index: 0, playerId: "p1" } as any)).toBe(true);
+    other.loadState(asTTT(structuredClone((await repo.loadSession("g2"))!.state)));
+    expect(other.dispatch({ type: "PLACE", index: 0, playerId: "p1" })).toBe(true);
     await repo.saveSession("g2", { type: "tictactoe", state: other.getState() });
 
     // 古いキャッシュのままなら p1 の手番だが、最新では p2 の手番
     expect(await server.dispatchAction("p1", { type: "PLACE", index: 1 })).toBe(false);
     expect(await server.dispatchAction("p2", { type: "PLACE", index: 1 })).toBe(true);
-    const saved = (await repo.loadSession("g2"))!.state;
+    const saved = asTTT((await repo.loadSession("g2"))!.state);
     expect(saved.board[0]).toBe(1);
     expect(saved.board[1]).toBe(-1);
   });
@@ -121,7 +135,9 @@ describe("sessionStore", () => {
     ]);
     expect(record.stateHashes?.length).toBe(record.actions.length + 1);
     // 記録から初期状態→終局までを再生・検証できる
-    expect(new ReplayEngine(TicTacToeRuleset as any, record).verify(record)).toBe(true);
+    expect(
+      new ReplayEngine(TicTacToeRuleset, asTTTRecord(record)).verify(asTTTRecord(record)),
+    ).toBe(true);
   });
 
   it("ensureSession は存在しないゲームには null を返す", async () => {
@@ -151,8 +167,8 @@ describe("sessionStore", () => {
 
     // 別インスタンスが 1 手進めた
     const other = new UniversalEngine(TicTacToeRuleset, {});
-    other.loadState(structuredClone((await repo.loadSession("g5"))!.state));
-    other.dispatch({ type: "PLACE", index: 8, playerId: "p1" } as any);
+    other.loadState(asTTT(structuredClone((await repo.loadSession("g5"))!.state)));
+    other.dispatch({ type: "PLACE", index: 8, playerId: "p1" });
     await repo.saveSession("g5", { type: "tictactoe", state: other.getState() });
 
     // 誰も居ない → キャッシュを捨てる
@@ -160,12 +176,12 @@ describe("sessionStore", () => {
     expect(sessions.has("g5")).toBe(false);
 
     // ソケットが居る → 復元して配信する
-    const received: any[] = [];
+    const received: unknown[] = [];
     localSockets = [{ id: "s1", data: { userId: "p1" }, emit: (_ev, p) => received.push(p) }];
     await onRemoteStateChanged("g5");
     await new Promise((r) => setTimeout(r, 0)); // fetchSockets の then を待つ
-    expect(sessions.get("g5")!.server.engine.getState().board[8]).toBe(1);
-    expect(received.at(-1)?.board?.[8]).toBe(1);
+    expect(asTTT(sessions.get("g5")!.server.engine.getState()).board[8]).toBe(1);
+    expect((received.at(-1) as TicTacToeState | undefined)?.board?.[8]).toBe(1);
   });
 
   it("destroySession はストアとキャッシュの両方から消す", async () => {
@@ -203,18 +219,24 @@ describe("sessionStore", () => {
     }
     expect(order).toEqual(["emit", "save-done"]);
     // dispatchAction が返った（＝ロックを離した）時点で保存は済んでいる
-    expect((await repo.loadSession("g7"))!.state.board[4]).toBe(1);
+    expect(asTTT((await repo.loadSession("g7"))!.state).board[4]).toBe(1);
   });
 
   it("broadcastLocal は targetId ごとに 1 回だけマスクし、同じ基準バージョンの差分を共有する", async () => {
     const { server } = createSession("g8", newTicTacToe(), "tictactoe");
-    const received = new Map<string, any[]>();
+    interface PatchPayload {
+      baseVersion: number;
+      targetVersion: number;
+      hash: string;
+      patch: unknown[];
+    }
+    const received = new Map<string, { ev: string; p: PatchPayload }[]>();
     const sock = (id: string, userId: string) => ({
       id,
       data: { userId },
-      emit: (ev: string, p: any) => {
+      emit: (ev: string, p: unknown) => {
         if (ev === "state-update" || ev === "state-patch")
-          received.set(id, [...(received.get(id) ?? []), { ev, p }]);
+          received.set(id, [...(received.get(id) ?? []), { ev, p: p as PatchPayload }]);
       },
     });
     // p1 が 2 接続、観戦者が 3 接続
@@ -287,7 +309,9 @@ describe("sessionStore", () => {
       expect(record.actions.length).toBe(8);
       expect(record.stateHashes?.length).toBe(9);
       expect(record.snapshotState).toBeUndefined();
-      expect(new ReplayEngine(TicTacToeRuleset as any, record).verify(record)).toBe(true);
+      expect(
+        new ReplayEngine(TicTacToeRuleset, asTTTRecord(record)).verify(asTTTRecord(record)),
+      ).toBe(true);
     } finally {
       SocketGameServer.replayFlushSize = prev;
     }
@@ -313,8 +337,11 @@ describe("sessionStore", () => {
       // 別インスタンスが（切り詰め前の履歴を持つ）古い記録から復元し、同じ 4 手目を打って進めたとしても
       // 記録側は version で重複排除される
       const staleEngine = new UniversalEngine(TicTacToeRuleset, {});
-      staleEngine.loadState(staleSession.state as any, staleSession.replay as any);
-      staleEngine.dispatch({ type: "PLACE", index: 0, playerId: "p1" } as any);
+      staleEngine.loadState(
+        asTTT(staleSession.state),
+        staleSession.replay as EngineReplayData<TicTacToeState, TicTacToeAction> | undefined,
+      );
+      staleEngine.dispatch({ type: "PLACE", index: 0, playerId: "p1" });
       await repo.saveSession("g10", {
         type: "tictactoe",
         state: staleEngine.getState(),
@@ -333,7 +360,9 @@ describe("sessionStore", () => {
         "PLACE",
       ]);
       expect(record.stateHashes?.length).toBe(6);
-      expect(new ReplayEngine(TicTacToeRuleset as any, record).verify(record)).toBe(true);
+      expect(
+        new ReplayEngine(TicTacToeRuleset, asTTTRecord(record)).verify(asTTTRecord(record)),
+      ).toBe(true);
     } finally {
       SocketGameServer.replayFlushSize = prev;
     }

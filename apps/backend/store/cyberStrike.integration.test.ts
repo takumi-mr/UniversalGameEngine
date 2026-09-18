@@ -11,12 +11,13 @@ import {
   type CyberStrikeState,
   type CyberStrikeAction,
 } from "@engine/shared/rules/CyberStrikeRuleset";
+import type { Server } from "socket.io";
 
 const mockIo = {
   in: () => ({ fetchSockets: async () => [] }),
   local: { in: () => ({ fetchSockets: async () => [] }) },
   to: () => ({ emit: () => {} }),
-} as any;
+} as unknown as Server;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 

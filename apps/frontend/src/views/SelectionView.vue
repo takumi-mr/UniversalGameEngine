@@ -171,6 +171,7 @@ import ThemeSwitcher from "@/components/ThemeSwitcher.vue";
 
 import { useAuthStore } from "@/store/auth";
 import { useUIStore } from "@/store/ui";
+import type { RoomSummary } from "@/store/room";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -178,7 +179,7 @@ const uiStore = useUIStore();
 
 const drawer = ref(true);
 const selectedCategory = ref("All");
-const joinedRooms = ref<any[]>([]);
+const joinedRooms = ref<RoomSummary[]>([]);
 const leavingId = ref<string | null>(null);
 
 const API_BASE = "http://127.0.0.1:3000";

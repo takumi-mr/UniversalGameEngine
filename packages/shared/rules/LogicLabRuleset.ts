@@ -296,7 +296,7 @@ function nextBlockId(blocks: Record<string, unknown>, prefix: string): string {
   return `${prefix}_${n}`;
 }
 
-export const LogicLabRuleset: GameRuleset<LogicLabState, any> = {
+export const LogicLabRuleset: GameRuleset<LogicLabState, LogicLabAction> = {
   getInitialState: (options?: { levelId?: number }, _rng?: IGameRNG): LogicLabState => {
     const levelId = options?.levelId || 1;
     const level = LOGIC_LAB_LEVELS.find((l) => l.id === levelId) || LOGIC_LAB_LEVELS[0];

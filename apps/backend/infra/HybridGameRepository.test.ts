@@ -15,9 +15,14 @@ const mockRedisHdel = mock();
 // multi()/pipeline() はチェーン可能なビルダーを返し、exec() 時に積まれたコマンドを記録する
 const mockMultiExec = mock(async (): Promise<unknown[]> => []);
 const mockPipelineExec = mock(async (): Promise<unknown[]> => []);
-const makeChain = (exec: ReturnType<typeof mock>) => {
-  const calls: [string, ...unknown[]][] = [];
-  const chain: any = { exec: async () => (((exec as any).calls = calls), exec()) };
+type RecordedCall = [string, ...unknown[]];
+/** exec のモック。直近の exec() で積まれていたコマンドを calls に残す */
+type ExecMock = ReturnType<typeof mock> & { calls?: RecordedCall[] };
+const makeChain = (exec: ExecMock) => {
+  const calls: RecordedCall[] = [];
+  const chain: Record<string, (...args: unknown[]) => unknown> = {
+    exec: async () => ((exec.calls = calls), exec()),
+  };
   for (const cmd of ["set", "hset", "del", "hdel", "zrem", "exists"]) {
     chain[cmd] = (...args: unknown[]) => (calls.push([cmd, ...args]), chain);
   }
@@ -167,11 +172,11 @@ describe("HybridGameRepository", () => {
 
   describe("appendGameRecord", () => {
     const chunk = {
-      initialState: { status: "PLAYING", score: 0 } as any,
+      initialState: { status: "PLAYING", score: 0 } as GameState,
       serverSeedHash: "ssh",
       clientSeed: "cs",
       fromVersion: 0,
-      actions: [{ type: "A" }, { type: "B" }] as any,
+      actions: [{ type: "A" }, { type: "B" }],
       stateHashes: ["h0", "h1", "h2"],
     };
 
@@ -260,7 +265,7 @@ describe("HybridGameRepository", () => {
       const state: GameState = { status: "PLAYING", score: 1, turn: 1 };
       await repo.saveSession("g1", { type: "othello", state, bots: [] });
 
-      const calls = (mockMultiExec as any).calls as [string, ...unknown[]][];
+      const calls = (mockMultiExec as ExecMock).calls!;
       expect(calls[0]).toEqual([
         "set",
         "game:session:g1",

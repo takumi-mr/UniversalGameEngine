@@ -30,6 +30,32 @@ export interface BaseGameAction {
   timestamp?: number; // アクションが発生した時刻
 }
 
+/**
+ * エンジンが全ゲーム共通で受け付ける組み込みアクション（UniversalEngine.dispatch 参照）。
+ * ルールセットの TAction に含まれていなくても dispatch できる。
+ * - JOIN   : state.players の空席（slot 指定があればその席）に着席する
+ * - START  : 対局を開始する（ルールセットが START を扱わなければ status を PLAYING にする）
+ * - TIMEOUT: 制限時間切れ。getTimeoutAction → RESIGN → 強制終了 の順に解決される
+ */
+export type BuiltinAction =
+  | { type: "JOIN"; playerId: string; slot?: string; timestamp?: number }
+  | { type: "START"; playerId?: string; timestamp?: number }
+  | { type: "TIMEOUT"; playerId: string; timestamp: number };
+
+/**
+ * getMaskedState() が返す実際の形。Secret<T> はエンジンによって展開されるため、
+ * 閲覧可能なプレイヤーには中身 T が、そうでなければ maskedValue（既定 "?"）が入る。
+ * どちらになるかは閲覧者次第なので、Secret だった箇所は unknown として扱う。
+ */
+export type Masked<T> =
+  T extends Secret<unknown>
+    ? unknown
+    : T extends (infer E)[]
+      ? Masked<E>[]
+      : T extends object
+        ? { [K in keyof T]: Masked<T[K]> }
+        : T;
+
 // 勝敗結果を表す専用の型
 export interface GameResult {
   isFinished: boolean;

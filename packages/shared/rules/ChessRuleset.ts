@@ -358,7 +358,7 @@ function sideOf(state: ChessState, playerId?: string): 1 | -1 | null {
 // --- ルールセット本体 ---
 
 export const ChessRuleset: GameRuleset<ChessState, ChessAction> = {
-  getInitialState: (_options?: any, _rng?: IGameRNG): ChessState => ({
+  getInitialState: (_options?: unknown, _rng?: IGameRNG): ChessState => ({
     status: "WAITING",
     board: [...INITIAL_BOARD],
     turn: 1,

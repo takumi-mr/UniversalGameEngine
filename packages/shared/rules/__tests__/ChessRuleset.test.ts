@@ -65,9 +65,9 @@ function startedEngine(seed = "chess") {
     clientSeed: seed,
     serverSeed: seed,
   });
-  engine.dispatch({ type: "JOIN", playerId: W } as any);
-  engine.dispatch({ type: "JOIN", playerId: B } as any);
-  engine.dispatch({ type: "START", playerId: W } as any);
+  engine.dispatch({ type: "JOIN", playerId: W });
+  engine.dispatch({ type: "JOIN", playerId: B });
+  engine.dispatch({ type: "START", playerId: W });
   return engine;
 }
 

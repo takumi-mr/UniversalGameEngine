@@ -495,7 +495,7 @@ export function evaluateDeclaration(
 }
 
 export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
-  getInitialState: (_options?: any, _rng?: IGameRNG): ShogiState => {
+  getInitialState: (_options?: unknown, _rng?: IGameRNG): ShogiState => {
     const state: ShogiState = {
       status: "WAITING",
       turn: 1,

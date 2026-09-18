@@ -17,7 +17,7 @@ function stableStringify(obj: unknown): string {
   }
 
   const keys = Object.keys(obj as Record<string, unknown>).sort();
-  return `{${keys.map((k) => `"${k}":${stableStringify((obj as any)[k])}`).join(",")}}`;
+  return `{${keys.map((k) => `"${k}":${stableStringify((obj as Record<string, unknown>)[k])}`).join(",")}}`;
 }
 
 function hashState(state: unknown): string {
@@ -47,7 +47,7 @@ interface Config<TState extends BaseGameState, TAction extends BaseGameAction, T
 export function assertDeterministic<
   TState extends BaseGameState,
   TAction extends BaseGameAction,
-  TOptions = any,
+  TOptions = Record<string, unknown>,
 >(config: Config<TState, TAction, TOptions>) {
   const { rules, options, playerIds, maxSteps = 50 } = config;
 

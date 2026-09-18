@@ -8,13 +8,14 @@ import { setIoInstance } from "@engine/backend/socket/roomManager";
 import { JWT_SECRET } from "@engine/backend/config";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import { TicTacToeRuleset } from "@engine/shared/rules/TicTacToeRuleset";
+import type { Server } from "socket.io";
 
 // Mock Socket.IO Server
 const mockIo = {
   to: () => ({ emit: () => {} }),
   in: () => ({ fetchSockets: async () => [] }),
   local: { in: () => ({ fetchSockets: async () => [] }) },
-} as any;
+} as unknown as Server;
 
 const app = express();
 app.use(express.json());
@@ -28,9 +29,9 @@ describe("Game Routes", () => {
 
     // 2 人着席済み・PLAYING の三目並べをストアに保存しておく
     const engine = new UniversalEngine(TicTacToeRuleset, {});
-    engine.dispatch({ type: "JOIN", playerId: "user1" } as any);
-    engine.dispatch({ type: "JOIN", playerId: "user2" } as any);
-    engine.dispatch({ type: "START", playerId: "user1" } as any);
+    engine.dispatch({ type: "JOIN", playerId: "user1" });
+    engine.dispatch({ type: "JOIN", playerId: "user2" });
+    engine.dispatch({ type: "START", playerId: "user1" });
     createSession("game1", engine, "tictactoe");
     await sessions.get("game1")!.server.commit();
   });
@@ -42,11 +43,11 @@ describe("Game Routes", () => {
       .set("Authorization", `Bearer ${token}`);
 
     expect(response.status).toBe(200);
-    const state = sessions.get("game1")?.server.engine.getState();
-    expect(state.players[1]).toBeNull();
+    const state = sessions.get("game1")!.server.engine.getState();
+    expect(state.players![1]).toBeNull();
     // ストアにも反映されている
     const saved = await repo.loadSession("game1");
-    expect(saved?.state.players[1]).toBeNull();
+    expect(saved?.state.players![1]).toBeNull();
   });
 
   test("POST /:gameId/leave should return 404 for unknown game", async () => {

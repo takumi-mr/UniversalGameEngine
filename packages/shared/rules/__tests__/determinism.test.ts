@@ -2,7 +2,7 @@
 
 import { describe, it, expect, spyOn } from "bun:test";
 import { gameRegistry } from "@engine/shared/GameRegistry";
-import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { UniversalEngine, type InternalGameState } from "@engine/shared/UniversalEngine";
 import { assertDeterministic } from "@engine/shared/testing/assertDeterministic";
 
 const SEEDS = [
@@ -60,8 +60,8 @@ describe("Ruleset Determinism (no Math.random, seed auto-recording)", () => {
           players: playerIds,
           playerIds,
         });
-        for (const pid of playerIds) engine.dispatch({ type: "JOIN", playerId: pid } as any);
-        engine.dispatch({ type: "START", playerId: playerIds[0] } as any);
+        for (const pid of playerIds) engine.dispatch({ type: "JOIN", playerId: pid });
+        engine.dispatch({ type: "START", playerId: playerIds[0] });
         for (let step = 0; step < 40; step++) {
           const state = engine.getState();
           if (state.status === "FINISHED") break;
@@ -88,7 +88,7 @@ describe("Ruleset Determinism (no Math.random, seed auto-recording)", () => {
     if (!def) throw new Error("no random game registered");
     const playerIds = ["p1", "p2"];
     const e1 = new UniversalEngine(def.ruleset, { players: playerIds, playerIds });
-    const s1 = e1.getState() as any;
+    const s1 = e1.getState() as InternalGameState;
     expect(s1.prngConfig?.clientSeed).toBeTruthy();
     expect(s1.prngSecret).toBeTruthy();
 
@@ -96,13 +96,13 @@ describe("Ruleset Determinism (no Math.random, seed auto-recording)", () => {
     const e2 = new UniversalEngine(def.ruleset, {
       players: playerIds,
       playerIds,
-      clientSeed: s1.prngConfig.clientSeed,
+      clientSeed: s1.prngConfig!.clientSeed,
       serverSeed: s1.prngSecret,
     });
     expect(JSON.stringify(e2.getState())).toBe(JSON.stringify(s1));
 
     // 別のエンジンは別のシードになる（自動生成が固定値でないこと）
     const e3 = new UniversalEngine(def.ruleset, { players: playerIds, playerIds });
-    expect((e3.getState() as any).prngConfig.clientSeed).not.toBe(s1.prngConfig.clientSeed);
+    expect(e3.getState().prngConfig!.clientSeed).not.toBe(s1.prngConfig!.clientSeed);
   });
 });

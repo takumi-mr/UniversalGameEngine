@@ -33,7 +33,7 @@ function sideOf(state: MancalaState, playerId?: string): 1 | -1 | null {
 }
 
 export const MancalaRuleset: GameRuleset<MancalaState, MancalaAction> = {
-  getInitialState: (_options?: any, _rng?: IGameRNG): MancalaState => {
+  getInitialState: (_options?: unknown, _rng?: IGameRNG): MancalaState => {
     // 各ポケットに石を4個ずつ。ストア(6, 13)は0個。
     const board = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0];
 
