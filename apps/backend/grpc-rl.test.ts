@@ -335,6 +335,41 @@ describe("gRPC RL loop (Reset/Step)", () => {
     expect(sim.stateTensor).toEqual(stepped.nextStateTensor);
   });
 
+  it("将棋: 詰ませる手を Simulate / Step すると is_finished と報酬 1 が返ること", async () => {
+    // 先手: 玉 5九、銀 5三、持ち駒 金 / 後手: 玉 5一。5二に金を打てば頭金で詰み
+    const I = (x: number, y: number) => y * 9 + x;
+    const { gameId } = await createGame({ gameType: "shogi" });
+    const res = await reset({ gameId, playerIds: ["sente", "gote"] });
+    const state = JSON.parse(res.stateJson) as ShogiState;
+    state.board = new Array(81).fill(0);
+    state.board[I(4, 0)] = -8;
+    state.board[I(4, 2)] = 4;
+    state.board[I(4, 8)] = 8;
+    state.hands = { 1: { 5: 1 }, "-1": {} };
+    state.positionHistory = [];
+    // 金打ち 5二: 移動先 (4,1) × 27 + (20 + 金の持ち駒スロット 4)
+    const mate = I(4, 1) * 27 + 24;
+
+    const sim = await simulate({
+      gameType: "shogi",
+      stateJson: JSON.stringify(state),
+      playerId: "sente",
+      actionId: mate,
+    });
+    expect(sim.error).toBe("");
+    expect(sim.isFinished).toBe(true);
+    expect(sim.reward).toBe(1);
+    expect(sim.legalActionIds).toEqual([]);
+    expect((JSON.parse(sim.stateJson) as ShogiState).status).toBe("FINISHED");
+
+    // Step も同じ（セッションの局面を差し替えてから指す）
+    sessions.get(gameId)!.server.engine.loadState(state);
+    const stepped = await step({ gameId, playerId: "sente", actionId: mate });
+    expect(stepped.isFinished).toBe(true);
+    expect(stepped.reward).toBe(1);
+    expect(stepped.legalActionIds).toEqual([]);
+  });
+
   it("将棋: gRPC ボットは WaitForTurn 接続時に手番を受け取り、SubmitTurn で指せること", async () => {
     // 人間（後手）+ gRPC ボット（先手）の対局をサーバー内で組み立てる（request-create-game と同じ手順）
     const gameId = "shogi_bot_room";

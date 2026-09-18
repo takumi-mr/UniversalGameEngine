@@ -51,6 +51,12 @@ tasks:
     cmds:
       - python -m uge_rl.train --game othello --out ../../models/othello_dqn.pt {{.CLI_ARGS}}
 
+  ml:train-shogi:
+    desc: Train the Shogi DQN against a running RL-mode backend (games are cut off as draws at --max-moves)
+    dir: apps/ml
+    cmds:
+      - python -m uge_rl.train --game shogi --max-moves 256 --eps-decay-steps 200000 --out ../../models/shogi_dqn.pt {{.CLI_ARGS}}
+
   ml:train-az:
     desc: Train the Othello AlphaZero-style agent (MCTS over gRPC Simulate) against a running RL-mode backend
     dir: apps/ml

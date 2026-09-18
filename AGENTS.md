@@ -28,7 +28,7 @@ task up / task down                 # Redis + MongoDB を docker compose で起�
 task dev                            # インフラ起動 + proto 生成 + backend/frontend 同時起動
 task rl                             # backend を RL_MODE=true（インメモリ、DB 不要）で起動 → gRPC 学習用
 task proto                          # packages/shared/network/game.proto → TS 型を再生成
-task ml:train / ml:train-az / ml:train-az-shogi / ml:eval   # apps/ml の DQN 学習 / AlphaZero 学習（オセロ / 将棋）/ 評価（RL_MODE の backend が必要）
+task ml:train / ml:train-shogi / ml:train-az / ml:train-az-shogi / ml:eval   # apps/ml の DQN 学習 / AlphaZero 学習（オセロ / 将棋）/ 評価（RL_MODE の backend が必要）
 task ml:serve                       # 学習済みモデルを実対局の「gRPC External」席の相手として動かす（--checkpoint で指定）
 task ml:test                        # apps/ml の単体テスト（pytest、サーバー不要）
 

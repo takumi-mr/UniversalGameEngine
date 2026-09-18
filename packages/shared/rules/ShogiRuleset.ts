@@ -650,7 +650,9 @@ export const ShogiRuleset: GameRuleset<ShogiState, ShogiAction> = {
     }
 
     // 手番側に合法手が無ければ負け（詰み。将棋ではステイルメイトも負け）
-    if (state.status === "PLAYING") {
+    // 終局後（FINISHED）の状態で再評価されても同じ結果を返す（gRPC Step / Simulate はエンジンが
+    // FINISHED にした後の状態でもう一度 checkWinCondition を呼んで勝者と報酬を求める）
+    if (state.status !== "WAITING") {
       const turn = state.turn as Side;
       if (!hasLegalMove(state, turn)) {
         const winner = -turn as Side;
