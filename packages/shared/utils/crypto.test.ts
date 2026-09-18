@@ -1,5 +1,5 @@
 import { expect, it, describe } from "bun:test";
-import { sha256, hmacSha256, generateRandomSeed } from "./crypto";
+import { sha256, hmacSha256, generateRandomSeed } from "@engine/shared/utils/crypto";
 
 describe("crypto", () => {
   describe("sha256", () => {

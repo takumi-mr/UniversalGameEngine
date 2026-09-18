@@ -1,6 +1,6 @@
 // packages/shared/rules/RubiksRuleset.ts
-import type { BaseGameState, GameRuleset } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
+import type { BaseGameState, GameRuleset } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 export type FaceName = "U" | "D" | "F" | "B" | "L" | "R"; // Up, Down, Front, Back, Left, Right
 export type Color = "W" | "Y" | "G" | "B" | "O" | "R"; // White, Yellow, Green, Blue, Orange, Red

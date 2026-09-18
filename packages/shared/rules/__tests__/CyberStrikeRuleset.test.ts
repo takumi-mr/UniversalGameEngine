@@ -6,9 +6,9 @@ import {
   TICK_RATE,
   tickAt,
   type CyberStrikeState,
-} from "../CyberStrikeRuleset";
-import { withTestRng } from "../../testing/withTestRng";
-import { UniversalEngine } from "../../UniversalEngine";
+} from "@engine/shared/rules/CyberStrikeRuleset";
+import { withTestRng } from "@engine/shared/testing/withTestRng";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
 
 const T0 = 1_000_000;
 const MS_PER_TICK = 1000 / TICK_RATE;

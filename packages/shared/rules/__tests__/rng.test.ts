@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { gameRegistry } from "../../GameRegistry";
-import { UniversalEngine } from "../../UniversalEngine";
+import { gameRegistry } from "@engine/shared/GameRegistry";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
 
 describe("RNG Determinism", () => {
   const games = gameRegistry.getAllDefinitions();

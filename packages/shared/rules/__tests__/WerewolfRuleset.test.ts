@@ -1,10 +1,13 @@
 import { expect, test, describe } from "bun:test";
-import { WerewolfRuleset as RealWerewolfRuleset, getTeam } from "../WerewolfRuleset";
-import { withTestRng } from "../../testing/withTestRng";
+import {
+  WerewolfRuleset as RealWerewolfRuleset,
+  getTeam,
+} from "@engine/shared/rules/WerewolfRuleset";
+import { withTestRng } from "@engine/shared/testing/withTestRng";
 
 // ルールセットを直接呼ぶテストなので、固定シードの RNG を補う
 const WerewolfRuleset = withTestRng(RealWerewolfRuleset);
-import type { WerewolfState } from "../WerewolfRuleset";
+import type { WerewolfState } from "@engine/shared/rules/WerewolfRuleset";
 
 // テスト用ヘルパー: 特定の役職配分で状態を作成
 function createTestState(roleAssignment: Record<string, string>): WerewolfState {

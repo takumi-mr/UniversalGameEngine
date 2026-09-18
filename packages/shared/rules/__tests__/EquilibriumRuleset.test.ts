@@ -1,7 +1,7 @@
 // packages/shared/rules/__tests__/EquilibriumRuleset.test.ts
 // JOIN → START → 封印入札 → メインフェーズ → 勝利条件 までを、エンジン経由で実際に通す。
 import { describe, it, expect } from "bun:test";
-import { UniversalEngine } from "../../UniversalEngine";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import {
   EquilibriumRuleset,
   cardNeedsTarget,
@@ -9,7 +9,7 @@ import {
   type EquilibriumState,
   type EquilibriumAction,
   type Card,
-} from "../EquilibriumRuleset";
+} from "@engine/shared/rules/EquilibriumRuleset";
 
 const P = ["alice", "bob", "carol"];
 

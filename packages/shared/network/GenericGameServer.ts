@@ -1,6 +1,6 @@
 // packages/shared/network/GenericGameServer.ts
-import type { BaseGameState, BaseGameAction } from "../GameRules";
-import { UniversalEngine } from "../UniversalEngine";
+import type { BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
 
 /**
  * 汎用的なゲームサーバー（あるいはルーム管理者）の基盤クラス。

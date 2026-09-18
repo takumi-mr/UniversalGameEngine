@@ -3,7 +3,12 @@
   "extends": ["@vue/tsconfig/tsconfig.dom.json", "../../tsconfig.base.json"],
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "types": ["vite/client", "node", "vuetify"]
+    "types": ["vite/client", "node", "vuetify"],
+    // `@/` → src/。実行時は vite.config.ts / vitest.config.ts の resolve.alias が同じ対応を持つ。
+    // src 外（network/, electron/）は `@/` の対象外なので相対パスのまま。
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": [
     "src/**/*.ts",

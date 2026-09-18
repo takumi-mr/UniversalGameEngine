@@ -1,8 +1,13 @@
 {
   // 厳しさは ../../tsconfig.base.json に統一。ここでは Bun 実行環境の lib / types のみ指定する。
+  // パッケージ内の import は `@engine/backend/*`。実行時は root の node_modules/@engine/backend（workspace symlink）で
+  // 解決されるので cwd に依存しない。paths はエディタ用の明示。
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ESNext"],
-    "types": ["bun"]
+    "types": ["bun"],
+    "paths": {
+      "@engine/backend/*": ["./*"]
+    }
   }
 }

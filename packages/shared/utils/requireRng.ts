@@ -1,5 +1,5 @@
 // packages/shared/utils/requireRng.ts
-import type { IGameRNG } from "./IGameRNG";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 /**
  * ルールセット内で乱数が必要な箇所に使う。

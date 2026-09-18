@@ -21,7 +21,7 @@
 <script setup lang="ts">
 import { computed, watch } from "vue";
 import { useTheme } from "vuetify";
-import { useUIStore } from "../store/ui";
+import { useUIStore } from "@/store/ui";
 
 const theme = useTheme();
 const uiStore = useUIStore();

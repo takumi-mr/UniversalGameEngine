@@ -1,6 +1,6 @@
-import { requireRng } from "../utils/requireRng";
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
+import { requireRng } from "@engine/shared/utils/requireRng";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 // --- 型定義 ---
 export interface WordleState extends BaseGameState {

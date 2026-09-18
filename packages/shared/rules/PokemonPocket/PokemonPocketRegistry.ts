@@ -1,4 +1,4 @@
-import type { PokemonPocketState } from "./PokemonPocketRuleset";
+import type { PokemonPocketState } from "@engine/shared/rules/PokemonPocket/PokemonPocketRuleset";
 
 export type CardCategory = "POKEMON" | "TRAINER";
 export type EnergyType =

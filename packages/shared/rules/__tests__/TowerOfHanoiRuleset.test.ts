@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { TowerOfHanoiRuleset } from "../TowerOfHanoiRuleset";
+import { TowerOfHanoiRuleset } from "@engine/shared/rules/TowerOfHanoiRuleset";
 
 describe("TowerOfHanoiRuleset", () => {
   test("getInitialState should return correct initial state", () => {

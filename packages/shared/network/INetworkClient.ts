@@ -1,4 +1,4 @@
-import type { BaseGameState } from "../GameRules";
+import type { BaseGameState } from "@engine/shared/GameRules";
 
 export interface GameMetadata {
   playerCount: number;

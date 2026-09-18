@@ -5,8 +5,8 @@
 //
 // 各フレームについて「まず predict → 次に observe」の順で呼ぶ。
 // これは実機で「本物の入力が届く前に予測し、届いたら履歴に入れる」のと同じ順序
-import type { InputEquality, InputPredictor } from "./InputPredictor";
-import { PredictionStats, type PredictionSummary } from "./PredictionStats";
+import type { InputEquality, InputPredictor } from "@engine/input-prediction/InputPredictor";
+import { PredictionStats, type PredictionSummary } from "@engine/input-prediction/PredictionStats";
 
 export interface RecordedFrame<TInput, TState> {
   playerId: string;

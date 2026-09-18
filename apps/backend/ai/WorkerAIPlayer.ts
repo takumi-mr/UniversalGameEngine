@@ -7,7 +7,7 @@ import { Worker } from "worker_threads";
 import path from "path";
 import type { BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
 import type { IAIPlayer, AIDiagnosticValue } from "@engine/shared/ai/IAIPlayer";
-import type { WorkerRequest, WorkerResponse } from "./ai-worker";
+import type { WorkerRequest, WorkerResponse } from "@engine/backend/ai/ai-worker";
 
 // ai-worker.ts のパスを解決する
 // bun run dev では TypeScript ファイルをそのまま実行できるため .ts 拡張子を使用する

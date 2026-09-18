@@ -1,7 +1,7 @@
-import { requireRng } from "../utils/requireRng";
-import { createSecret, type Secret } from "../GameRules";
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
+import { requireRng } from "@engine/shared/utils/requireRng";
+import { createSecret, type Secret } from "@engine/shared/GameRules";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 export type Card = string; // e.g., 'AS', '2H', 'TD', 'KC'
 

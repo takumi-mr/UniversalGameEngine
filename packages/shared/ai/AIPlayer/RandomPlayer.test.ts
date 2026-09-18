@@ -1,6 +1,6 @@
 // packages/shared/ai/RandomPlayer.test.ts
 import { describe, it, expect, spyOn } from "bun:test";
-import { RandomPlayer } from "./RandomPlayer";
+import { RandomPlayer } from "@engine/shared/ai/AIPlayer/RandomPlayer";
 
 type DummyState = {
   status: "WAITING" | "PLAYING" | "FINISHED";

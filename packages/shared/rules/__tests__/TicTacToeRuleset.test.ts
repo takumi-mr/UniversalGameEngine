@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { TicTacToeRuleset } from "../TicTacToeRuleset";
+import { TicTacToeRuleset } from "@engine/shared/rules/TicTacToeRuleset";
 
 describe("TicTacToeRuleset", () => {
   test("getInitialState should return correct initial state", () => {

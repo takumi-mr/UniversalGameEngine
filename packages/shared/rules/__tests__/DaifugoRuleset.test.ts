@@ -1,8 +1,11 @@
 import { expect, test, describe } from "bun:test";
-import { DaifugoRuleset as RealDaifugoRuleset, type DaifugoState } from "../DaifugoRuleset";
-import { createSecret } from "../../GameRules";
-import { assertDeterministic } from "../../testing/assertDeterministic";
-import { withTestRng } from "../../testing/withTestRng";
+import {
+  DaifugoRuleset as RealDaifugoRuleset,
+  type DaifugoState,
+} from "@engine/shared/rules/DaifugoRuleset";
+import { createSecret } from "@engine/shared/GameRules";
+import { assertDeterministic } from "@engine/shared/testing/assertDeterministic";
+import { withTestRng } from "@engine/shared/testing/withTestRng";
 
 // ルールセットを直接呼ぶテストなので、固定シードの RNG を補う
 const DaifugoRuleset = withTestRng(RealDaifugoRuleset);

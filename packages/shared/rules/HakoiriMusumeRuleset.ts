@@ -1,5 +1,5 @@
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 /**
  * 箱入り娘 (Hakoiri Musume) - Klotski Puzzle Game

@@ -12,8 +12,8 @@ import {
   REPETITION_LIMIT,
   type ChessState,
   type ChessAction,
-} from "../ChessRuleset";
-import { UniversalEngine } from "../../UniversalEngine";
+} from "@engine/shared/rules/ChessRuleset";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
 
 /** "e4" のような代数表記をインデックスに */
 const sq = (name: string) => {

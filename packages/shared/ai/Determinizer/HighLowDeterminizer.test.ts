@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import type { Card, HighLowState } from "../../rules/HighLowRuleset";
-import { HighLowDeterminizer } from "./HighLowDeterminizer";
+import type { Card, HighLowState } from "@engine/shared/rules/HighLowRuleset";
+import { HighLowDeterminizer } from "@engine/shared/ai/Determinizer/HighLowDeterminizer";
 
 const HIDDEN_CARD = { suit: "?", rank: 0 } as unknown as Card;
 

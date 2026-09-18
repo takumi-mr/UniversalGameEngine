@@ -1,6 +1,6 @@
 import { expect, test, describe } from "bun:test";
-import { MinesweeperRuleset as RealMinesweeperRuleset } from "../MinesweeperRuleset";
-import { withTestRng } from "../../testing/withTestRng";
+import { MinesweeperRuleset as RealMinesweeperRuleset } from "@engine/shared/rules/MinesweeperRuleset";
+import { withTestRng } from "@engine/shared/testing/withTestRng";
 
 // ルールセットを直接呼ぶテストなので、固定シードの RNG を補う
 const MinesweeperRuleset = withTestRng(RealMinesweeperRuleset);

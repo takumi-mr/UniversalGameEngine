@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { ProvablyFairRNG } from "./ProvablyFairRNG";
+import { ProvablyFairRNG } from "@engine/shared/utils/ProvablyFairRNG";
 
 describe("ProvablyFairRNG", () => {
   const serverSeed = "test_server_seed";

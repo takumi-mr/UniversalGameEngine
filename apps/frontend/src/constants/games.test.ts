@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { gameRegistry } from "@engine/shared/GameRegistry";
-import { availableGames } from "./games";
+import { availableGames } from "@/constants/games";
 
 // フロントのゲーム一覧と shared の GameRegistry がずれていないことを保証する。
 // （一覧にあるのに登録されていないゲームは、ルーム作成時にサーバーで失敗する）

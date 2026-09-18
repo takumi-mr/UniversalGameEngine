@@ -1,9 +1,9 @@
 // packages/shared/rules/__tests__/determinism.test.ts
 
 import { describe, it, expect, spyOn } from "bun:test";
-import { gameRegistry } from "../../GameRegistry";
-import { UniversalEngine } from "../../UniversalEngine";
-import { assertDeterministic } from "../../testing/assertDeterministic";
+import { gameRegistry } from "@engine/shared/GameRegistry";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { assertDeterministic } from "@engine/shared/testing/assertDeterministic";
 
 const SEEDS = [
   { clientSeed: "seed-A", serverSeed: "server-A" },

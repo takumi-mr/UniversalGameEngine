@@ -3,8 +3,13 @@ import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 import path from "path";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET, isRlMode } from "./config";
-import { createSession, ensureSession, withSession, normalizeGameType } from "./store/sessionStore";
+import { JWT_SECRET, isRlMode } from "@engine/backend/config";
+import {
+  createSession,
+  ensureSession,
+  withSession,
+  normalizeGameType,
+} from "@engine/backend/store/sessionStore";
 import { gameRegistry } from "@engine/shared/GameRegistry";
 import { aiTensorRegistry } from "@engine/shared/ai/AITensorAdapterRegistry";
 // 組み込みテンソルアダプタ（othello 等）を aiTensorRegistry に登録する
@@ -13,8 +18,12 @@ import { UniversalEngine, type UniversalEngineOptions } from "@engine/shared/Uni
 import type { GameServiceHandlers } from "@engine/shared/network/generated/universal_game_engine/GameService";
 import type { SimulateRequest } from "@engine/shared/network/generated/universal_game_engine/SimulateRequest";
 import type { SimulateResponse } from "@engine/shared/network/generated/universal_game_engine/SimulateResponse";
-import { getIoInstance, scheduleRoomCleanup, clearRoomCleanup } from "./socket/roomManager";
-import { streamManager } from "./network/StreamManager";
+import {
+  getIoInstance,
+  scheduleRoomCleanup,
+  clearRoomCleanup,
+} from "@engine/backend/socket/roomManager";
+import { streamManager } from "@engine/backend/network/StreamManager";
 
 const PROTO_PATH = path.resolve(__dirname, "../../packages/shared/network/game.proto");
 

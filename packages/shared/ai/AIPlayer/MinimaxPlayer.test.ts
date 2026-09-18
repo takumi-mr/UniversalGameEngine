@@ -1,7 +1,7 @@
 // packages/shared/ai/MinimaxPlayer.test.ts
 import { describe, expect, it } from "bun:test";
-import { TicTacToeRuleset, type TicTacToeState } from "../../rules/TicTacToeRuleset";
-import { MinimaxPlayer } from "./MinimaxPlayer";
+import { TicTacToeRuleset, type TicTacToeState } from "@engine/shared/rules/TicTacToeRuleset";
+import { MinimaxPlayer } from "@engine/shared/ai/AIPlayer/MinimaxPlayer";
 
 describe("MinimaxPlayer", () => {
   const ruleset = TicTacToeRuleset;

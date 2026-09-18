@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { gameRegistry } from "./GameRegistry";
+import { gameRegistry } from "@engine/shared/GameRegistry";
 
 describe("GameRegistry", () => {
   test("should have registered games", () => {

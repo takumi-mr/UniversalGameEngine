@@ -1,6 +1,6 @@
 // packages/shared/utils/ProvablyFairRNG.ts
-import type { IGameRNG } from "./IGameRNG";
-import { hmacSha256 } from "./crypto";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
+import { hmacSha256 } from "@engine/shared/utils/crypto";
 
 /**
  * Provably Fair（証明可能な公正さ）に基づく乱数生成器

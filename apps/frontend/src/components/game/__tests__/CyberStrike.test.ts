@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mount } from "@vue/test-utils";
 import { nextTick } from "vue";
-import CyberStrike from "../CyberStrike.vue";
+import CyberStrike from "@/components/game/CyberStrike.vue";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import {
   CyberStrikeRuleset,

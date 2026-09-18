@@ -37,6 +37,9 @@
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
+    "@engine/backend": "workspace:*",
+    "@engine/input-prediction": "workspace:*",
+    "@engine/shared": "workspace:*",
     "@eslint/js": "^10.0.1",
     "@types/bun": "^1.3.11",
     "eslint": "^10.1.0",

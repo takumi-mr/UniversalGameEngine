@@ -1,7 +1,7 @@
 import { expect, test, describe } from "bun:test";
 import request from "supertest";
 import express from "express";
-import authRoutes from "./auth";
+import authRoutes from "@engine/backend/routes/auth";
 
 const app = express();
 app.use(express.json());

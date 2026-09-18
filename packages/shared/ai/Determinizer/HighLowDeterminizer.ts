@@ -1,5 +1,5 @@
-import type { IAIStateDeterminizer } from "../IAIStateDeterminizer";
-import type { Card, HighLowState, Suit } from "../../rules/HighLowRuleset";
+import type { IAIStateDeterminizer } from "@engine/shared/ai/IAIStateDeterminizer";
+import type { Card, HighLowState, Suit } from "@engine/shared/rules/HighLowRuleset";
 
 const SUITS: Suit[] = ["♠", "♥", "♦", "♣"];
 

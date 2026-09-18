@@ -1,4 +1,4 @@
-import type { PokemonTCGState } from "./PokemonTCGRuleset";
+import type { PokemonTCGState } from "@engine/shared/rules/PokemonTCG/PokemonTCGRuleset";
 
 export type CardCategory = "POKEMON" | "ENERGY" | "TRAINER";
 export type EnergyType = "FIRE" | "LIGHTNING" | "GRASS" | "COLORLESS";

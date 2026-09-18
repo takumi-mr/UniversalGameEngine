@@ -1,6 +1,6 @@
 // packages/shared/ai/MinimaxPlayer.ts
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../../GameRules";
-import type { IAIPlayer } from "../IAIPlayer";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
+import type { IAIPlayer } from "@engine/shared/ai/IAIPlayer";
 
 /**
  * 状態評価関数の型

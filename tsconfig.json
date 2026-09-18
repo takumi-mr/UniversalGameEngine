@@ -4,11 +4,19 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "types": ["bun"],
-    "baseUrl": ".",
+    // baseUrl は TS 7 で廃止。paths は baseUrl が無ければこの tsconfig の場所を基準に解決される。
+    // apps と packages を 1 つのプログラムで検査するため、接頭辞はワークスペース間で重複させない。
+    // 各ワークスペース内の import も自分のエイリアスを使う（相対パスは使わない）。
+    // 実行時の解決はここではなく:
+    //   - `@engine/*` … root package.json の devDependencies（workspace:*）が張る node_modules の symlink。
+    //     Bun は baseUrl 無しの paths を cwd 基準で解決してしまうため、paths には頼らない
+    //   - `@/`        … apps/frontend の vite.config.ts / vitest.config.ts の resolve.alias
     "paths": {
-      "@engine/shared/*": ["packages/shared/*"],
-      "@engine/input-prediction": ["packages/input-prediction/index.ts"],
-      "@engine/input-prediction/*": ["packages/input-prediction/*"]
+      "@/*": ["./apps/frontend/src/*"],
+      "@engine/backend/*": ["./apps/backend/*"],
+      "@engine/shared/*": ["./packages/shared/*"],
+      "@engine/input-prediction": ["./packages/input-prediction/index.ts"],
+      "@engine/input-prediction/*": ["./packages/input-prediction/*"]
     }
   },
   "include": ["apps/**/*.ts", "apps/**/*.vue", "packages/**/*.ts"]

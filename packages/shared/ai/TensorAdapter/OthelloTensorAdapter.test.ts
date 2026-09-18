@@ -1,10 +1,10 @@
 // packages/shared/ai/TensorAdapter/OthelloTensorAdapter.test.ts
 import { describe, it, expect } from "bun:test";
-import { OthelloRuleset } from "../../rules/OthelloRuleset";
-import type { OthelloState, OthelloAction } from "../../rules/OthelloRuleset";
-import { OthelloTensorAdapter } from "./OthelloTensorAdapter";
-import { aiTensorRegistry } from "../AITensorAdapterRegistry";
-import "./index";
+import { OthelloRuleset } from "@engine/shared/rules/OthelloRuleset";
+import type { OthelloState, OthelloAction } from "@engine/shared/rules/OthelloRuleset";
+import { OthelloTensorAdapter } from "@engine/shared/ai/TensorAdapter/OthelloTensorAdapter";
+import { aiTensorRegistry } from "@engine/shared/ai/AITensorAdapterRegistry";
+import "@engine/shared/ai/TensorAdapter/index";
 
 function playingState() {
   const state = OthelloRuleset.getInitialState();

@@ -1,8 +1,8 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "../config";
-import { ensureSession, withSession } from "../store/sessionStore";
-import { getIoInstance, updatePresence } from "../socket/roomManager";
+import { JWT_SECRET } from "@engine/backend/config";
+import { ensureSession, withSession } from "@engine/backend/store/sessionStore";
+import { getIoInstance, updatePresence } from "@engine/backend/socket/roomManager";
 
 const router = Router();
 

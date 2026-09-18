@@ -1,8 +1,8 @@
-import { requireRng } from "../../utils/requireRng";
-import type { BaseGameState, GameRuleset } from "../../GameRules";
-import type { IGameRNG } from "../../utils/IGameRNG";
-import type { EnergyType } from "./PokemonPocketRegistry";
-import { PokemonPocketRegistry } from "./PokemonPocketRegistry";
+import { requireRng } from "@engine/shared/utils/requireRng";
+import type { BaseGameState, GameRuleset } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
+import type { EnergyType } from "@engine/shared/rules/PokemonPocket/PokemonPocketRegistry";
+import { PokemonPocketRegistry } from "@engine/shared/rules/PokemonPocket/PokemonPocketRegistry";
 
 // ==========================================
 // 1. 状態とアクションの定義

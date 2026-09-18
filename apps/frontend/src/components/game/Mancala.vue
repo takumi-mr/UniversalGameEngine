@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import type { MancalaState, MancalaAction } from "@engine/shared/rules/MancalaRuleset";
-import { MancalaUI } from "../../three/MancalaUI";
+import { MancalaUI } from "@/three/MancalaUI";
 
 const props = defineProps<{
   state: MancalaState;

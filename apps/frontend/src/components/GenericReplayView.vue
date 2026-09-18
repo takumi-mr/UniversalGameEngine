@@ -47,7 +47,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, defineAsyncComponent, type Component } from "vue";
-import ReplayViewer from "./ReplayViewer.vue";
+import ReplayViewer from "@/components/ReplayViewer.vue";
 import { gameRegistry } from "@engine/shared/GameRegistry";
 import type { GameRecord, GameRuleset } from "@engine/shared/GameRules";
 
@@ -66,9 +66,9 @@ const ruleset = ref<GameRuleset<any, any> | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const components: Record<string, Component> = {
-  tictactoe: defineAsyncComponent(() => import("./game/TicTacToe.vue")),
-  othello: defineAsyncComponent(() => import("./game/Othello.vue")),
-  mahjong: defineAsyncComponent(() => import("./game/Mahjong.vue")),
+  tictactoe: defineAsyncComponent(() => import("@/components/game/TicTacToe.vue")),
+  othello: defineAsyncComponent(() => import("@/components/game/Othello.vue")),
+  mahjong: defineAsyncComponent(() => import("@/components/game/Mahjong.vue")),
 };
 
 const gameComponent = computed(() => components[props.gameType] || null);

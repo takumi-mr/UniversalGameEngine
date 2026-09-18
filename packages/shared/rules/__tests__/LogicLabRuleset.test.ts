@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { LogicLabRuleset, LOGIC_LAB_LEVELS } from "../LogicLabRuleset";
+import { LogicLabRuleset, LOGIC_LAB_LEVELS } from "@engine/shared/rules/LogicLabRuleset";
 
 describe("LogicLabRuleset", () => {
   it("should initialize level 1 with input and output blocks", () => {

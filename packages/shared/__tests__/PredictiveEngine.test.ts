@@ -1,14 +1,14 @@
 // packages/shared/__tests__/PredictiveEngine.test.ts
 // クライアント側入力予測: ローカル即時適用 → サーバー確定状態への巻き戻し → 未処理入力の再適用 → 予測時点への進め直し
 import { describe, it, expect } from "bun:test";
-import { PredictiveEngine } from "../PredictiveEngine";
-import { UniversalEngine } from "../UniversalEngine";
+import { PredictiveEngine } from "@engine/shared/PredictiveEngine";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import {
   CyberStrikeRuleset,
   TICK_RATE,
   type CyberStrikeAction,
   type CyberStrikeState,
-} from "../rules/CyberStrikeRuleset";
+} from "@engine/shared/rules/CyberStrikeRuleset";
 
 const T0 = 1_000_000;
 /** ticks 番目のティックに入る時刻（整数 ms。実機の Date.now() と同じく整数で扱う） */

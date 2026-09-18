@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { HakoiriMusumeRuleset } from "../HakoiriMusumeRuleset";
+import { HakoiriMusumeRuleset } from "@engine/shared/rules/HakoiriMusumeRuleset";
 
 describe("HakoiriMusumeRuleset", () => {
   test("getInitialState should return correct grid and blocks", () => {

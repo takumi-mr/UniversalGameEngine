@@ -38,7 +38,7 @@
 import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import type { OthelloState, OthelloAction } from "@engine/shared/rules/OthelloRuleset";
 import { OthelloRuleset } from "@engine/shared/rules/OthelloRuleset";
-import { OthelloUI } from "../../three/OthelloUI";
+import { OthelloUI } from "@/three/OthelloUI";
 
 const props = defineProps<{
   state: OthelloState;

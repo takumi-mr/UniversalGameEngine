@@ -7,18 +7,18 @@
 //   withSession(gameId): ロック → キャッシュ（なければ復元） → ストアより古ければ再読込 → 処理 → commit（配信 + 保存）
 // の手順で対局を進めるので、クライアントがどのインスタンスに接続していても同じ結果になる。
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
-import { InMemoryDummyRepository } from "../infra/InMemoryDummyRepository";
-import { HybridGameRepository } from "../infra/HybridGameRepository";
+import { InMemoryDummyRepository } from "@engine/backend/infra/InMemoryDummyRepository";
+import { HybridGameRepository } from "@engine/backend/infra/HybridGameRepository";
 import { GenericGameServer } from "@engine/shared/network/GenericGameServer";
 import { compare, type Operation } from "fast-json-patch";
 import { calculateStateHash } from "@engine/shared";
-import { streamManager } from "../network/StreamManager";
+import { streamManager } from "@engine/backend/network/StreamManager";
 import type { IAIPlayer } from "@engine/shared/ai/IAIPlayer";
 import { gameRegistry } from "@engine/shared/GameRegistry";
 import type { IGameRepository, BotSpec, SessionRecord } from "@engine/shared/stores/repository";
-import { useInMemoryStore, REDIS_URL, MONGO_URL, REPLAY_FLUSH_SIZE } from "../config";
-import { createBotPlayer } from "../ai/botFactory";
-import { fetchLocalSockets, publishClusterEvent } from "../network/io";
+import { useInMemoryStore, REDIS_URL, MONGO_URL, REPLAY_FLUSH_SIZE } from "@engine/backend/config";
+import { createBotPlayer } from "@engine/backend/ai/botFactory";
+import { fetchLocalSockets, publishClusterEvent } from "@engine/backend/network/io";
 
 export const normalizeGameType = (type: string) => type.toLowerCase().replace(/-/g, "_");
 

@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { createSecret, isSecret } from "./GameRules";
+import { createSecret, isSecret } from "@engine/shared/GameRules";
 
 describe("GameRules Utilities", () => {
   test("createSecret should create a secret object", () => {

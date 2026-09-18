@@ -11,8 +11,8 @@ import {
   evaluateDeclaration,
   type ShogiState,
   type ShogiAction,
-} from "../ShogiRuleset";
-import { UniversalEngine } from "../../UniversalEngine";
+} from "@engine/shared/rules/ShogiRuleset";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
 
 const I = (x: number, y: number) => y * 9 + x;
 const P1 = "sente";

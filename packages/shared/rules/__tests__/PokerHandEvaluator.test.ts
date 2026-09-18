@@ -1,6 +1,10 @@
 // packages/shared/rules/__tests__/PokerHandEvaluator.test.ts
 import { describe, it, expect } from "bun:test";
-import { compareHandRanks, evaluateBestHand, evaluateFiveCards } from "../PokerHandEvaluator";
+import {
+  compareHandRanks,
+  evaluateBestHand,
+  evaluateFiveCards,
+} from "@engine/shared/rules/PokerHandEvaluator";
 
 const rank = (...cards: string[]) => evaluateFiveCards(cards);
 const beats = (a: string[], b: string[]) => compareHandRanks(rank(...a), rank(...b)) > 0;

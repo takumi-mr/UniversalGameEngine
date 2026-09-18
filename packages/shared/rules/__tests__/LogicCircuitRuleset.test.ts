@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { LogicCircuitRuleset } from "../LogicCircuitRuleset";
+import { LogicCircuitRuleset } from "@engine/shared/rules/LogicCircuitRuleset";
 
 describe("LogicCircuitRuleset", () => {
   it("should have an initial state with no blocks", () => {

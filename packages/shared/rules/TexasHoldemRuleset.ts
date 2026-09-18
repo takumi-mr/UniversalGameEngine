@@ -5,11 +5,15 @@
 // - PRE_FLOP → FLOP(3枚) → TURN(1枚) → RIVER(1枚) → SHOWDOWN の 4 ベッティングラウンド
 // - ブラインド、ミニマムレイズ、オールイン（不足分コール / ショートオールインは再オープンしない）、サイドポットに対応
 // - ショーダウンでは手札 2 枚 + コミュニティ 5 枚から最強の 5 枚で役を比較する。残り 1 人になれば即終了
-import { requireRng } from "../utils/requireRng";
-import { createSecret, type Secret } from "../GameRules";
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
-import { compareHandRanks, evaluateBestHand, type HandRank } from "./PokerHandEvaluator";
+import { requireRng } from "@engine/shared/utils/requireRng";
+import { createSecret, type Secret } from "@engine/shared/GameRules";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
+import {
+  compareHandRanks,
+  evaluateBestHand,
+  type HandRank,
+} from "@engine/shared/rules/PokerHandEvaluator";
 
 // --- 1. 型定義 ---
 

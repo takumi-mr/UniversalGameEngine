@@ -49,7 +49,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import type { RubiksState, RubiksAction, FaceName } from "@engine/shared/rules/RubicCubeRuleset";
-import { RubiksCubeUI } from "../../three/RubiksCubeUI";
+import { RubiksCubeUI } from "@/three/RubiksCubeUI";
 
 const props = defineProps<{
   state: RubiksState;

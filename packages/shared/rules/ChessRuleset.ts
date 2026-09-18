@@ -1,6 +1,6 @@
 // packages/shared/rules/ChessRuleset.ts
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 // --- 定数定義 ---
 // 1: Pawn, 2: Knight, 3: Bishop, 4: Rook, 5: Queen, 6: King

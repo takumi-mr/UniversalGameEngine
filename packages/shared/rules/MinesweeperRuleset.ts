@@ -1,7 +1,7 @@
-import { requireRng } from "../utils/requireRng";
-import type { BaseGameState, BaseGameAction, GameRuleset, Secret } from "../GameRules";
-import { createSecret } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
+import { requireRng } from "@engine/shared/utils/requireRng";
+import type { BaseGameState, BaseGameAction, GameRuleset, Secret } from "@engine/shared/GameRules";
+import { createSecret } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 // --- Types ---
 

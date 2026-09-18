@@ -1,9 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import "../../GameRegistry";
-import { UniversalEngine } from "../../UniversalEngine";
-import { MahjongRuleset, type MahjongState } from "../mahjong/MahjongRuleset";
-import { MahjongMatchRuleset, type MahjongMatchState } from "../mahjong/MahjongMatchRuleset";
-import { MersenneTwisterRNG } from "../../utils/MersenneTwisterRNG";
+import "@engine/shared/GameRegistry";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { MahjongRuleset, type MahjongState } from "@engine/shared/rules/mahjong/MahjongRuleset";
+import {
+  MahjongMatchRuleset,
+  type MahjongMatchState,
+} from "@engine/shared/rules/mahjong/MahjongMatchRuleset";
+import { MersenneTwisterRNG } from "@engine/shared/utils/MersenneTwisterRNG";
 
 const PLAYERS = ["p1", "p2", "p3", "p4"];
 

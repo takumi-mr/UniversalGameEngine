@@ -1,6 +1,6 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET, isClusterMode } from "../config";
+import { JWT_SECRET, isClusterMode } from "@engine/backend/config";
 import {
   sessions,
   createSession,
@@ -9,13 +9,17 @@ import {
   dropLocalSession,
   onRemoteStateChanged,
   normalizeGameType,
-} from "../store/sessionStore";
+} from "@engine/backend/store/sessionStore";
 import { gameRegistry } from "@engine/shared/GameRegistry";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
-import { scheduleRoomCleanup, clearRoomCleanup, updatePresence } from "./roomManager";
-import { streamManager } from "../network/StreamManager";
-import { setIoInstance, onClusterEvent } from "../network/io";
-import { isBotType } from "../ai/botFactory";
+import {
+  scheduleRoomCleanup,
+  clearRoomCleanup,
+  updatePresence,
+} from "@engine/backend/socket/roomManager";
+import { streamManager } from "@engine/backend/network/StreamManager";
+import { setIoInstance, onClusterEvent } from "@engine/backend/network/io";
+import { isBotType } from "@engine/backend/ai/botFactory";
 
 /** 他インスタンスからのクラスタイベントを購読する（Redis アダプタ使用時のみ届く） */
 const setupClusterHandlers = () => {

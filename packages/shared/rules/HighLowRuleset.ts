@@ -1,7 +1,7 @@
 // packages/shared/rules/HighLowRuleset.ts
-import { requireRng } from "../utils/requireRng";
-import type { GameRuleset, BaseGameState } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
+import { requireRng } from "@engine/shared/utils/requireRng";
+import type { GameRuleset, BaseGameState } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 // --- 1. ドメイン（トランプ特有）の型定義 ---
 export type Suit = "♠" | "♥" | "♦" | "♣";

@@ -1,16 +1,16 @@
 // packages/shared/rules/__tests__/MetaGameRuleset.test.ts
 import { describe, it, expect } from "bun:test";
-import "../../GameRegistry"; // サブゲームのリゾルバを登録する
-import { UniversalEngine } from "../../UniversalEngine";
+import "@engine/shared/GameRegistry"; // サブゲームのリゾルバを登録する
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import {
   MetaGameRuleset,
   createSubGame,
   applySubGameAction,
   type MetaGameAction,
   type MetaGameState,
-} from "../MetaGameRuleset";
-import type { TicTacToeAction } from "../TicTacToeRuleset";
-import { ProvablyFairRNG } from "../../utils/ProvablyFairRNG";
+} from "@engine/shared/rules/MetaGameRuleset";
+import type { TicTacToeAction } from "@engine/shared/rules/TicTacToeRuleset";
+import { ProvablyFairRNG } from "@engine/shared/utils/ProvablyFairRNG";
 
 // playerA: 0, 1, 2 (Win) / playerB: 3, 4
 const winningMoves: TicTacToeAction[] = [

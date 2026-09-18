@@ -1,7 +1,7 @@
 // packages/shared/ai/TensorAdapter/OthelloTensorAdapter.ts
-import type { IAITensorAdapter } from "../IAITensorAdapter";
-import { OthelloRuleset } from "../../rules/OthelloRuleset";
-import type { OthelloState, OthelloAction, PlayerColor } from "../../rules/OthelloRuleset";
+import type { IAITensorAdapter } from "@engine/shared/ai/IAITensorAdapter";
+import { OthelloRuleset } from "@engine/shared/rules/OthelloRuleset";
+import type { OthelloState, OthelloAction, PlayerColor } from "@engine/shared/rules/OthelloRuleset";
 
 /**
  * playerId がどの色を担当しているかを返す。

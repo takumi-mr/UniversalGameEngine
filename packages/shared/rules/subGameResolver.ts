@@ -3,7 +3,7 @@
 // サブゲーム（入れ子のルールセット）を type 名から解決する窓口。
 // GameRegistry は各ルールセットを import するので、ルールセット側から GameRegistry を直接 import すると
 // 循環になる。GameRegistry が起動時にここへリゾルバを登録し、メタ系ルールセットはこれだけに依存する。
-import type { BaseGameAction, BaseGameState, GameRuleset } from "../GameRules";
+import type { BaseGameAction, BaseGameState, GameRuleset } from "@engine/shared/GameRules";
 
 export interface SubGameDefinition {
   type: string;

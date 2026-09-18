@@ -15,16 +15,16 @@
 //   フリテン（捨て牌・同巡見逃し・立直後見逃し） / 喰い替え禁止 / 大明槓・暗槓・加槓・嶺上開花・搶槓 /
 //   海底摸月・河底撈魚・天和・地和 / ダブロン（供託は頭ハネ）・三家和は流局 /
 //   荒牌流局のノーテン罰符と連荘 / 途中流局（九種九牌・四風連打・四家立直・四開槓）
-import { requireRng } from "../../utils/requireRng";
-import { createSecret, type Secret } from "../../GameRules";
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../../GameRules";
-import type { IGameRNG } from "../../utils/IGameRNG";
+import { requireRng } from "@engine/shared/utils/requireRng";
+import { createSecret, type Secret } from "@engine/shared/GameRules";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 import {
   MahjongHandEvaluator,
   type EvaluatedHand,
   type WinContext,
   type WindNumber,
-} from "./MahjongHandEvaluator";
+} from "@engine/shared/rules/mahjong/MahjongHandEvaluator";
 import {
   countTile,
   distinctTerminalHonorCount,
@@ -39,9 +39,9 @@ import {
   tileSuit,
   waitingTiles,
   type Tile,
-} from "./MahjongTiles";
+} from "@engine/shared/rules/mahjong/MahjongTiles";
 
-export type { Tile } from "./MahjongTiles";
+export type { Tile } from "@engine/shared/rules/mahjong/MahjongTiles";
 
 // --- Types & Interfaces ---
 

@@ -11,8 +11,8 @@ import {
   withSession,
   destroySession,
   onRemoteStateChanged,
-} from "./sessionStore";
-import { setIoInstance } from "../network/io";
+} from "@engine/backend/store/sessionStore";
+import { setIoInstance } from "@engine/backend/network/io";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import { TicTacToeRuleset } from "@engine/shared/rules/TicTacToeRuleset";
 import { ReplayEngine } from "@engine/shared/ReplayEngine";

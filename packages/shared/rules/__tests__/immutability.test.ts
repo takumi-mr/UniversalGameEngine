@@ -1,7 +1,7 @@
 import { describe, it } from "bun:test";
-import { gameRegistry } from "../../GameRegistry";
-import { UniversalEngine } from "../../UniversalEngine";
-import { deepFreeze } from "../../utils/freeze";
+import { gameRegistry } from "@engine/shared/GameRegistry";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { deepFreeze } from "@engine/shared/utils/freeze";
 
 describe("Ruleset Immutability", () => {
   const games = gameRegistry.getAllDefinitions();

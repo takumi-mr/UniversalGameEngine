@@ -61,7 +61,7 @@ mock.module("mongodb", () => ({
 }));
 
 // ※モックの設定が終わった後にテスト対象をインポートします
-import { HybridGameRepository } from "./HybridGameRepository";
+import { HybridGameRepository } from "@engine/backend/infra/HybridGameRepository";
 import type { BaseGameState } from "@engine/shared/GameRules";
 
 // --- 2. テストの記述 ---

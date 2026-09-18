@@ -1,7 +1,7 @@
 // packages/shared/ai/LLMPlayer.test.ts
 import { describe, it, expect } from "bun:test";
-import { LLMPlayer, type LLMService } from "./LLMPLayer";
-import type { BaseGameState, BaseGameAction } from "../../GameRules";
+import { LLMPlayer, type LLMService } from "@engine/shared/ai/AIPlayer/LLMPLayer";
+import type { BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
 
 describe("LLMPlayer", () => {
   const dummyState: BaseGameState = {

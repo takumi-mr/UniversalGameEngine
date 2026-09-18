@@ -1,6 +1,6 @@
-import { requireRng } from "../utils/requireRng";
-import type { GameRuleset } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
+import { requireRng } from "@engine/shared/utils/requireRng";
+import type { GameRuleset } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 import {
   type BoardSpace,
   type Board,
@@ -8,7 +8,7 @@ import {
   type BaseBoardPlayer,
   movePlayer,
   nextTurn,
-} from "./SugorokuGameEngine";
+} from "@engine/shared/rules/SugorokuGameEngine";
 
 // --- Types ---
 

@@ -90,7 +90,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import type { DaifugoState, DaifugoAction, Card } from "@engine/shared/rules/DaifugoRuleset";
-import CardFace from "./DaifugoCardFace.vue"; // 後述のカードコンポーネント
+import CardFace from "@/components/game/Daifugo/DaifugoCardFace.vue"; // 後述のカードコンポーネント
 
 const props = defineProps<{
   state: DaifugoState;

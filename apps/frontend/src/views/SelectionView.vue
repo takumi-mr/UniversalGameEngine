@@ -166,11 +166,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { availableGames } from "../constants/games";
-import ThemeSwitcher from "../components/ThemeSwitcher.vue";
+import { availableGames } from "@/constants/games";
+import ThemeSwitcher from "@/components/ThemeSwitcher.vue";
 
-import { useAuthStore } from "../store/auth";
-import { useUIStore } from "../store/ui";
+import { useAuthStore } from "@/store/auth";
+import { useUIStore } from "@/store/ui";
 
 const router = useRouter();
 const authStore = useAuthStore();

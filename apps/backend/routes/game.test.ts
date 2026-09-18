@@ -2,10 +2,10 @@ import { expect, test, describe, beforeEach } from "bun:test";
 import request from "supertest";
 import express from "express";
 import jwt from "jsonwebtoken";
-import gameRoutes from "./game";
-import { sessions, repo, createSession } from "../store/sessionStore";
-import { setIoInstance } from "../socket/roomManager";
-import { JWT_SECRET } from "../config";
+import gameRoutes from "@engine/backend/routes/game";
+import { sessions, repo, createSession } from "@engine/backend/store/sessionStore";
+import { setIoInstance } from "@engine/backend/socket/roomManager";
+import { JWT_SECRET } from "@engine/backend/config";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import { TicTacToeRuleset } from "@engine/shared/rules/TicTacToeRuleset";
 

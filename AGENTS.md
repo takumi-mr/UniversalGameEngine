@@ -106,7 +106,9 @@ applyWinResult?, getTimeoutAction?              // 任意
 - コミットメッセージは `feat:` / `fix:` / `refactor:` / `ci:` + 日本語の要約（既存ログに倣う）。マージは squash。
 - コードコメントは日本語、識別子は英語。ESLint の `any` 警告は既存コードに多いが、新規コードでは避ける。
 - **TypeScript の厳しさはルートの `tsconfig.base.json` で一元管理**し、全パッケージの tsconfig はそれを `extends` して lib / types / include だけを上書きする（frontend は `@vue/tsconfig` と base の多段 extends で、後者が優先）。有効: `strict`, `verbatimModuleSyntax`（型は `import type`）, `erasableSyntaxOnly`（`constructor(private x)` のようなパラメータプロパティ禁止）, `noImplicitOverride`, `noFallthroughCasesInSwitch`, `noUncheckedSideEffectImports`。無効: `noUncheckedIndexedAccess`（有効化すると repo 全体で 800 件超のエラーが出るため別 PR 扱い）, `noUnusedLocals/Parameters`（eslint に任せる）。フラグを足すときは base に足し、`bun run type-check` が通ることを確認する。
-- ルート `tsconfig.json` の paths で `@engine/shared/*` → `packages/shared/*`。バックエンドからは相対パスでなくこのエイリアスを使う。
+- **import は相対パスでなくワークスペースごとのエイリアスを使う**（同一パッケージ内でも）。`@/*` → `apps/frontend/src/*`、`@engine/backend/*` → `apps/backend/*`、`@engine/shared/*` → `packages/shared/*`、`@engine/input-prediction(/*)` → `packages/input-prediction/*`。例外は frontend の `src` 外（`network/`, `electron/`）との行き来と `packages/shared/network/generated/`（`task proto` の生成物）だけ相対パス。
+  - 型検査はルート `tsconfig.json` の paths（apps と packages を 1 プログラムで検査するので接頭辞は被らせない）。各パッケージの tsconfig にも同じ paths をエディタ用に置いてある。
+  - **実行時の解決は tsconfig の paths ではない**。`@engine/*` はルート `package.json` の devDependencies（`workspace:*`）が張る `node_modules/@engine/*` の symlink、`@/` は `apps/frontend/vite.config.ts` / `vitest.config.ts` の `resolve.alias`。Bun 1.3 は `baseUrl` 無しの paths を **cwd 基準**で解決してしまい、TS 7 は `baseUrl` をエラーにするので、Bun 向けに paths を足しても効かない。新しいワークスペースを作ったら `@engine/<name>` と命名し、ルート `package.json` の devDependencies に `workspace:*` で追加する。
 
 ## 6. 既知の落とし穴
 

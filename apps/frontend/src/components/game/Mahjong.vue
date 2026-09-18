@@ -150,7 +150,7 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import type { MahjongState, MahjongAction } from "@engine/shared/rules/mahjong/MahjongRuleset";
-import MahjongTile from "./MahjongTile.vue";
+import MahjongTile from "@/components/game/MahjongTile.vue";
 
 const { t: $t } = useI18n();
 

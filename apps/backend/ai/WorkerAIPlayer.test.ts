@@ -3,7 +3,7 @@
 // bun:test + worker_threads のモックを使用して、メインスレッドを実際にブロックしないことを検証する。
 
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import type { WorkerRequest, WorkerResponse } from "./ai-worker";
+import type { WorkerRequest, WorkerResponse } from "@engine/backend/ai/ai-worker";
 import { EventEmitter } from "events";
 
 // --- worker_threads モック ---
@@ -47,7 +47,7 @@ mock.module("worker_threads", () => ({
 }));
 
 // モック設定の後にインポート
-import { WorkerAIPlayer } from "./WorkerAIPlayer";
+import { WorkerAIPlayer } from "@engine/backend/ai/WorkerAIPlayer";
 
 // --- テスト用のゲーム状態 ---
 const makeTicTacToeState = () => ({

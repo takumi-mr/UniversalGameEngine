@@ -1,6 +1,6 @@
 // packages/shared/ai/RandomPlayer.ts
-import type { BaseGameState, BaseGameAction } from "../../GameRules";
-import type { IAIPlayer } from "../IAIPlayer";
+import type { BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
+import type { IAIPlayer } from "@engine/shared/ai/IAIPlayer";
 
 export class RandomPlayer<
   TState extends BaseGameState,

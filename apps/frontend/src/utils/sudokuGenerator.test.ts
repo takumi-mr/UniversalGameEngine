@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generatePuzzle } from "./sudokuGenerator";
+import { generatePuzzle } from "@/utils/sudokuGenerator";
 
 /** 行・列・3x3 ブロックの中で 0 以外の数字が重複していないか */
 function hasNoDuplicates(board: number[][]): boolean {

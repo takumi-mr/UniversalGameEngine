@@ -8,9 +8,14 @@
 // - subGameLegalActions / isValidSubGameAction: 合法手と検証の委譲
 //
 // マスク（Secret）とリプレイは何もしなくても入れ子のまま機能する（autoMask は再帰、rng は共有）。
-import type { BaseGameState, BaseGameAction, GameRuleset, GameResult } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
-import { resolveSubGame } from "./subGameResolver";
+import type {
+  BaseGameState,
+  BaseGameAction,
+  GameRuleset,
+  GameResult,
+} from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
+import { resolveSubGame } from "@engine/shared/rules/subGameResolver";
 
 export interface SubGameEntry {
   type: string;

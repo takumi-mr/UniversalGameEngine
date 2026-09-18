@@ -1,7 +1,7 @@
 import { expect, test, describe } from "bun:test";
-import { UniversalEngine } from "./UniversalEngine";
-import { ReplayEngine } from "./ReplayEngine";
-import type { BaseGameState, BaseGameAction, GameRuleset } from "./GameRules";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { ReplayEngine } from "@engine/shared/ReplayEngine";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
 
 interface MockState extends BaseGameState {
   count: number;

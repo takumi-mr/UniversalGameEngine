@@ -1,5 +1,5 @@
-import type { GameRecord, BaseGameState, BaseGameAction } from "../GameRules";
-import type { EngineReplayData } from "../UniversalEngine";
+import type { GameRecord, BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
+import type { EngineReplayData } from "@engine/shared/UniversalEngine";
 
 /** セッションに参加している AI ボットの定義（復元時に同じボットを再生成するための情報） */
 export interface BotSpec {

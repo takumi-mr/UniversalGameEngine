@@ -38,7 +38,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
-import { Go3DUI } from "../../three/GoUI";
+import { Go3DUI } from "@/three/GoUI";
 import type { GoState, GoAction } from "@engine/shared/rules/GoRuleset";
 
 const props = defineProps<{

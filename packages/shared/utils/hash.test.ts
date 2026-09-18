@@ -1,6 +1,6 @@
 // packages/shared/utils/hash.test.ts
 import { describe, it, expect } from "bun:test";
-import { calculateStateHash } from "./hash";
+import { calculateStateHash } from "@engine/shared/utils/hash";
 
 describe("calculateStateHash", () => {
   it("同一のオブジェクトに対して常に同じハッシュ値を返すこと", () => {

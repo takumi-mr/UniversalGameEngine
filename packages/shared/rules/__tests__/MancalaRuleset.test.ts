@@ -10,9 +10,9 @@ import {
   TOTAL_STONES,
   type MancalaState,
   type MancalaAction,
-} from "../MancalaRuleset";
-import { UniversalEngine } from "../../UniversalEngine";
-import { ReplayEngine } from "../../ReplayEngine";
+} from "@engine/shared/rules/MancalaRuleset";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { ReplayEngine } from "@engine/shared/ReplayEngine";
 
 const P1 = "south";
 const P2 = "north";

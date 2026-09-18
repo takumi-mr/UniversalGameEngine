@@ -39,7 +39,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
-import { Chess3DUI } from "../../three/Chess3DUI";
+import { Chess3DUI } from "@/three/Chess3DUI";
 import type { ChessState, ChessAction } from "@engine/shared/rules/ChessRuleset";
 
 const props = defineProps<{
