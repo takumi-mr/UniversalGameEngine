@@ -25,8 +25,8 @@ import { isBotType } from "@engine/backend/ai/botFactory";
 const setupClusterHandlers = () => {
   onClusterEvent("uge:state-changed", ({ gameId }) => onRemoteStateChanged(gameId));
   onClusterEvent("uge:session-deleted", ({ gameId }) => dropLocalSession(gameId));
-  onClusterEvent("uge:bot-turn", ({ gameId, playerId, stateTensor, legalActionIds }) =>
-    streamManager.notifyBotTurn(gameId, playerId, stateTensor, legalActionIds),
+  onClusterEvent("uge:bot-turn", ({ gameId, playerId, stateTensor, legalActionIds, stateJson }) =>
+    streamManager.notifyBotTurn(gameId, playerId, stateTensor, legalActionIds, stateJson),
   );
 };
 

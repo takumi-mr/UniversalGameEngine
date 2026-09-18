@@ -44,6 +44,15 @@ describe("Rooms Routes", () => {
     createSession("room2", engine2, "othello");
     await sessions.get("room2")!.server.commit();
 
+    // gRPC ボットが着席した部屋（外部ボットはこの bots から自分の席を見つける）
+    const engine3 = new UniversalEngine(OthelloRuleset, {});
+    engine3.dispatch({ type: "JOIN", playerId: "bot_1_abc", slot: "-1" });
+    createSession("room3", engine3, "othello");
+    sessions
+      .get("room3")!
+      .server.addBot({ playerId: "bot_1_abc", aiType: "grpc_bot", name: "grpc_bot 1" });
+    await sessions.get("room3")!.server.commit();
+
     // 別インスタンスで作られた部屋を模す: このインスタンスのキャッシュにはない
     sessions.clear();
   });
@@ -51,11 +60,11 @@ describe("Rooms Routes", () => {
   test("GET / should return all rooms", async () => {
     const response = await request(app).get("/");
     expect(response.status).toBe(200);
-    expect(response.body.rooms).toHaveLength(2);
+    expect(response.body.rooms).toHaveLength(3);
     expect(response.body.rooms).toEqual(
       expect.arrayContaining([
-        { id: "room1", type: "tictactoe", playerCount: 2 },
-        { id: "room2", type: "othello", playerCount: 1 },
+        { id: "room1", type: "tictactoe", playerCount: 2, bots: [] },
+        { id: "room2", type: "othello", playerCount: 1, bots: [] },
       ]),
     );
   });
@@ -73,10 +82,20 @@ describe("Rooms Routes", () => {
     expect(response.status).toBe(401);
   });
 
-  test("GET /:gameType should filter rooms by type", async () => {
+  test("GET /:gameType should filter rooms by type and include seated bots", async () => {
     const response = await request(app).get("/othello");
     expect(response.status).toBe(200);
-    expect(response.body.rooms).toHaveLength(1);
-    expect(response.body.rooms[0].id).toBe("room2");
+    expect(response.body.rooms).toHaveLength(2);
+    expect(response.body.rooms).toEqual(
+      expect.arrayContaining([
+        { id: "room2", type: "othello", playerCount: 1, bots: [] },
+        {
+          id: "room3",
+          type: "othello",
+          playerCount: 0,
+          bots: [{ playerId: "bot_1_abc", aiType: "grpc_bot", name: "grpc_bot 1" }],
+        },
+      ]),
+    );
   });
 });

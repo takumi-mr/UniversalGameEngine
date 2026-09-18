@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "@engine/backend/config";
 import { repo } from "@engine/backend/store/sessionStore";
 import { countRoomSockets } from "@engine/backend/network/io";
+import type { BotSpec } from "@engine/shared/stores/repository";
 
 const router = Router();
 
@@ -10,6 +11,8 @@ interface RoomSummary {
   id: string;
   type: string;
   playerCount: number;
+  /** 着席している AI ボット（外部の gRPC ボットが自分の席を見つけるために使う） */
+  bots: BotSpec[];
 }
 
 /**
@@ -20,11 +23,13 @@ const listRooms = async (filter?: (type: string) => boolean): Promise<RoomSummar
   const all = await repo.listSessions();
   const matched = filter ? all.filter((s) => filter(s.type)) : all;
   return Promise.all(
-    matched.map(async ({ gameId, type }) => ({
-      id: gameId,
-      type,
-      playerCount: await countRoomSockets(gameId),
-    })),
+    matched.map(async ({ gameId, type }) => {
+      const [playerCount, record] = await Promise.all([
+        countRoomSockets(gameId),
+        repo.loadSession(gameId),
+      ]);
+      return { id: gameId, type, playerCount, bots: record?.bots ?? [] };
+    }),
   );
 };
 
@@ -65,7 +70,12 @@ router.get("/my", async (req, res) => {
         (p) => typeof p === "string" && p.toLowerCase() === userId.toLowerCase(),
       );
       if (isMember) {
-        mine.push({ id: gameId, type, playerCount: await countRoomSockets(gameId) });
+        mine.push({
+          id: gameId,
+          type,
+          playerCount: await countRoomSockets(gameId),
+          bots: record?.bots ?? [],
+        });
       }
     }
     res.json({ rooms: mine });

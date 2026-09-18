@@ -57,11 +57,23 @@ tasks:
     cmds:
       - python -m uge_rl.train_az --game othello --out ../../models/othello_az.pt {{.CLI_ARGS}}
 
+  ml:train-az-shogi:
+    desc: Train the Shogi AlphaZero-style agent (MCTS over gRPC Simulate) against a running RL-mode backend
+    dir: apps/ml
+    cmds:
+      - python -m uge_rl.train_az --game shogi --max-moves 256 --dirichlet-alpha 0.15 --out ../../models/shogi_az.pt {{.CLI_ARGS}}
+
   ml:eval:
     desc: Evaluate a trained model vs random player (pass --checkpoint to choose the model)
     dir: apps/ml
     cmds:
       - python -m uge_rl.evaluate --checkpoint ../../models/othello_dqn.pt {{.CLI_ARGS}}
+
+  ml:serve:
+    desc: Play a trained model as the "gRPC External" opponent in real rooms (pass --checkpoint; needs a running backend, task rl for MCTS)
+    dir: apps/ml
+    cmds:
+      - python -m uge_rl.serve --checkpoint ../../models/shogi_az.pt {{.CLI_ARGS}}
 
   ml:test:
     desc: Run apps/ml unit tests (no backend needed; same command as CI)

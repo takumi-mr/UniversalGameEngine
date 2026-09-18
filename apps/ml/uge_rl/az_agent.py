@@ -27,6 +27,7 @@ class AZConfig:
     games_per_iter: int = 20
     temp_moves: int = 10  # 序盤この手数までは温度 1 でサンプリング、以降は argmax
     eval_simulations: int = 25  # 評価・対局時（select_action）の探索回数
+    max_moves: int = 0  # 自己対戦・評価の手数上限（0 = 無制限）。超えたら引き分け扱い（将棋など長引くゲーム用）
     mcts: MCTSConfig = field(default_factory=MCTSConfig)
 
     @classmethod
@@ -83,7 +84,10 @@ class AZAgent:
 
     # ------------------------------------------------------------------ 自己対戦
     def self_play_game(self, env: GrpcGameEnv) -> tuple[int, float]:
-        """1 局自己対戦してバッファに追加する。(手数, 先手視点の結果) を返す。"""
+        """1 局自己対戦してバッファに追加する。(手数, 先手視点の結果) を返す。
+
+        cfg.max_moves を超えた対局は引き分け（全局面の z = 0）として打ち切る。
+        """
         obs, legal, active = env.reset()
         mcts = self.mcts(env)
         root: Node = mcts.make_root(env.state_json, active[0], legal, obs)
@@ -115,6 +119,9 @@ class AZAgent:
             if child.terminal:
                 # child.player は最後に指したプレイヤー、value はその視点の報酬
                 last_mover, reward = child.player, child.value
+                break
+            if self.cfg.max_moves and moves >= self.cfg.max_moves:
+                last_mover, reward = root.player, 0.0
                 break
             root = child  # 部分木を再利用（ノイズは次の run で改めて加える）
 

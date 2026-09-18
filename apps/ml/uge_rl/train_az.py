@@ -72,7 +72,7 @@ def train(
         )
 
         if eval_every and it % eval_every == 0:
-            result = play_vs_random(agent, env, games=eval_games)
+            result = play_vs_random(agent, env, games=eval_games, max_moves=agent.cfg.max_moves)
             eval_history.append((agent.games_played, result.win_rate))
             print(f"[eval iter {it}] vs random (sims={agent.cfg.eval_simulations}): {result}", flush=True)
 
@@ -103,7 +103,14 @@ def main() -> None:
     p.add_argument("--sim-batch", type=int, default=MCTSConfig.batch_size, help="1 回の BatchSimulate で展開する葉の数")
     p.add_argument("--eval-simulations", type=int, default=AZConfig.eval_simulations)
     p.add_argument("--c-puct", type=float, default=MCTSConfig.c_puct)
+    p.add_argument(
+        "--dirichlet-alpha",
+        type=float,
+        default=MCTSConfig.dirichlet_alpha,
+        help="ルートノイズの Dirichlet α（合法手が多いゲームほど小さく。将棋は 0.15 程度）",
+    )
     p.add_argument("--temp-moves", type=int, default=AZConfig.temp_moves)
+    p.add_argument("--max-moves", type=int, default=AZConfig.max_moves, help="1 局の手数上限（0 = 無制限）。超えたら引き分け")
     p.add_argument("--channels", type=int, default=AZConfig.channels)
     p.add_argument("--blocks", type=int, default=AZConfig.blocks)
     p.add_argument("--lr", type=float, default=AZConfig.lr)
@@ -127,7 +134,13 @@ def main() -> None:
         games_per_iter=args.games_per_iter,
         temp_moves=args.temp_moves,
         eval_simulations=args.eval_simulations,
-        mcts=MCTSConfig(n_simulations=args.simulations, batch_size=args.sim_batch, c_puct=args.c_puct),
+        max_moves=args.max_moves,
+        mcts=MCTSConfig(
+            n_simulations=args.simulations,
+            batch_size=args.sim_batch,
+            c_puct=args.c_puct,
+            dirichlet_alpha=args.dirichlet_alpha,
+        ),
     )
 
     with GrpcGameEnv(args.address, game_type=args.game) as env:

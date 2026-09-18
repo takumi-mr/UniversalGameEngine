@@ -36,7 +36,10 @@ class TrainStats:
 
 
 def run_episode(agent: DQNAgent, env: GrpcGameEnv, train: bool = True) -> tuple[int, float]:
-    """1 エピソード自己対戦する。(手数, 最後の遷移の loss 平均) を返す。"""
+    """1 エピソード自己対戦する。(手数, 最後の遷移の loss 平均) を返す。
+
+    cfg.max_moves を超えたら引き分けとして打ち切り、両者の最後の遷移を報酬 0 の終端にする。
+    """
     obs, legal, active = env.reset()
     last_index: dict[str, int] = {}  # プレイヤーごとの「最後に積んだ遷移」の index
     losses: list[float] = []
@@ -67,6 +70,12 @@ def run_episode(agent: DQNAgent, env: GrpcGameEnv, train: bool = True) -> tuple[
                     losses.append(loss)
 
         obs, legal, active, done = res.obs, res.legal_actions, res.active_players, res.done
+
+        if not done and agent.cfg.max_moves and steps >= agent.cfg.max_moves:
+            if train:
+                for pidx in last_index.values():
+                    agent.buffer.set_terminal(pidx, 0.0)
+            break
 
     return steps, float(np.mean(losses)) if losses else float("nan")
 
@@ -104,7 +113,7 @@ def train(
             )
 
         if eval_every and ep % eval_every == 0:
-            result = play_vs_random(agent, env, games=eval_games)
+            result = play_vs_random(agent, env, games=eval_games, max_moves=agent.cfg.max_moves)
             stats.eval_history.append((ep, result.win_rate))
             print(f"[eval ep {ep}] vs random: {result}", flush=True)
 
@@ -153,6 +162,7 @@ def main() -> None:
     p.add_argument("--eps-end", type=float, default=DQNConfig.eps_end)
     p.add_argument("--eps-decay-steps", type=int, default=DQNConfig.eps_decay_steps)
     p.add_argument("--train-every", type=int, default=DQNConfig.train_every)
+    p.add_argument("--max-moves", type=int, default=DQNConfig.max_moves, help="1 エピソードの手数上限（0 = 無制限）")
     args = p.parse_args()
 
     # Windows コンソール等で日本語ログが化けないようにする
@@ -173,6 +183,7 @@ def main() -> None:
         eps_end=args.eps_end,
         eps_decay_steps=args.eps_decay_steps,
         train_every=args.train_every,
+        max_moves=args.max_moves,
     )
 
     with GrpcGameEnv(args.address, game_type=args.game) as env:

@@ -43,8 +43,8 @@ class EvalResult:
         )
 
 
-def play_vs_random(agent: Policy, env: GrpcGameEnv, games: int = 50) -> EvalResult:
-    """agent が先手・後手を交互に担当し、相手はランダムに指す。"""
+def play_vs_random(agent: Policy, env: GrpcGameEnv, games: int = 50, max_moves: int = 0) -> EvalResult:
+    """agent が先手・後手を交互に担当し、相手はランダムに指す。max_moves を超えた対局は引き分け（0 = 無制限）。"""
     wins = losses = draws = 0
     for g in range(games):
         obs, legal, active = env.reset()
@@ -52,7 +52,12 @@ def play_vs_random(agent: Policy, env: GrpcGameEnv, games: int = 50) -> EvalResu
         done = False
         last_mover = None
         reward = 0.0
+        moves = 0
         while not done:
+            if max_moves and moves >= max_moves:
+                reward = 0.0
+                break
+            moves += 1
             mover = active[0]
             if mover == agent_seat:
                 action = agent.select_action(obs, legal, env.state_json, mover, env)
@@ -78,6 +83,7 @@ def main() -> None:
     p.add_argument("--address", default="localhost:50051")
     p.add_argument("--games", type=int, default=100)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--max-moves", type=int, default=None, help="手数上限（省略時はチェックポイントの設定、0 = 無制限）")
     args = p.parse_args()
 
     random.seed(args.seed)
@@ -85,8 +91,9 @@ def main() -> None:
 
     agent, meta = load_checkpoint(args.checkpoint)
     print(f"loaded {args.checkpoint}: format={meta['format']} game={meta['game_type']}")
+    max_moves = args.max_moves if args.max_moves is not None else int(meta.get("config", {}).get("max_moves", 0) or 0)
     with GrpcGameEnv(args.address, game_type=meta["game_type"]) as env:
-        result = play_vs_random(agent, env, games=args.games)
+        result = play_vs_random(agent, env, games=args.games, max_moves=max_moves)
     print(result)
 
 

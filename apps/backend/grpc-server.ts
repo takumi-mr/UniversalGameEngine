@@ -18,6 +18,7 @@ import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import type { BaseGameAction, BaseGameState } from "@engine/shared/GameRules";
 import type { AnyRuleset } from "@engine/shared/rules/subGameResolver";
 import { GrpcBotPlayer } from "@engine/shared/ai/AIPlayer/GrpcBotPlayer";
+import { encodeBotTurn } from "@engine/backend/ai/botFactory";
 import type { ProtoGrpcType } from "@engine/shared/network/generated/game";
 import type { GameServiceHandlers } from "@engine/shared/network/generated/universal_game_engine/GameService";
 import type { CreateGameRequest__Output } from "@engine/shared/network/generated/universal_game_engine/CreateGameRequest";
@@ -489,13 +490,34 @@ const gameServiceHandlers: GameServiceHandlers = {
     }
   },
 
-  WaitForTurn: (call) => {
+  WaitForTurn: async (call) => {
     const { gameId, playerId } = call.request;
     streamManager.addBotStream(gameId, playerId, call);
 
     call.on("cancelled", () => {
       streamManager.removeBotStream(gameId, playerId);
     });
+
+    // 既にボットの手番になっていれば（ボットが後から接続した / 再接続した）、その手番を改めて送る。
+    // GrpcBotPlayer は手番が来た時点で 1 度しか通知しないので、これが無いと対局が止まったままになる
+    try {
+      const session = await ensureSession(gameId);
+      if (!session) return;
+      const state = session.server.engine.getState();
+      if (state.status !== "PLAYING" || !state.activePlayers?.includes(playerId)) return;
+      const turn = encodeBotTurn(session.type, state, playerId);
+      if (turn && turn.legalActionIds.length > 0) {
+        streamManager.notifyBotTurn(
+          gameId,
+          playerId,
+          turn.stateTensor,
+          turn.legalActionIds,
+          turn.stateJson,
+        );
+      }
+    } catch (err) {
+      console.error(`[gRPC] WaitForTurn: failed to resend the current turn for ${playerId}:`, err);
+    }
   },
 
   SubmitTurn: async (call, callback) => {

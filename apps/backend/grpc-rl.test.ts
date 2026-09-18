@@ -17,11 +17,18 @@ import type { SimulateRequest } from "@engine/shared/network/generated/universal
 import type { SimulateResponse__Output } from "@engine/shared/network/generated/universal_game_engine/SimulateResponse";
 import type { BatchSimulateRequest } from "@engine/shared/network/generated/universal_game_engine/BatchSimulateRequest";
 import type { BatchSimulateResponse__Output } from "@engine/shared/network/generated/universal_game_engine/BatchSimulateResponse";
+import type { WaitForTurnResponse__Output } from "@engine/shared/network/generated/universal_game_engine/WaitForTurnResponse";
+import type { SubmitTurnRequest } from "@engine/shared/network/generated/universal_game_engine/SubmitTurnRequest";
+import type { CommonResponse__Output } from "@engine/shared/network/generated/universal_game_engine/CommonResponse";
 import type { OthelloState } from "@engine/shared/rules/OthelloRuleset";
+import type { ShogiState } from "@engine/shared/rules/ShogiRuleset";
+import { ShogiRuleset } from "@engine/shared/rules/ShogiRuleset";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { SHOGI_OBS_DIM } from "@engine/shared/ai/TensorAdapter/ShogiTensorAdapter";
 // Redis/MongoDB へ接続しないよう、モジュール読み込み前に RL_MODE を有効化する
 process.env.RL_MODE = "true";
 const { startGrpcServer } = await import("@engine/backend/grpc-server");
-const { sessions } = await import("@engine/backend/store/sessionStore");
+const { sessions, createSession } = await import("@engine/backend/store/sessionStore");
 const { setIoInstance } = await import("@engine/backend/socket/roomManager");
 
 const PROTO_PATH = path.resolve(__dirname, "../../packages/shared/network/game.proto");
@@ -61,6 +68,7 @@ describe("gRPC RL loop (Reset/Step)", () => {
   let step: (req: StepRequest) => Promise<StepResponse__Output>;
   let simulate: (req: SimulateRequest) => Promise<SimulateResponse__Output>;
   let batchSimulate: (req: BatchSimulateRequest) => Promise<BatchSimulateResponse__Output>;
+  let submitTurn: (req: SubmitTurnRequest) => Promise<CommonResponse__Output>;
 
   beforeAll(async () => {
     setIoInstance(mockIo);
@@ -85,6 +93,7 @@ describe("gRPC RL loop (Reset/Step)", () => {
     step = promisify(client.Step.bind(client));
     simulate = promisify(client.Simulate.bind(client));
     batchSimulate = promisify(client.BatchSimulate.bind(client));
+    submitTurn = promisify(client.SubmitTurn.bind(client));
   });
 
   afterAll(() => {
@@ -294,6 +303,94 @@ describe("gRPC RL loop (Reset/Step)", () => {
     expect([1, -1, 0.5]).toContain(lastReward);
     expect(JSON.parse(stateJson).status).toBe("FINISHED");
   });
+  it("将棋: Reset は 95 要素の観測と 30 の合法手を返し、Step / Simulate で指し進められること", async () => {
+    const { gameId } = await createGame({ gameType: "shogi" });
+    const res = await reset({ gameId, playerIds: ["sente", "gote"] });
+    expect(res.activePlayers).toEqual(["sente"]);
+    expect(res.initialStateTensor.length).toBe(SHOGI_OBS_DIM);
+    expect(res.initialLegalActionIds.length).toBe(30);
+    // 先手の玉は自分視点の (4,8)、後手の玉は (4,0)
+    expect(res.initialStateTensor[8 * 9 + 4]).toBe(8);
+    expect(res.initialStateTensor[4]).toBe(-8);
+
+    // Step: 先手の 1 手目 → 後手視点の観測（盤面が回転して自分の玉が (4,8) に見える）
+    const first = res.initialLegalActionIds[0];
+    const stepped = await step({ gameId, playerId: "sente", actionId: first });
+    expect(stepped.isFinished).toBe(false);
+    expect(stepped.activePlayers).toEqual(["gote"]);
+    expect(stepped.nextStateTensor[8 * 9 + 4]).toBe(8);
+    expect(stepped.legalActionIds.length).toBeGreaterThan(0);
+    const state = JSON.parse(stepped.stateJson) as ShogiState;
+    expect(state.turn).toBe(-1);
+
+    // Simulate: Step と同じ手を初期局面に適用すると同じ局面になる
+    const sim = await simulate({
+      gameType: "shogi",
+      stateJson: res.stateJson,
+      playerId: "sente",
+      actionId: first,
+    });
+    expect(sim.error).toBe("");
+    expect((JSON.parse(sim.stateJson) as ShogiState).board).toEqual(state.board);
+    expect(sim.stateTensor).toEqual(stepped.nextStateTensor);
+  });
+
+  it("将棋: gRPC ボットは WaitForTurn 接続時に手番を受け取り、SubmitTurn で指せること", async () => {
+    // 人間（後手）+ gRPC ボット（先手）の対局をサーバー内で組み立てる（request-create-game と同じ手順）
+    const gameId = "shogi_bot_room";
+    const engine = new UniversalEngine(ShogiRuleset, {});
+    const { server: gameServer } = createSession(gameId, engine, "shogi");
+    engine.dispatch({ type: "JOIN", playerId: "bot_1", slot: "1" });
+    gameServer.addBot({ playerId: "bot_1", aiType: "grpc_bot", name: "grpc_bot 1" });
+    engine.dispatch({ type: "JOIN", playerId: "human", slot: "-1" });
+    engine.dispatch({ type: "START", playerId: "human", timestamp: Date.now() });
+    // commit で GrpcBotPlayer.computeNextMove が呼ばれ、ボットの手番が（まだ誰も聞いていない状態で）通知される
+    await gameServer.commit();
+    expect(engine.getState().activePlayers).toEqual(["bot_1"]);
+
+    // ボットが後から接続しても、現在の手番が改めて届く
+    const stream = client.WaitForTurn({ gameId, playerId: "bot_1" });
+    // 最後に cancel() するとクライアント側で CANCELLED が error として流れるので握りつぶす
+    stream.on("error", () => {});
+    const turns: WaitForTurnResponse__Output[] = [];
+    const nextTurn = () =>
+      new Promise<WaitForTurnResponse__Output>((resolve) => {
+        stream.once("data", (t: WaitForTurnResponse__Output) => {
+          turns.push(t);
+          resolve(t);
+        });
+      });
+    const turn1 = await nextTurn();
+    expect(turn1.stateTensor.length).toBe(SHOGI_OBS_DIM);
+    expect(turn1.legalActionIds.length).toBe(30);
+    expect((JSON.parse(turn1.stateJson) as ShogiState).turn).toBe(1);
+
+    // ボットの着手 → 人間の手番になる
+    const submitted = await submitTurn({
+      gameId,
+      playerId: "bot_1",
+      actionId: turn1.legalActionIds[0],
+    });
+    expect(submitted.success).toBe(true);
+    // dispatchAction は非同期（ロック → 保存）なので、状態が進むまで待つ
+    for (let i = 0; i < 50 && engine.getState().turn !== -1; i++) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    expect(engine.getState().turn).toBe(-1);
+    expect(engine.getState().activePlayers).toEqual(["human"]);
+
+    // 人間が指すと、ボットへ次の手番が届く
+    const pending = nextTurn();
+    const humanMove = ShogiRuleset.getLegalActions(engine.getState() as ShogiState, "human")[0];
+    expect(await gameServer.dispatchAction("human", humanMove)).toBe(true);
+    const turn2 = await pending;
+    expect((JSON.parse(turn2.stateJson) as ShogiState).turn).toBe(1);
+    expect(turn2.legalActionIds.length).toBeGreaterThan(0);
+
+    expect(turns.length).toBe(2);
+    stream.cancel();
+  });
+
   it("RL_MODE でなければ Reset / Step / Simulate / BatchSimulate は PERMISSION_DENIED になること", async () => {
     const { gameId } = await createGame({ gameType: "othello" });
     const root = await reset({ gameId });
