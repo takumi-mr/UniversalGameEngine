@@ -12,8 +12,8 @@
 //
 // CPU ボットはシミュレーションの一部（毎ティック内で決定論的に判断）。
 // 1 人で開始すると cpu_bot がスロット外の相手として現れ、後から人間が着席すると入れ替わる。
-import type { BaseGameState, GameRuleset, GameResult } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
+import type { BaseGameState, GameRuleset, GameResult } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 export interface CyberInput {
   moveX: number; // -1, 0, 1

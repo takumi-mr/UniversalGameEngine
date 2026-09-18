@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import { createSecret } from "../../GameRules";
-import { buildFullDeck, type Card, type DaifugoState } from "../../rules/DaifugoRuleset";
-import { DaifugoDeterminizer } from "./DaifugoDeterminizer";
+import { createSecret } from "@engine/shared/GameRules";
+import { buildFullDeck, type Card, type DaifugoState } from "@engine/shared/rules/DaifugoRuleset";
+import { DaifugoDeterminizer } from "@engine/shared/ai/Determinizer/DaifugoDeterminizer";
 
 const AI = "ai";
 const OPPONENTS = ["p2", "p3"];

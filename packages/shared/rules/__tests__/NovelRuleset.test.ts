@@ -1,7 +1,7 @@
 // packages/shared/rules/__tests__/NovelRuleset.test.ts
 import { describe, it, expect } from "bun:test";
-import { NovelRuleset } from "../NovelRuleset";
-import type { ScenarioNode } from "../../utils/ScenarioEngine";
+import { NovelRuleset } from "@engine/shared/rules/NovelRuleset";
+import type { ScenarioNode } from "@engine/shared/utils/ScenarioEngine";
 
 const testScenario: Record<string, ScenarioNode> = {
   start: {

@@ -4,8 +4,8 @@ import { createPinia, setActivePinia } from "pinia";
 import { createVuetify } from "vuetify";
 import * as components from "vuetify/components";
 import * as directives from "vuetify/directives";
-import ThemeSwitcher from "../ThemeSwitcher.vue";
-import { useUIStore } from "../../store/ui";
+import ThemeSwitcher from "@/components/ThemeSwitcher.vue";
+import { useUIStore } from "@/store/ui";
 
 // コンポーネントテストの雛形: Vuetify を plugin として差し込み、Pinia は setActivePinia で有効化して mount する
 // （mdi アイコンは <i class="mdi-xxx"> として描画されるので class で判定する）

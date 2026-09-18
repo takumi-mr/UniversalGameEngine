@@ -9,11 +9,11 @@
 //                   予測と訂正後が異なっていれば rollback として数える
 //
 // エンジン（reduce）は決定論なので、同じ timestamp を持つ入力を同じ状態に再適用すれば同じ結果になる。
-import { UniversalEngine } from "./UniversalEngine";
-import type { BaseGameState, BaseGameAction, GameRuleset } from "./GameRules";
-import type { CloneStrategy } from "./utils/CloneStrategy";
-import { StructuredCloneStrategy } from "./utils/CloneStrategy";
-import { calculateStateHash } from "./utils/hash";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
+import type { CloneStrategy } from "@engine/shared/utils/CloneStrategy";
+import { StructuredCloneStrategy } from "@engine/shared/utils/CloneStrategy";
+import { calculateStateHash } from "@engine/shared/utils/hash";
 
 export interface PredictiveAction extends BaseGameAction {
   seq?: number;

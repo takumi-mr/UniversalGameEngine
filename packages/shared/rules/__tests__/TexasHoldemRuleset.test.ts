@@ -1,13 +1,13 @@
 // packages/shared/rules/__tests__/TexasHoldemRuleset.test.ts
 import { describe, it, expect } from "bun:test";
-import { UniversalEngine } from "../../UniversalEngine";
-import { createSecret } from "../../GameRules";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { createSecret } from "@engine/shared/GameRules";
 import {
   TexasHoldemRuleset,
   type TexasHoldemState,
   type TexasHoldemAction,
   type TexasHoldemOptions,
-} from "../TexasHoldemRuleset";
+} from "@engine/shared/rules/TexasHoldemRuleset";
 
 type Engine = UniversalEngine<TexasHoldemState, TexasHoldemAction>;
 const P = ["p1", "p2", "p3"];

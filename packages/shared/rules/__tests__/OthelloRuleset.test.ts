@@ -9,9 +9,9 @@ import {
   type OthelloState,
   type OthelloAction,
   type OthelloOptions,
-} from "../OthelloRuleset";
-import { UniversalEngine } from "../../UniversalEngine";
-import { ReplayEngine } from "../../ReplayEngine";
+} from "@engine/shared/rules/OthelloRuleset";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { ReplayEngine } from "@engine/shared/ReplayEngine";
 
 const B = "black";
 const W = "white";

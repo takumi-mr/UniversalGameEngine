@@ -5,8 +5,8 @@ import { GrpcBotPlayer } from "@engine/shared/ai/AIPlayer/GrpcBotPlayer";
 import { RandomPlayer } from "@engine/shared/ai/AIPlayer/RandomPlayer";
 import { aiTensorRegistry } from "@engine/shared/ai/AITensorAdapterRegistry";
 import "@engine/shared/ai/TensorAdapter";
-import { WorkerAIPlayer } from "./WorkerAIPlayer";
-import { notifyBotTurn } from "../network/StreamManager";
+import { WorkerAIPlayer } from "@engine/backend/ai/WorkerAIPlayer";
+import { notifyBotTurn } from "@engine/backend/network/StreamManager";
 
 /** ルーム作成時に指定できる AI の種別 */
 export const BOT_TYPES = ["grpc_bot", "random", "minimax", "mcts"] as const;

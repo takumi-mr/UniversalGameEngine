@@ -131,7 +131,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
-import { Equilibrium } from "../../three/Equilibrium";
+import { Equilibrium } from "@/three/Equilibrium";
 import {
   cardNeedsTarget,
   type EquilibriumState,

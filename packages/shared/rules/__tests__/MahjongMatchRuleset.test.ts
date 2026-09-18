@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import "../../GameRegistry";
+import "@engine/shared/GameRegistry";
 import {
   MahjongMatchRuleset,
   type MahjongMatchAction,
   type MahjongMatchOptions,
   type MahjongMatchState,
-} from "../mahjong/MahjongMatchRuleset";
-import type { MahjongState, Tile } from "../mahjong/MahjongRuleset";
-import { ProvablyFairRNG } from "../../utils/ProvablyFairRNG";
-import { createSecret } from "../../GameRules";
+} from "@engine/shared/rules/mahjong/MahjongMatchRuleset";
+import type { MahjongState, Tile } from "@engine/shared/rules/mahjong/MahjongRuleset";
+import { ProvablyFairRNG } from "@engine/shared/utils/ProvablyFairRNG";
+import { createSecret } from "@engine/shared/GameRules";
 
 const players = ["p1", "p2", "p3", "p4"];
 const rng = () => new ProvablyFairRNG("match-test", "mahjong", 0);

@@ -1,10 +1,16 @@
 {
   // 厳しさは ../../tsconfig.base.json に統一。
   // ブラウザ（クライアント側の予測）と Bun（オフライン評価）の両方から使うので lib に DOM を含める。
+  // パッケージ内の import も `@engine/input-prediction/*`。実行時は root の node_modules/@engine/input-prediction
+  // （workspace symlink）で解決されるので cwd に依存しない。paths はエディタ用の明示。
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ESNext", "DOM"],
-    "types": ["bun"]
+    "types": ["bun"],
+    "paths": {
+      "@engine/input-prediction": ["./index.ts"],
+      "@engine/input-prediction/*": ["./*"]
+    }
   },
   "include": ["."]
 }

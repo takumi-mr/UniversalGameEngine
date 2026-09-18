@@ -5,9 +5,9 @@
 // 各インスタンスが定期的に「期限の来た予約」を取り出して掃除する。これにより
 //   - 予約したインスタンスが落ちても別のインスタンスが掃除する
 //   - 在室判定はクラスタ全体のソケット数で行うので、別インスタンスに人が居る部屋を消さない
-import { repo, EMPTY_ROOM_TIMEOUT, destroySession } from "../store/sessionStore";
-import { streamManager } from "../network/StreamManager";
-import { getIoInstance, setIoInstance, countRoomSockets } from "../network/io";
+import { repo, EMPTY_ROOM_TIMEOUT, destroySession } from "@engine/backend/store/sessionStore";
+import { streamManager } from "@engine/backend/network/StreamManager";
+import { getIoInstance, setIoInstance, countRoomSockets } from "@engine/backend/network/io";
 
 export { setIoInstance, getIoInstance };
 

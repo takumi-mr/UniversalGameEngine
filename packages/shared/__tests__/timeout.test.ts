@@ -1,11 +1,15 @@
 // packages/shared/__tests__/timeout.test.ts
 // エンジン組み込みの TIMEOUT: 時間切れは「アクション」として状態に入り、リプレイで再現できる。
 import { describe, it, expect } from "bun:test";
-import { UniversalEngine } from "../UniversalEngine";
-import { ReplayEngine } from "../ReplayEngine";
-import { CaveDiveRuleset, type CaveDiveState, type CaveDiveAction } from "../rules/CaveDiveRuleset";
-import { ShogiRuleset } from "../rules/ShogiRuleset";
-import { TicTacToeRuleset } from "../rules/TicTacToeRuleset";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { ReplayEngine } from "@engine/shared/ReplayEngine";
+import {
+  CaveDiveRuleset,
+  type CaveDiveState,
+  type CaveDiveAction,
+} from "@engine/shared/rules/CaveDiveRuleset";
+import { ShogiRuleset } from "@engine/shared/rules/ShogiRuleset";
+import { TicTacToeRuleset } from "@engine/shared/rules/TicTacToeRuleset";
 
 const T0 = 1_000_000;
 

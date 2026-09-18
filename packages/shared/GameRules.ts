@@ -63,7 +63,7 @@ export function isSecret(obj: unknown): obj is Secret<unknown> {
   return !!(obj && typeof obj === "object" && (obj as Record<string, unknown>).__isSecret === true);
 }
 
-import type { IGameRNG } from "./utils/IGameRNG";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 export interface GameRuleset<
   TState extends BaseGameState,

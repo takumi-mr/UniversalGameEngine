@@ -1,6 +1,6 @@
 import { describe, it } from "bun:test";
-import { gameRegistry } from "../../GameRegistry";
-import { UniversalEngine } from "../../UniversalEngine";
+import { gameRegistry } from "@engine/shared/GameRegistry";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
 
 describe("Legal Actions Validity", () => {
   const games = gameRegistry.getAllDefinitions();

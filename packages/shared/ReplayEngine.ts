@@ -1,6 +1,11 @@
-import type { BaseGameState, BaseGameAction, GameRuleset, GameRecord } from "./GameRules";
-import { UniversalEngine } from "./UniversalEngine";
-import { calculateStateHash } from "./utils/hash";
+import type {
+  BaseGameState,
+  BaseGameAction,
+  GameRuleset,
+  GameRecord,
+} from "@engine/shared/GameRules";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { calculateStateHash } from "@engine/shared/utils/hash";
 
 export class ReplayEngine<
   TState extends BaseGameState,

@@ -5,9 +5,14 @@ import {
   clearRoomCleanup,
   updatePresence,
   sweepRoomCleanups,
-} from "./roomManager";
-import { sessions, repo, createSession, EMPTY_ROOM_TIMEOUT } from "../store/sessionStore";
-import { InMemoryDummyRepository } from "../infra/InMemoryDummyRepository";
+} from "@engine/backend/socket/roomManager";
+import {
+  sessions,
+  repo,
+  createSession,
+  EMPTY_ROOM_TIMEOUT,
+} from "@engine/backend/store/sessionStore";
+import { InMemoryDummyRepository } from "@engine/backend/infra/InMemoryDummyRepository";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import { TicTacToeRuleset } from "@engine/shared/rules/TicTacToeRuleset";
 

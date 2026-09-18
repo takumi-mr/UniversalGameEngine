@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import { HighLowRuleset, type Card, type HighLowState } from "../../rules/HighLowRuleset";
-import { HighLowDeterminizer } from "../Determinizer/HighLowDeterminizer";
-import { InformationSetMCTSPlayer } from "./ISMCTSPlayer";
+import { HighLowRuleset, type Card, type HighLowState } from "@engine/shared/rules/HighLowRuleset";
+import { HighLowDeterminizer } from "@engine/shared/ai/Determinizer/HighLowDeterminizer";
+import { InformationSetMCTSPlayer } from "@engine/shared/ai/AIPlayer/ISMCTSPlayer";
 
 // 山札の中身は AI から見えない前提なので、枚数だけ合わせたダミーで埋める
 const HIDDEN_CARD = { suit: "?", rank: 0 } as unknown as Card;

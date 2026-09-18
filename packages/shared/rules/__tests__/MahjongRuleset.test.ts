@@ -6,11 +6,11 @@ import {
   type MahjongOptions,
   type MahjongState,
   type Tile,
-} from "../mahjong/MahjongRuleset";
-import { withTestRng } from "../../testing/withTestRng";
-import { UniversalEngine } from "../../UniversalEngine";
-import { MahjongHandEvaluator } from "../mahjong/MahjongHandEvaluator";
-import { createSecret } from "../../GameRules";
+} from "@engine/shared/rules/mahjong/MahjongRuleset";
+import { withTestRng } from "@engine/shared/testing/withTestRng";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { MahjongHandEvaluator } from "@engine/shared/rules/mahjong/MahjongHandEvaluator";
+import { createSecret } from "@engine/shared/GameRules";
 
 // ルールセットを直接呼ぶテストなので、固定シードの RNG を補う
 const MahjongRuleset = withTestRng(RealMahjongRuleset);

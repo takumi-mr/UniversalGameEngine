@@ -7,7 +7,7 @@
 //   - mispredictions:     予測が外れたフレーム数 ＝ ロールバックが起きる回数
 // 「そのフレームの入力が状態に影響しない」（硬直中など）と分かっている場合は inputMatters=false で渡す。
 // そのフレームは外れてもロールバック不要なので、正解として数える
-import { defaultInputEquality, type InputEquality } from "./InputPredictor";
+import { defaultInputEquality, type InputEquality } from "@engine/input-prediction/InputPredictor";
 
 export interface PredictionSummary {
   frames: number;

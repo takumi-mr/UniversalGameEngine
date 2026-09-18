@@ -1,7 +1,7 @@
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../../GameRules";
-import type { IAIPlayer, AIDiagnosticValue } from "../IAIPlayer";
-import type { IAIStateDeterminizer } from "../IAIStateDeterminizer";
-import type { MCTSOptions } from "./MCTSPlayer";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
+import type { IAIPlayer, AIDiagnosticValue } from "@engine/shared/ai/IAIPlayer";
+import type { IAIStateDeterminizer } from "@engine/shared/ai/IAIStateDeterminizer";
+import type { MCTSOptions } from "@engine/shared/ai/AIPlayer/MCTSPlayer";
 
 export interface ISMCTSOptions<TState extends BaseGameState = BaseGameState> extends MCTSOptions {
   maxRolloutDepth?: number;

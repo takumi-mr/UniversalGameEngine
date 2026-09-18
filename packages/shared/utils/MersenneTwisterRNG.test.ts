@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { MersenneTwisterRNG } from "./MersenneTwisterRNG";
+import { MersenneTwisterRNG } from "@engine/shared/utils/MersenneTwisterRNG";
 
 describe("MersenneTwisterRNG", () => {
   it("should generate deterministic float values with the same seed", () => {

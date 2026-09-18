@@ -1,5 +1,5 @@
 // packages/shared/ai/IAITensorAdapter.ts
-import type { BaseGameState, BaseGameAction } from "../GameRules";
+import type { BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
 
 export interface IAITensorAdapter<TState extends BaseGameState, TAction extends BaseGameAction> {
   /**

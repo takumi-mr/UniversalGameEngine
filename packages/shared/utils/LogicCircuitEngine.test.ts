@@ -4,7 +4,7 @@ import {
   type LogicBlock,
   type Connection,
   type SubCircuit,
-} from "./LogicCircuitEngine";
+} from "@engine/shared/utils/LogicCircuitEngine";
 
 describe("LogicCircuitEngine", () => {
   it("should simulate an AND gate correctly", () => {

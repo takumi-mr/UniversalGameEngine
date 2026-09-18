@@ -18,10 +18,10 @@
  *   → 誰かが秘密の目標を達成 / 最後の一人 / MAX_TURNS 超過 で終了
  */
 
-import { requireRng } from "../utils/requireRng";
-import { createSecret, type Secret } from "../GameRules";
-import type { BaseGameState, GameRuleset } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
+import { requireRng } from "@engine/shared/utils/requireRng";
+import { createSecret, type Secret } from "@engine/shared/GameRules";
+import type { BaseGameState, GameRuleset } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 // ==========================================
 // 1. 型定義 (Types & Interfaces)

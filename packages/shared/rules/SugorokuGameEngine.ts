@@ -1,5 +1,5 @@
-import type { BaseGameState } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
+import type { BaseGameState } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 export interface BoardSpace<TState extends BaseGameState> {
   id: string;

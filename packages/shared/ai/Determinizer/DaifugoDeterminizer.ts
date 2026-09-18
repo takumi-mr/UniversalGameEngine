@@ -1,6 +1,6 @@
-import { createSecret, isSecret, type Secret } from "../../GameRules";
-import type { IAIStateDeterminizer } from "../IAIStateDeterminizer";
-import { buildFullDeck, type Card, type DaifugoState } from "../../rules/DaifugoRuleset";
+import { createSecret, isSecret, type Secret } from "@engine/shared/GameRules";
+import type { IAIStateDeterminizer } from "@engine/shared/ai/IAIStateDeterminizer";
+import { buildFullDeck, type Card, type DaifugoState } from "@engine/shared/rules/DaifugoRuleset";
 
 // エンジンのマスク後は Secret が剥がされて Card[]（他人の手札は "?" の配列）になる
 type MaybeMaskedHand = Secret<Card[]> | Card[];

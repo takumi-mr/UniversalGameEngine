@@ -6,9 +6,9 @@ import * as protoLoader from "@grpc/proto-loader";
 import path from "path";
 // Redis/MongoDB へ接続しないよう、モジュール読み込み前に RL_MODE を有効化する
 process.env.RL_MODE = "true";
-const { startGrpcServer } = await import("./grpc-server");
-const { sessions } = await import("./store/sessionStore");
-const { setIoInstance } = await import("./socket/roomManager");
+const { startGrpcServer } = await import("@engine/backend/grpc-server");
+const { sessions } = await import("@engine/backend/store/sessionStore");
+const { setIoInstance } = await import("@engine/backend/socket/roomManager");
 
 const PROTO_PATH = path.resolve(__dirname, "../../packages/shared/network/game.proto");
 

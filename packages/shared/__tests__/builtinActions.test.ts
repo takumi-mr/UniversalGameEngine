@@ -2,11 +2,11 @@
 // エンジン組み込みの JOIN / START が、ルールセットに依存せず着席・開始を行い、
 // history に記録されてリプレイで再現できることを検証する。
 import { describe, it, expect } from "bun:test";
-import { UniversalEngine } from "../UniversalEngine";
-import { ReplayEngine } from "../ReplayEngine";
-import { OthelloRuleset } from "../rules/OthelloRuleset";
-import { HighLowRuleset } from "../rules/HighLowRuleset";
-import { gameRegistry } from "../GameRegistry";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { ReplayEngine } from "@engine/shared/ReplayEngine";
+import { OthelloRuleset } from "@engine/shared/rules/OthelloRuleset";
+import { HighLowRuleset } from "@engine/shared/rules/HighLowRuleset";
+import { gameRegistry } from "@engine/shared/GameRegistry";
 
 describe("UniversalEngine builtin JOIN / START", () => {
   it("JOIN は空席に順番に着席させ、重複・満席は拒否すること", () => {

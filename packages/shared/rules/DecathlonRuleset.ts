@@ -12,11 +12,11 @@
 //   → 全種目が終わったら合計点が最多の人が勝ち
 //
 // サブゲームの生成・委譲は MetaGameRuleset の共通部品を使う。
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
-import { createSecret, type Secret } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
-import { requireRng } from "../utils/requireRng";
-import { ScenarioEngine, type ScenarioNode } from "../utils/ScenarioEngine";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
+import { createSecret, type Secret } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
+import { requireRng } from "@engine/shared/utils/requireRng";
+import { ScenarioEngine, type ScenarioNode } from "@engine/shared/utils/ScenarioEngine";
 import {
   applySubGameAction,
   collectActivePlayers,
@@ -24,8 +24,8 @@ import {
   isValidSubGameAction,
   subGameLegalActions,
   type SubGameEntry,
-} from "./MetaGameRuleset";
-import { resolveSubGame } from "./subGameResolver";
+} from "@engine/shared/rules/MetaGameRuleset";
+import { resolveSubGame } from "@engine/shared/rules/subGameResolver";
 
 // --- 1. 型定義 ---
 

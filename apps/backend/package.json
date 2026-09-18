@@ -1,5 +1,5 @@
 {
-  "name": "backend",
+  "name": "@engine/backend",
   "private": true,
   "scripts": {
     "dev": "bun --watch server.ts"

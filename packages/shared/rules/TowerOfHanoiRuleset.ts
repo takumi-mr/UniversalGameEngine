@@ -1,5 +1,5 @@
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 export interface TowerOfHanoiState extends BaseGameState {
   towers: number[][]; // [tower0, tower1, tower2], each containing disk sizes (e.g. [5, 4, 3])

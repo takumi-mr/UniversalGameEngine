@@ -1,6 +1,6 @@
 // packages/shared/ai/AITensorAdapterRegistry.ts
-import type { BaseGameState, BaseGameAction } from "../GameRules";
-import type { IAITensorAdapter } from "./IAITensorAdapter";
+import type { BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
+import type { IAITensorAdapter } from "@engine/shared/ai/IAITensorAdapter";
 
 class AITensorAdapterRegistry {
   // 任意のゲームタイプ文字列に対して、アダプターを保持する

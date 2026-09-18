@@ -135,8 +135,8 @@
 import { ref, computed, onMounted, onUnmounted, defineAsyncComponent, type Component } from "vue";
 import { useRouter } from "vue-router";
 import { SocketIoClient } from "../../network/SocketIoClient";
-import ChatPanel from "./ChatPanel.vue";
-import { availableGames } from "../constants/games";
+import ChatPanel from "@/components/ChatPanel.vue";
+import { availableGames } from "@/constants/games";
 import type { BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
 
 // 各ゲームの型をインポート
@@ -259,31 +259,31 @@ const chatMessages = ref<
 
 // 動的コンポーネントのマッピング
 const components: Record<string, Component> = {
-  tictactoe: defineAsyncComponent(() => import("./game/TicTacToe.vue")),
-  othello: defineAsyncComponent(() => import("./game/Othello.vue")),
-  othello_3d: defineAsyncComponent(() => import("./game/Othello3D.vue")),
-  shogi: defineAsyncComponent(() => import("./game/Shogi.vue")),
-  rubiks_cube: defineAsyncComponent(() => import("./game/RubiksCube.vue")),
-  chess: defineAsyncComponent(() => import("./game/Chess.vue")),
-  chess_3d: defineAsyncComponent(() => import("./game/Chess3D.vue")),
-  go: defineAsyncComponent(() => import("./game/Go.vue")),
-  equilibrium: defineAsyncComponent(() => import("./game/Equilibrium.vue")),
-  daifugo: defineAsyncComponent(() => import("./game/Daifugo/Daifugo.vue")),
-  high_low: defineAsyncComponent(() => import("./game/HighLow.vue")),
-  texas_holdem: defineAsyncComponent(() => import("./game/TexasHoldem.vue")),
-  uno: defineAsyncComponent(() => import("./game/Uno.vue")),
-  mancala: defineAsyncComponent(() => import("./game/Mancala.vue")),
-  sudoku: defineAsyncComponent(() => import("./game/Sudoku.vue")),
-  mahjong: defineAsyncComponent(() => import("./game/Mahjong.vue")),
-  shogi_3d: defineAsyncComponent(() => import("./game/Shogi3D.vue")),
-  wordle: defineAsyncComponent(() => import("./game/Wordle.vue")),
-  speed: defineAsyncComponent(() => import("./game/Speed.vue")),
-  minesweeper: defineAsyncComponent(() => import("./game/Minesweeper.vue")),
-  hakoiri_musume: defineAsyncComponent(() => import("./game/HakoiriMusume.vue")),
-  tower_of_hanoi: defineAsyncComponent(() => import("./game/TowerOfHanoi.vue")),
-  logic_circuit: defineAsyncComponent(() => import("./game/LogicLab.vue")),
-  logic_lab: defineAsyncComponent(() => import("./game/LogicLab.vue")),
-  cyber_strike: defineAsyncComponent(() => import("./game/CyberStrike.vue")),
+  tictactoe: defineAsyncComponent(() => import("@/components/game/TicTacToe.vue")),
+  othello: defineAsyncComponent(() => import("@/components/game/Othello.vue")),
+  othello_3d: defineAsyncComponent(() => import("@/components/game/Othello3D.vue")),
+  shogi: defineAsyncComponent(() => import("@/components/game/Shogi.vue")),
+  rubiks_cube: defineAsyncComponent(() => import("@/components/game/RubiksCube.vue")),
+  chess: defineAsyncComponent(() => import("@/components/game/Chess.vue")),
+  chess_3d: defineAsyncComponent(() => import("@/components/game/Chess3D.vue")),
+  go: defineAsyncComponent(() => import("@/components/game/Go.vue")),
+  equilibrium: defineAsyncComponent(() => import("@/components/game/Equilibrium.vue")),
+  daifugo: defineAsyncComponent(() => import("@/components/game/Daifugo/Daifugo.vue")),
+  high_low: defineAsyncComponent(() => import("@/components/game/HighLow.vue")),
+  texas_holdem: defineAsyncComponent(() => import("@/components/game/TexasHoldem.vue")),
+  uno: defineAsyncComponent(() => import("@/components/game/Uno.vue")),
+  mancala: defineAsyncComponent(() => import("@/components/game/Mancala.vue")),
+  sudoku: defineAsyncComponent(() => import("@/components/game/Sudoku.vue")),
+  mahjong: defineAsyncComponent(() => import("@/components/game/Mahjong.vue")),
+  shogi_3d: defineAsyncComponent(() => import("@/components/game/Shogi3D.vue")),
+  wordle: defineAsyncComponent(() => import("@/components/game/Wordle.vue")),
+  speed: defineAsyncComponent(() => import("@/components/game/Speed.vue")),
+  minesweeper: defineAsyncComponent(() => import("@/components/game/Minesweeper.vue")),
+  hakoiri_musume: defineAsyncComponent(() => import("@/components/game/HakoiriMusume.vue")),
+  tower_of_hanoi: defineAsyncComponent(() => import("@/components/game/TowerOfHanoi.vue")),
+  logic_circuit: defineAsyncComponent(() => import("@/components/game/LogicLab.vue")),
+  logic_lab: defineAsyncComponent(() => import("@/components/game/LogicLab.vue")),
+  cyber_strike: defineAsyncComponent(() => import("@/components/game/CyberStrike.vue")),
 };
 
 const gameComponent = computed(() => components[props.gameType] || null);

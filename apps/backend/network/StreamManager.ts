@@ -1,6 +1,6 @@
 // apps/backend/network/StreamManager.ts
 import * as grpc from "@grpc/grpc-js";
-import { publishClusterEvent } from "./io";
+import { publishClusterEvent } from "@engine/backend/network/io";
 
 type GrpcStream = grpc.ServerWritableStream<any, any>;
 

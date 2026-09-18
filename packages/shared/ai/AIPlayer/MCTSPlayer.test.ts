@@ -1,7 +1,7 @@
 // packages/shared/ai/MCTSPlayer.test.ts
 import { describe, expect, it } from "bun:test";
-import { TicTacToeRuleset, type TicTacToeState } from "../../rules/TicTacToeRuleset";
-import { MCTSPlayer } from "./MCTSPlayer";
+import { TicTacToeRuleset, type TicTacToeState } from "@engine/shared/rules/TicTacToeRuleset";
+import { MCTSPlayer } from "@engine/shared/ai/AIPlayer/MCTSPlayer";
 
 describe("MCTSPlayer", () => {
   const ruleset = TicTacToeRuleset;

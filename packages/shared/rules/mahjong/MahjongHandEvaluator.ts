@@ -3,8 +3,8 @@
 // npm `riichi` パッケージで役・符・点数を計算するラッパー。
 // 和了形の判定自体は MahjongTiles（isCompleteHand）でもできるが、役の有無と点数はここで確定する。
 import Riichi from "riichi";
-import type { Meld } from "./MahjongRuleset";
-import { nextDoraTile, type Tile } from "./MahjongTiles";
+import type { Meld } from "@engine/shared/rules/mahjong/MahjongRuleset";
+import { nextDoraTile, type Tile } from "@engine/shared/rules/mahjong/MahjongTiles";
 
 /** 風: 1=東 2=南 3=西 4=北（riichi パッケージの表記に合わせる） */
 export type WindNumber = 1 | 2 | 3 | 4;

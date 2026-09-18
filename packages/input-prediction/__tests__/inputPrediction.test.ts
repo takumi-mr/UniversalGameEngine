@@ -6,7 +6,7 @@ import {
   evaluatePredictor,
   type InputPredictor,
   type RecordedFrame,
-} from "../index";
+} from "@engine/input-prediction";
 
 // 入力は「押しているボタンのビット集合」を想定した数値
 const NONE = 0;

@@ -2,8 +2,8 @@
 // サーバー側の流れ: 1 人で自動開始（CPU が相手）→ クライアントの INPUT / ハートビートで物理が時刻駆動で進む
 // → 2 人目の着席で CPU と交代 → 終局後の RESET。dispatchAction が付ける playerId / timestamp を前提にする。
 import { describe, it, expect, beforeEach } from "bun:test";
-import { sessions, repo, createSession, withSession } from "./sessionStore";
-import { setIoInstance } from "../network/io";
+import { sessions, repo, createSession, withSession } from "@engine/backend/store/sessionStore";
+import { setIoInstance } from "@engine/backend/network/io";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import {
   CyberStrikeRuleset,

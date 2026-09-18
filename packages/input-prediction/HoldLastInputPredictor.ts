@@ -3,7 +3,7 @@
 // 既定の予測器: 「直前の確定入力がそのまま続く」と仮定する（GGPO の標準と同じ）。
 // 入力が変化しないフレームでは必ず当たり、変化するフレームでは必ず外れる。
 // 学習モデルを評価するときの基準線であり、モデルが確信を持てない場面で退避する先でもある
-import type { InputPredictor } from "./InputPredictor";
+import type { InputPredictor } from "@engine/input-prediction/InputPredictor";
 
 export class HoldLastInputPredictor<TInput, TState = unknown> implements InputPredictor<
   TInput,

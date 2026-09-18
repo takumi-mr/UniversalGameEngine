@@ -6,16 +6,16 @@ import { Server } from "socket.io";
 import Redis from "ioredis";
 import { createAdapter } from "@socket.io/redis-adapter";
 
-import { isClusterMode, REDIS_URL } from "./config";
-import authRoutes from "./routes/auth";
-import roomsRoutes from "./routes/rooms";
-import gameRoutes from "./routes/game";
-import replaysRoutes from "./routes/replays";
-import { setupSocketIO } from "./socket";
-import { startCleanupSweeper } from "./socket/roomManager";
-import { startDeadlineSweeper } from "./store/deadlineSweeper";
-import { startGrpcServer } from "./grpc-server";
-import { INSTANCE_ID } from "./network/io";
+import { isClusterMode, REDIS_URL } from "@engine/backend/config";
+import authRoutes from "@engine/backend/routes/auth";
+import roomsRoutes from "@engine/backend/routes/rooms";
+import gameRoutes from "@engine/backend/routes/game";
+import replaysRoutes from "@engine/backend/routes/replays";
+import { setupSocketIO } from "@engine/backend/socket";
+import { startCleanupSweeper } from "@engine/backend/socket/roomManager";
+import { startDeadlineSweeper } from "@engine/backend/store/deadlineSweeper";
+import { startGrpcServer } from "@engine/backend/grpc-server";
+import { INSTANCE_ID } from "@engine/backend/network/io";
 
 process.on("uncaughtException", (err) => {
   console.error("[UNCAUGHT EXCEPTION]", err);

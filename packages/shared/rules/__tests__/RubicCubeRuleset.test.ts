@@ -1,6 +1,6 @@
 import { expect, test, describe } from "bun:test";
-import { RubiksRuleset } from "../RubicCubeRuleset";
-import type { RubiksState, FaceName, Color } from "../RubicCubeRuleset";
+import { RubiksRuleset } from "@engine/shared/rules/RubicCubeRuleset";
+import type { RubiksState, FaceName, Color } from "@engine/shared/rules/RubicCubeRuleset";
 
 // --- 幾何モデル ---
 // 各面を「外側から見た」ときに row 0 が上、col 0 が左になる展開図の規約。

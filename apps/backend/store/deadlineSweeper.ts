@@ -6,7 +6,7 @@
 //   - 各インスタンスが定期的に「期限の来た予約」を取り出し、取り出せた 1 台だけが TIMEOUT を dispatch する
 //   - dispatch はロック内で最新状態に対して検証されるので、別インスタンスが先に手を進めていれば単に拒否される
 //     （エンジン側で「締切前」「手番でない」TIMEOUT は無効）
-import { repo, ensureSession, withSession } from "./sessionStore";
+import { repo, ensureSession, withSession } from "@engine/backend/store/sessionStore";
 
 /** 予約を確認する間隔 */
 export const DEADLINE_SWEEP_INTERVAL = 1000;

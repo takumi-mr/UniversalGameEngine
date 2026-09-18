@@ -1,7 +1,7 @@
 import { expect, test, describe } from "bun:test";
-import { UniversalEngine, type UniversalEngineOptions } from "../UniversalEngine";
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
-import { ReplayEngine } from "../ReplayEngine";
+import { UniversalEngine, type UniversalEngineOptions } from "@engine/shared/UniversalEngine";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
+import { ReplayEngine } from "@engine/shared/ReplayEngine";
 
 // Mock types
 interface MockState extends BaseGameState {

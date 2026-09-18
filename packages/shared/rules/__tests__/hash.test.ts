@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
-import { gameRegistry } from "../../GameRegistry";
-import { UniversalEngine } from "../../UniversalEngine";
-import { calculateStateHash } from "../../utils/hash";
+import { gameRegistry } from "@engine/shared/GameRegistry";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { calculateStateHash } from "@engine/shared/utils/hash";
 
 describe("State Hash Consistency", () => {
   const games = gameRegistry.getAllDefinitions();

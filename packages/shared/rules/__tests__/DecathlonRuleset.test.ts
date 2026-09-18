@@ -1,15 +1,15 @@
 // packages/shared/rules/__tests__/DecathlonRuleset.test.ts
 import { describe, it, expect } from "bun:test";
-import "../../GameRegistry"; // サブゲームのリゾルバを登録する
-import { UniversalEngine } from "../../UniversalEngine";
-import { ReplayEngine } from "../../ReplayEngine";
+import "@engine/shared/GameRegistry"; // サブゲームのリゾルバを登録する
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { ReplayEngine } from "@engine/shared/ReplayEngine";
 import {
   DecathlonRuleset,
   INTERLUDE_SCENARIO,
   type DecathlonState,
   type DecathlonAction,
-} from "../DecathlonRuleset";
-import type { TicTacToeAction } from "../TicTacToeRuleset";
+} from "@engine/shared/rules/DecathlonRuleset";
+import type { TicTacToeAction } from "@engine/shared/rules/TicTacToeRuleset";
 
 type Engine = UniversalEngine<DecathlonState, DecathlonAction>;
 const S = (e: Engine) => e.getState();

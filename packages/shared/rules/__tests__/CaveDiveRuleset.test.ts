@@ -1,8 +1,8 @@
 // packages/shared/rules/__tests__/CaveDiveRuleset.test.ts
 import { describe, it, expect } from "bun:test";
-import { UniversalEngine } from "../../UniversalEngine";
-import { ReplayEngine } from "../../ReplayEngine";
-import { createSecret } from "../../GameRules";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { ReplayEngine } from "@engine/shared/ReplayEngine";
+import { createSecret } from "@engine/shared/GameRules";
 import {
   CaveDiveRuleset,
   TOTAL_ROUNDS,
@@ -10,7 +10,7 @@ import {
   type CaveDiveAction,
   type CaveCard,
   type TrapType,
-} from "../CaveDiveRuleset";
+} from "@engine/shared/rules/CaveDiveRuleset";
 
 type Engine = UniversalEngine<CaveDiveState, CaveDiveAction>;
 const P = ["a", "b", "c"];

@@ -17,10 +17,10 @@
 //
 // エンジンの組み込み JOIN で着席し、ルールセットの START（2 人以上）で開始する。
 // 制限時間は設けない（全員の選択が揃った時点で進む）。
-import { requireRng } from "../utils/requireRng";
-import { createSecret, type Secret } from "../GameRules";
-import type { BaseGameState, BaseGameAction, GameRuleset } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
+import { requireRng } from "@engine/shared/utils/requireRng";
+import { createSecret, type Secret } from "@engine/shared/GameRules";
+import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 // --- 1. 型定義 ---
 

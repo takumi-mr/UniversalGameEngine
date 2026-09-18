@@ -1,9 +1,9 @@
 import { createRouter, createWebHistory } from "vue-router";
-import LoginView from "../views/LoginView.vue";
-import SelectionView from "../views/SelectionView.vue";
-import RoomListView from "../views/RoomListView.vue";
-import GameView from "../views/GameView.vue";
-import ReplayView from "../views/ReplayView.vue";
+import LoginView from "@/views/LoginView.vue";
+import SelectionView from "@/views/SelectionView.vue";
+import RoomListView from "@/views/RoomListView.vue";
+import GameView from "@/views/GameView.vue";
+import ReplayView from "@/views/ReplayView.vue";
 
 const routes = [
   {

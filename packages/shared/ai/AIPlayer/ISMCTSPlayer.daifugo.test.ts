@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import { DaifugoRuleset, type Card, type DaifugoState } from "../../rules/DaifugoRuleset";
-import { DaifugoDeterminizer } from "../Determinizer/DaifugoDeterminizer";
-import { InformationSetMCTSPlayer } from "./ISMCTSPlayer";
+import { DaifugoRuleset, type Card, type DaifugoState } from "@engine/shared/rules/DaifugoRuleset";
+import { DaifugoDeterminizer } from "@engine/shared/ai/Determinizer/DaifugoDeterminizer";
+import { InformationSetMCTSPlayer } from "@engine/shared/ai/AIPlayer/ISMCTSPlayer";
 
 const AI = "ai";
 const OPPONENTS = ["p2", "p3"];

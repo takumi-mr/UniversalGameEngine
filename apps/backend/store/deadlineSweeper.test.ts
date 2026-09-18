@@ -1,12 +1,12 @@
 // apps/backend/store/deadlineSweeper.test.ts
 // commit() が締切を予約し、sweepDeadlines() が期限の来た締切に TIMEOUT を dispatch することを検証する。
 import { describe, it, expect, beforeEach } from "bun:test";
-import { sessions, repo, createSession, withSession } from "./sessionStore";
-import { sweepDeadlines } from "./deadlineSweeper";
-import { setIoInstance } from "../network/io";
+import { sessions, repo, createSession, withSession } from "@engine/backend/store/sessionStore";
+import { sweepDeadlines } from "@engine/backend/store/deadlineSweeper";
+import { setIoInstance } from "@engine/backend/network/io";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import { CaveDiveRuleset, type CaveDiveState } from "@engine/shared/rules/CaveDiveRuleset";
-import type { InMemoryDummyRepository } from "../infra/InMemoryDummyRepository";
+import type { InMemoryDummyRepository } from "@engine/backend/infra/InMemoryDummyRepository";
 
 const mockIo = {
   in: () => ({ fetchSockets: async () => [] }),

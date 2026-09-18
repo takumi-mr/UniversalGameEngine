@@ -297,14 +297,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { availableGames } from "../constants/games";
+import { availableGames } from "@/constants/games";
 import { SocketIoClient } from "../../network/SocketIoClient";
-import GameHelpDialog from "../components/game/GameHelpDialog.vue";
-import ThemeSwitcher from "../components/ThemeSwitcher.vue";
-import { generatePuzzle } from "../utils/sudokuGenerator";
-import { useAuthStore } from "../store/auth";
-import { useRoomStore } from "../store/room";
-import { useUIStore } from "../store/ui";
+import GameHelpDialog from "@/components/game/GameHelpDialog.vue";
+import ThemeSwitcher from "@/components/ThemeSwitcher.vue";
+import { generatePuzzle } from "@/utils/sudokuGenerator";
+import { useAuthStore } from "@/store/auth";
+import { useRoomStore } from "@/store/room";
+import { useUIStore } from "@/store/ui";
 
 // ゲーム起動前に呼ばれる汎用フック
 // 各ゲームの初期化処理を追加できる。戻り値は createGame の gameOptions に渡される

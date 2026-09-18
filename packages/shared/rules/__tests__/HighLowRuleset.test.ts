@@ -1,6 +1,6 @@
 import { expect, test, describe } from "bun:test";
-import { HighLowRuleset as RealHighLowRuleset } from "../HighLowRuleset";
-import { withTestRng } from "../../testing/withTestRng";
+import { HighLowRuleset as RealHighLowRuleset } from "@engine/shared/rules/HighLowRuleset";
+import { withTestRng } from "@engine/shared/testing/withTestRng";
 
 // ルールセットを直接呼ぶテストなので、固定シードの RNG を補う
 const HighLowRuleset = withTestRng(RealHighLowRuleset);

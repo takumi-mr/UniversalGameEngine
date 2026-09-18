@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { JsonCloneStrategy, StructuredCloneStrategy } from "./CloneStrategy";
+import { JsonCloneStrategy, StructuredCloneStrategy } from "@engine/shared/utils/CloneStrategy";
 
 describe("CloneStrategy", () => {
   const testData = {

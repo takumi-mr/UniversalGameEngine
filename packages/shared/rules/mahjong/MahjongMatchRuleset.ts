@@ -2,16 +2,21 @@
 //
 // リーチ麻雀の対局（東風戦・半荘戦）。各局は MahjongRuleset をサブゲームとして進め、
 // 親の連荘・本場・供託・トビ・オーラスの親の和了止め（アガリ止め）・最終順位を管理する。
-import type { BaseGameAction, BaseGameState, GameRuleset } from "../../GameRules";
-import type { IGameRNG } from "../../utils/IGameRNG";
+import type { BaseGameAction, BaseGameState, GameRuleset } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 import {
   applySubGameAction,
   createSubGame,
   isValidSubGameAction,
   subGameLegalActions,
   type SubGameEntry,
-} from "../MetaGameRuleset";
-import { WINDS, type MahjongHandResult, type MahjongState, type Wind } from "./MahjongRuleset";
+} from "@engine/shared/rules/MetaGameRuleset";
+import {
+  WINDS,
+  type MahjongHandResult,
+  type MahjongState,
+  type Wind,
+} from "@engine/shared/rules/mahjong/MahjongRuleset";
 
 export type MahjongMatchMode = "TONPU" | "HANCHAN";
 

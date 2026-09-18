@@ -1,6 +1,6 @@
 // packages/shared/rules/OthelloRuleset.ts
-import type { GameRuleset, BaseGameState, BaseGameAction } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
+import type { GameRuleset, BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 export type PlayerColor = 1 | -1; // 1: 黒, -1: 白
 

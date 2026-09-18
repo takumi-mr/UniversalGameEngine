@@ -1,12 +1,12 @@
-import type { BaseGameState, GameRuleset } from "../GameRules";
-import type { IGameRNG } from "../utils/IGameRNG";
+import type { BaseGameState, GameRuleset } from "@engine/shared/GameRules";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 import {
   LogicCircuitEngine,
   type LogicBlockType,
   type LogicBlock,
   type Connection,
   type SubCircuit,
-} from "../utils/LogicCircuitEngine";
+} from "@engine/shared/utils/LogicCircuitEngine";
 
 export interface TestCase {
   inputs?: Record<string, number>; // blockId -> value

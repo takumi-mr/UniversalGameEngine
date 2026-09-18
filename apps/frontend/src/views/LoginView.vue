@@ -4,7 +4,7 @@
 
 <script setup lang="ts">
 import { useRouter } from "vue-router";
-import Login from "../components/Login.vue";
+import Login from "@/components/Login.vue";
 
 const router = useRouter();
 

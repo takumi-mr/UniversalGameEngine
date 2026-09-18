@@ -1,11 +1,16 @@
-import { deepFreeze } from "./utils/freeze";
-import { isSecret } from "./GameRules";
-import type { BaseGameState, BaseGameAction, GameRuleset, GameRecord } from "./GameRules";
-import { ProvablyFairRNG } from "./utils/ProvablyFairRNG";
-import { sha256, generateRandomSeed } from "./utils/crypto";
-import type { IGameRNG } from "./utils/IGameRNG";
-import { calculateStateHash } from "./utils/hash";
-import { type CloneStrategy, StructuredCloneStrategy } from "./utils/CloneStrategy";
+import { deepFreeze } from "@engine/shared/utils/freeze";
+import { isSecret } from "@engine/shared/GameRules";
+import type {
+  BaseGameState,
+  BaseGameAction,
+  GameRuleset,
+  GameRecord,
+} from "@engine/shared/GameRules";
+import { ProvablyFairRNG } from "@engine/shared/utils/ProvablyFairRNG";
+import { sha256, generateRandomSeed } from "@engine/shared/utils/crypto";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
+import { calculateStateHash } from "@engine/shared/utils/hash";
+import { type CloneStrategy, StructuredCloneStrategy } from "@engine/shared/utils/CloneStrategy";
 
 interface InternalGameState extends BaseGameState {
   prngSecret?: string;

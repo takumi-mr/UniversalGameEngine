@@ -1,10 +1,15 @@
 {
   // 厳しさは ../../tsconfig.base.json に統一。
   // フロント（ブラウザ）とバックエンド（Bun）の両方から使われるので lib に DOM を含める。
+  // パッケージ内の import も `@engine/shared/*`。実行時は root の node_modules/@engine/shared（workspace symlink）で
+  // 解決されるので cwd に依存しない。paths はエディタ用の明示。
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ESNext", "DOM"],
-    "types": ["bun"]
+    "types": ["bun"],
+    "paths": {
+      "@engine/shared/*": ["./*"]
+    }
   },
   "include": ["."]
 }

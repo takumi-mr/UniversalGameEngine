@@ -1,4 +1,4 @@
-import type { BaseGameState } from "../GameRules";
+import type { BaseGameState } from "@engine/shared/GameRules";
 
 /**
  * 不完全情報ゲームにおける「情報集合（Information Set）」から、

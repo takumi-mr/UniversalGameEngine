@@ -1,8 +1,8 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "../config";
-import { repo } from "../store/sessionStore";
-import { countRoomSockets } from "../network/io";
+import { JWT_SECRET } from "@engine/backend/config";
+import { repo } from "@engine/backend/store/sessionStore";
+import { countRoomSockets } from "@engine/backend/network/io";
 
 const router = Router();
 

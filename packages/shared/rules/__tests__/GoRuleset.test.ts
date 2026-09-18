@@ -2,8 +2,14 @@
 //
 // 盤の座標: index = y * size + x。図は上の行が y=0。X = 黒(1)、O = 白(-1)、. = 空点
 import { expect, test, describe } from "bun:test";
-import { GoRuleset, scoreGame, DEFAULT_KOMI, type GoState, type GoAction } from "../GoRuleset";
-import { UniversalEngine } from "../../UniversalEngine";
+import {
+  GoRuleset,
+  scoreGame,
+  DEFAULT_KOMI,
+  type GoState,
+  type GoAction,
+} from "@engine/shared/rules/GoRuleset";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
 
 const BLACK = "black";
 const WHITE = "white";

@@ -1,6 +1,6 @@
 // packages/shared/testing/withTestRng.ts
-import type { BaseGameAction, BaseGameState, GameRuleset } from "../GameRules";
-import { MersenneTwisterRNG } from "../utils/MersenneTwisterRNG";
+import type { BaseGameAction, BaseGameState, GameRuleset } from "@engine/shared/GameRules";
+import { MersenneTwisterRNG } from "@engine/shared/utils/MersenneTwisterRNG";
 
 /**
  * テスト用: ルールセットを直接呼ぶときに rng を省略できるようにする。

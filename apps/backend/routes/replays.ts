@@ -1,6 +1,6 @@
 // apps/backend/routes/replays.ts
 import { Router } from "express";
-import { repo } from "../store/sessionStore";
+import { repo } from "@engine/backend/store/sessionStore";
 
 const router = Router();
 

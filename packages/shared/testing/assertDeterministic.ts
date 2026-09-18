@@ -1,8 +1,8 @@
 // packages/shared/testing/assertDeterministicFull.ts
 
-import { UniversalEngine } from "../UniversalEngine";
-import type { GameRuleset, BaseGameState, BaseGameAction } from "../GameRules";
-import { ProvablyFairRNG } from "../utils/ProvablyFairRNG";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import type { GameRuleset, BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
+import { ProvablyFairRNG } from "@engine/shared/utils/ProvablyFairRNG";
 import { createHash } from "crypto";
 
 /* ---------------- Utils ---------------- */

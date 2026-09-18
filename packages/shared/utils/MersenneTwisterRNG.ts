@@ -1,4 +1,4 @@
-import type { IGameRNG } from "./IGameRNG";
+import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 /**
  * メルセンヌ・ツイスタ (MT19937) による乱数生成器

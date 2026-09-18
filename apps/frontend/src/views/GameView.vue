@@ -68,15 +68,15 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import GenericGameView from "../components/GenericGameView.vue";
-import GameHelpDialog from "../components/game/GameHelpDialog.vue";
-import GameHelpTabs from "../components/game/GameHelpTabs.vue";
-import ThemeSwitcher from "../components/ThemeSwitcher.vue";
-import { availableGames } from "../constants/games";
+import GenericGameView from "@/components/GenericGameView.vue";
+import GameHelpDialog from "@/components/game/GameHelpDialog.vue";
+import GameHelpTabs from "@/components/game/GameHelpTabs.vue";
+import ThemeSwitcher from "@/components/ThemeSwitcher.vue";
+import { availableGames } from "@/constants/games";
 
-import { useAuthStore } from "../store/auth";
-import { useGameStore } from "../store/game";
-import { useUIStore } from "../store/ui";
+import { useAuthStore } from "@/store/auth";
+import { useGameStore } from "@/store/game";
+import { useUIStore } from "@/store/ui";
 import { useI18n } from "vue-i18n";
 
 const route = useRoute();

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { TheGameOfLifeRuleset as RealTheGameOfLifeRuleset } from "../TheGameOfLifeRuleset";
-import { withTestRng } from "../../testing/withTestRng";
+import { TheGameOfLifeRuleset as RealTheGameOfLifeRuleset } from "@engine/shared/rules/TheGameOfLifeRuleset";
+import { withTestRng } from "@engine/shared/testing/withTestRng";
 
 // ルールセットを直接呼ぶテストなので、固定シードの RNG を補う
 const TheGameOfLifeRuleset = withTestRng(RealTheGameOfLifeRuleset);
