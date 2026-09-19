@@ -89,7 +89,9 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
+import { DaifugoRuleset } from "@engine/shared/rules/DaifugoRuleset";
 import type { DaifugoState, DaifugoAction, Card } from "@engine/shared/rules/DaifugoRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 import { revealed } from "@/utils/revealed";
 import CardFace from "@/components/game/Daifugo/DaifugoCardFace.vue"; // 後述のカードコンポーネント
 
@@ -99,17 +101,12 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ (e: "action", action: DaifugoAction): void }>();
 
+const { isMyTurn, send } = useGameSession(props, emit, DaifugoRuleset);
+
 // --- プレイヤー推論 ---
+// 観戦時は先頭プレイヤーの視点で描く（手札はサーバーでマスク済み）
 const myId = computed(() => {
   return props.myPlayerId || props.state.playerIds[0];
-});
-
-const isPlayer = computed(() => {
-  return props.state.playerIds.includes(props.myPlayerId || "");
-});
-
-const isMyTurn = computed(() => {
-  return isPlayer.value && props.state.playerIds[props.state.turnIndex] === myId.value;
 });
 const myHand = computed(() => revealed(props.state.hands[myId.value]) ?? []);
 
@@ -127,7 +124,6 @@ const opponents = computed(() => {
 const selectedCards = ref<Set<Card>>(new Set());
 
 const toggleCard = (card: Card) => {
-  if (!isPlayer.value) return; // 観戦者ガード
   if (!isMyTurn.value) return; // 自分の番以外は触れない
   if (selectedCards.value.has(card)) {
     selectedCards.value.delete(card);
@@ -139,16 +135,14 @@ const toggleCard = (card: Card) => {
 const canPlay = computed(() => isMyTurn.value && selectedCards.value.size > 0);
 
 const playCards = () => {
-  if (!isPlayer.value) return; // 観戦者ガード
   if (!canPlay.value) return;
-  emit("action", { type: "PLAY", cards: Array.from(selectedCards.value) });
+  send({ type: "PLAY", cards: Array.from(selectedCards.value) });
   selectedCards.value.clear();
 };
 
 const passTurn = () => {
-  if (!isPlayer.value) return; // 観戦者ガード
   if (!isMyTurn.value) return;
-  emit("action", { type: "PASS" });
+  send({ type: "PASS" });
   selectedCards.value.clear();
 };
 

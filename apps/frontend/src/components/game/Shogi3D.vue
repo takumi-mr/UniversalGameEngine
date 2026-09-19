@@ -70,7 +70,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import { Shogi3DUI } from "@/three/Shogi3DUI";
+import { ShogiRuleset } from "@engine/shared/rules/ShogiRuleset";
 import type { ShogiState, ShogiAction } from "@engine/shared/rules/ShogiRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: ShogiState;
@@ -80,6 +82,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "action", action: ShogiAction): void;
 }>();
+
+const { isMyTurn, send } = useGameSession(props, emit, ShogiRuleset);
 
 const canvasContainer = ref<HTMLElement | null>(null);
 const showPromoteDialog = ref(false);
@@ -127,17 +131,12 @@ watch(
 );
 
 const handleActionFromUI = (action: ShogiAction) => {
-  const isMyTurn =
-    props.state.players && props.state.players[props.state.turn as 1 | -1] === props.myPlayerId;
-  if (!isMyTurn) return;
-
-  emit("action", action);
+  if (!isMyTurn.value) return;
+  send(action);
 };
 
 const handleRequirePromotion = (from: number, to: number) => {
-  const isMyTurn =
-    props.state.players && props.state.players[props.state.turn as 1 | -1] === props.myPlayerId;
-  if (!isMyTurn || props.state.turn !== Math.sign(props.state.board[from])) return;
+  if (!isMyTurn.value || props.state.turn !== Math.sign(props.state.board[from])) return;
 
   pendingMoveAction.value = { type: "MOVE", from, to };
   showPromoteDialog.value = true;
@@ -145,18 +144,15 @@ const handleRequirePromotion = (from: number, to: number) => {
 
 const confirmMove = (promote: boolean) => {
   if (pendingMoveAction.value) {
-    pendingMoveAction.value.promote = promote;
-    emit("action", pendingMoveAction.value);
+    send({ ...pendingMoveAction.value, promote });
   }
   showPromoteDialog.value = false;
   pendingMoveAction.value = null;
 };
 
 const selectHandPiece = (piece: number, owner: number) => {
-  // Only allow selecting if it's my turn
-  const isMyTurn =
-    props.state.players && props.state.players[props.state.turn as 1 | -1] === props.myPlayerId;
-  if (!isMyTurn || props.state.turn !== owner) return;
+  // 自分の手番で、自分側の持ち駒だけ選べる
+  if (!isMyTurn.value || props.state.turn !== owner) return;
 
   if (selectedHandPiece.value?.piece === piece && selectedHandPiece.value?.owner === owner) {
     selectedHandPiece.value = null;

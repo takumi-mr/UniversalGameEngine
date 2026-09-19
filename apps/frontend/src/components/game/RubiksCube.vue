@@ -49,7 +49,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import type { RubiksState, RubiksAction, FaceName } from "@engine/shared/rules/RubicCubeRuleset";
+import { RubiksRuleset } from "@engine/shared/rules/RubicCubeRuleset";
 import { RubiksCubeUI } from "@/three/RubiksCubeUI";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: RubiksState;
@@ -57,6 +59,9 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ (e: "action", action: RubiksAction): void }>();
+
+// send は観戦者なら何もしない
+const { isPlaying, send } = useGameSession(props, emit, RubiksRuleset);
 
 const FACES: FaceName[] = ["U", "D", "F", "B", "R", "L"];
 
@@ -71,11 +76,6 @@ let timerInterval: ReturnType<typeof setInterval> | null = null;
 let startTime = 0;
 
 // --- Computed ---
-const isPlayer = computed(() => {
-  if (!props.state?.players) return true; // シングルプレイヤーモードなら常に真
-  return Object.values(props.state.players).includes(props.myPlayerId || "");
-});
-
 const formattedTime = computed(() => {
   const s = Math.floor(elapsed.value / 1000);
   const ms = Math.floor((elapsed.value % 1000) / 10);
@@ -86,9 +86,7 @@ const formattedTime = computed(() => {
 
 // --- Engine & rendering ---
 function sendRotate(face: FaceName, direction: 1 | -1) {
-  if (!isPlayer.value) return;
-  const action: RubiksAction = { type: "ROTATE", face, direction };
-  emit("action", action);
+  send({ type: "ROTATE", face, direction });
 }
 
 // --- Timer ---
@@ -109,13 +107,11 @@ function stopTimer() {
 
 // --- Game control ---
 function reset() {
-  if (!isPlayer.value) return;
-  emit("action", { type: "RESET" });
+  send({ type: "RESET" });
 }
 
 async function scramble() {
-  if (!isPlayer.value) return;
-  emit("action", { type: "RESET" });
+  send({ type: "RESET" });
   isScrambling.value = true;
 
   const MOVE_COUNT = 20;
@@ -125,7 +121,7 @@ async function scramble() {
   for (let i = 0; i < MOVE_COUNT; i++) {
     const face = faces[Math.floor(Math.random() * faces.length)];
     const direction = dirs[Math.floor(Math.random() * dirs.length)];
-    emit("action", { type: "ROTATE", face, direction });
+    send({ type: "ROTATE", face, direction });
 
     await new Promise((r) => setTimeout(r, 100));
   }
@@ -137,9 +133,7 @@ async function scramble() {
 onMounted(() => {
   if (canvasContainer.value) {
     threeUI = new RubiksCubeUI(canvasContainer.value, (action) => {
-      if (props.state?.status !== "PLAYING") return;
-      if (!isPlayer.value) return;
-      emit("action", action);
+      if (isPlaying.value) send(action);
     });
   }
 

@@ -40,7 +40,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import { Chess3DUI } from "@/three/Chess3DUI";
+import { ChessRuleset } from "@engine/shared/rules/ChessRuleset";
 import type { ChessState, ChessAction } from "@engine/shared/rules/ChessRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: ChessState;
@@ -48,6 +50,9 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ (e: "action", action: ChessAction): void }>();
+
+// send は観戦者なら何もしない & playerId を付与する
+const { send } = useGameSession(props, emit, ChessRuleset);
 
 const container = ref<HTMLElement | null>(null);
 let ui: Chess3DUI | null = null;
@@ -57,20 +62,10 @@ const pendingMove = ref<{ from: number; to: number } | null>(null);
 
 onMounted(() => {
   if (container.value) {
-    ui = new Chess3DUI(
-      container.value,
-      (action) => {
-        // Ensure playerId is attached
-        const isPlayer = Object.values(props.state.players || {}).includes(props.myPlayerId || "");
-        if (isPlayer) {
-          emit("action", { ...action, playerId: props.myPlayerId });
-        }
-      },
-      (from, to) => {
-        pendingMove.value = { from, to };
-        showPromotionDialog.value = true;
-      },
-    );
+    ui = new Chess3DUI(container.value, send, (from, to) => {
+      pendingMove.value = { from, to };
+      showPromotionDialog.value = true;
+    });
     ui.renderState(props.state);
   }
 });
@@ -89,12 +84,11 @@ onUnmounted(() => {
 
 const confirmPromotion = (promotion: number) => {
   if (pendingMove.value) {
-    emit("action", {
+    send({
       type: "MOVE",
       from: pendingMove.value.from,
       to: pendingMove.value.to,
       promotion,
-      playerId: props.myPlayerId,
     });
   }
   showPromotionDialog.value = false;

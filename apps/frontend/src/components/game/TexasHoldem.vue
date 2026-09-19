@@ -145,13 +145,17 @@
 
 <script setup lang="ts">
 import { ref, computed, defineComponent, h, watch } from "vue";
+import { TexasHoldemRuleset } from "@engine/shared/rules/TexasHoldemRuleset";
 import type { TexasHoldemState, TexasHoldemAction } from "@engine/shared/rules/TexasHoldemRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: TexasHoldemState;
   myPlayerId?: string;
 }>();
 const emit = defineEmits<{ (e: "action", action: TexasHoldemAction): void }>();
+
+const { isMyTurn, send } = useGameSession(props, emit, TexasHoldemRuleset);
 
 // --- カード描画用インラインコンポーネント ---
 // cardStr は "AS" / "TD" のような「ランク + スート」。"?" は裏面
@@ -182,12 +186,9 @@ const CardInner = defineComponent({
 });
 
 // --- プレイヤー状態の算出 ---
+// 観戦時は先頭プレイヤーの視点で描く（手札はサーバーでマスク済み）
 const myPlayerId = computed(() => {
   return props.myPlayerId || props.state.playerIds[0];
-});
-
-const isPlayer = computed(() => {
-  return props.state.playerIds.includes(props.myPlayerId || "");
 });
 
 // 手札はサーバー側でマスク済み（配列）の場合と Secret のままの場合がある
@@ -202,9 +203,6 @@ const handNameOf = (playerId: string): string | undefined =>
 
 const myHand = computed(() => handOf(myPlayerId.value));
 const myChips = computed(() => props.state.playerChips[myPlayerId.value] ?? 0);
-const isMyTurn = computed(
-  () => isPlayer.value && props.state.activePlayers?.includes(myPlayerId.value),
-);
 const isFolded = computed(() => props.state.foldedPlayers.includes(myPlayerId.value));
 const isAllIn = computed(() => props.state.allInPlayers.includes(myPlayerId.value));
 
@@ -239,17 +237,12 @@ watch(isMyTurn, (newVal) => {
 });
 
 const takeAction = (type: TexasHoldemAction["type"]) => {
-  if (!isPlayer.value) return; // 観戦者ガード
   if (!isMyTurn.value) return;
 
   if (type === "RAISE") {
-    emit("action", {
-      type,
-      amount: raiseAmount.value,
-      playerId: myPlayerId.value,
-    });
+    send({ type, amount: raiseAmount.value });
   } else {
-    emit("action", { type, playerId: myPlayerId.value });
+    send({ type });
   }
 };
 

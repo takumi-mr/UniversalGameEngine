@@ -149,7 +149,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { MahjongRuleset } from "@engine/shared/rules/mahjong/MahjongRuleset";
 import type { MahjongState, MahjongAction } from "@engine/shared/rules/mahjong/MahjongRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 import { revealed } from "@/utils/revealed";
 import MahjongTile from "@/components/game/MahjongTile.vue";
 
@@ -162,13 +164,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{ (e: "action", action: MahjongAction): void }>();
 
+// isMyTurn は activePlayers 基準。ポン・チー・ロンの割り込みは pendingDiscard 側で判定する
+const { isMyTurn, send } = useGameSession(props, emit, MahjongRuleset);
+
 // --- Helpers ---
 const playerIndexMe = computed(() => {
   if (!props.myPlayerId) return 0;
   const idx = props.state.playerIds.indexOf(props.myPlayerId);
   return idx === -1 ? 0 : idx;
 });
-const isMyTurn = computed(() => props.state.activePlayers?.includes(props.myPlayerId || ""));
 
 const getPlayerAtOffset = (offset: number) => {
   if (props.state.playerIds.length < 4) return "";
@@ -244,11 +248,11 @@ const availableActions = computed(() => {
 
 const handleTileClick = (tile: string) => {
   if (!isMyTurn.value || props.state.phase !== "PLAYING") return;
-  emit("action", { type: "DISCARD", tile, playerId: props.myPlayerId });
+  send({ type: "DISCARD", tile });
 };
 
 const emitAction = (action: MahjongAction) => {
-  emit("action", action);
+  send(action);
 };
 
 const getActionLabel = (action: MahjongAction) => {

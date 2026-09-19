@@ -38,7 +38,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import type { MancalaState, MancalaAction } from "@engine/shared/rules/MancalaRuleset";
+import { MancalaRuleset } from "@engine/shared/rules/MancalaRuleset";
 import { MancalaUI } from "@/three/MancalaUI";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: MancalaState;
@@ -47,26 +49,16 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ (e: "action", action: MancalaAction): void }>();
 
+// send は観戦者なら何もしないので、Three.js 側からのクリックをそのまま親へ渡せる
+const { send } = useGameSession(props, emit, MancalaRuleset);
+
 const canvasContainer = ref<HTMLElement | null>(null);
 let mancala3D: MancalaUI;
 
 onMounted(() => {
   if (canvasContainer.value) {
     // Three.js UIの初期化
-    mancala3D = new MancalaUI(
-      canvasContainer.value,
-      (action) => {
-        // 観戦者ガード
-        const isPlayer =
-          props.state.players &&
-          Object.values(props.state.players).includes(props.myPlayerId || "");
-        if (!isPlayer) return;
-
-        // Three.js 側からのアクション（クリック）を親へemit
-        emit("action", action);
-      },
-      props.myPlayerId,
-    );
+    mancala3D = new MancalaUI(canvasContainer.value, send, props.myPlayerId);
 
     // 初回レンダリング
     mancala3D.renderState(props.state);

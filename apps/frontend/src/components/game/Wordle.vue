@@ -40,7 +40,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
+import { WordleRuleset } from "@engine/shared/rules/WordleRuleset";
 import type { WordleState, WordleAction } from "@engine/shared/rules/WordleRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: WordleState;
@@ -50,6 +52,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "action", action: WordleAction): void;
 }>();
+
+// send は観戦者なら何もしない
+const { isPlaying, send } = useGameSession(props, emit, WordleRuleset);
 
 const currentGuess = ref("");
 const keyboardRows = [
@@ -102,15 +107,11 @@ const getKeyClass = (key: string) => {
 };
 
 const onKeyClick = (key: string) => {
-  if (props.state.status !== "PLAYING") return;
+  if (!isPlaying.value) return;
 
   if (key === "ENTER") {
     if (currentGuess.value.length === 5) {
-      emit("action", {
-        type: "GUESS",
-        word: currentGuess.value,
-        playerId: props.myPlayerId,
-      });
+      send({ type: "GUESS", word: currentGuess.value });
       currentGuess.value = "";
     }
   } else if (key === "BACKSPACE") {

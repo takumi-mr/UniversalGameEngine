@@ -87,13 +87,18 @@
 
 <script setup lang="ts">
 import { ref, computed, defineComponent } from "vue";
+import { UnoRuleset } from "@engine/shared/rules/UnoRuleset";
 import type { UnoState, UnoAction } from "@engine/shared/rules/UnoRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: UnoState;
   myPlayerId?: string;
 }>();
 const emit = defineEmits<{ (e: "action", action: UnoAction): void }>();
+
+// UnoRuleset は activePlayers を管理しないので、手番判定は下の isMyTurn（turnIndex 基準）を使う
+const { isPlayer, send } = useGameSession(props, emit, UnoRuleset);
 
 // --- カードの描画用インラインコンポーネント ---
 const CardFace = defineComponent({
@@ -136,12 +141,9 @@ const getColorName = (colorNum: number) => {
 };
 
 // --- プレイヤー状態 ---
+// 観戦時は先頭プレイヤーの視点で描く（手札はサーバーでマスク済み）
 const myPlayerId = computed(() => {
   return props.myPlayerId || props.state.playerOrder[0];
-});
-
-const isPlayer = computed(() => {
-  return props.state.playerOrder.includes(props.myPlayerId || "");
 });
 
 const myHand = computed(() => props.state.hands[myPlayerId.value] || []);
@@ -168,7 +170,6 @@ const pendingWildCard = ref<number | null>(null);
 const showColorPicker = computed(() => pendingWildCard.value !== null);
 
 const handleCardClick = (card: number) => {
-  if (!isPlayer.value) return; // 観戦者ガード
   if (!isPlayable(card)) return;
 
   const color = getCardColor(card);
@@ -177,19 +178,13 @@ const handleCardClick = (card: number) => {
     pendingWildCard.value = card;
   } else {
     // 通常のカードはそのままプレイ
-    emit("action", { type: "PLAY", card, playerId: myPlayerId.value });
+    send({ type: "PLAY", card });
   }
 };
 
 const playWildCard = (selectedColor: number) => {
-  if (!isPlayer.value) return; // 観戦者ガード
   if (pendingWildCard.value === null) return;
-  emit("action", {
-    type: "PLAY",
-    card: pendingWildCard.value,
-    color: selectedColor,
-    playerId: myPlayerId.value,
-  });
+  send({ type: "PLAY", card: pendingWildCard.value, color: selectedColor });
   pendingWildCard.value = null;
 };
 
@@ -198,15 +193,13 @@ const cancelWildCard = () => {
 };
 
 const drawCard = () => {
-  if (!isPlayer.value) return; // 観戦者ガード
   if (!isMyTurn.value) return;
-  emit("action", { type: "DRAW", playerId: myPlayerId.value });
+  send({ type: "DRAW" });
 };
 
 const passTurn = () => {
-  if (!isPlayer.value) return; // 観戦者ガード
   if (!isMyTurn.value) return;
-  emit("action", { type: "PASS", playerId: myPlayerId.value });
+  send({ type: "PASS" });
 };
 </script>
 

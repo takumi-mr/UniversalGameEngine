@@ -45,7 +45,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
+import { SudokuRuleset } from "@engine/shared/rules/SudokuRuleset";
 import type { SudokuState, SudokuAction } from "@engine/shared/rules/SudokuRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: SudokuState;
@@ -53,13 +55,11 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ (e: "action", action: SudokuAction): void }>();
 
+// SudokuRuleset はクラスなので、レジストリと同じくインスタンス化して渡す
+const { isPlayer, isPlaying, send } = useGameSession(props, emit, new SudokuRuleset());
+
 // 選択中のマスの座標
 const selectedCell = ref<{ row: number; col: number } | null>(null);
-
-const isPlayer = computed(() => {
-  if (!props.state.players) return true; // シングルプレイヤー
-  return Object.values(props.state.players).includes(props.myPlayerId || "");
-});
 
 // --- ヘルパー: CSSクラスの計算 ---
 
@@ -104,8 +104,7 @@ const isSameNumber = (val: number) => {
 // --- インタラクション ---
 
 const selectCell = (r: number, c: number) => {
-  if (props.state.status !== "PLAYING") return;
-  if (!isPlayer.value) return; // 観戦者ガード
+  if (!isPlaying.value || !isPlayer.value) return;
   selectedCell.value = { row: r, col: c };
 };
 
@@ -113,7 +112,7 @@ const selectCell = (r: number, c: number) => {
 const canInput = computed(() => {
   if (!selectedCell.value || !isPlayer.value) return false;
   const { row, col } = selectedCell.value;
-  return !props.state.board[row][col].isFixed && props.state.status === "PLAYING";
+  return !props.state.board[row][col].isFixed && isPlaying.value;
 });
 
 const inputNumber = (val: number) => {
@@ -121,18 +120,13 @@ const inputNumber = (val: number) => {
   const { row, col } = selectedCell.value!;
 
   // エンジン側にアクションを送信（合法かどうかはエンジンの isValidAction で弾かれる）
-  emit("action", {
-    type: "PLACE_NUMBER",
-    row,
-    col,
-    value: val,
-  });
+  send({ type: "PLACE_NUMBER", row, col, value: val });
 };
 
 // --- キーボード操作のサポート ---
 
 const handleKeydown = (e: KeyboardEvent) => {
-  if (props.state.status !== "PLAYING") return;
+  if (!isPlaying.value) return;
 
   // 数字キー入力
   if (e.key >= "1" && e.key <= "9") {

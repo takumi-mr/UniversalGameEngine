@@ -71,7 +71,9 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { MinesweeperRuleset } from "@engine/shared/rules/MinesweeperRuleset";
 import type { MinesweeperState, MinesweeperAction } from "@engine/shared/rules/MinesweeperRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: MinesweeperState;
@@ -80,30 +82,26 @@ const props = defineProps<{
 
 const emit = defineEmits<{ (e: "action", action: MinesweeperAction): void }>();
 
-const isSpectator = computed(() => {
-  if (!props.state.players) return true;
-  return !Object.values(props.state.players).includes(props.myPlayerId || "");
-});
-
-const isGameActive = computed(() => props.state.status === "PLAYING");
+// send は観戦者なら何もしない
+const { isPlaying, send } = useGameSession(props, emit, MinesweeperRuleset);
 
 const handleLeftClick = (row: number, col: number) => {
-  if (isSpectator.value || !isGameActive.value) return;
+  if (!isPlaying.value) return;
   const cell = props.state.board[row][col];
 
   // Can only reveal unrevealed, unflagged cells
   if (!cell.isRevealed && !cell.isFlagged) {
-    emit("action", { type: "REVEAL", row, col });
+    send({ type: "REVEAL", row, col });
   }
 };
 
 const handleRightClick = (row: number, col: number) => {
-  if (isSpectator.value || !isGameActive.value) return;
+  if (!isPlaying.value) return;
   const cell = props.state.board[row][col];
 
   // Can only flag unrevealed cells
   if (!cell.isRevealed) {
-    emit("action", { type: "FLAG", row, col });
+    send({ type: "FLAG", row, col });
   }
 };
 

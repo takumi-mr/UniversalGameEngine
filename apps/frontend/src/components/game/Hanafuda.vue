@@ -110,7 +110,9 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { HanafudaRuleset } from "@engine/shared/rules/HanafudaRuleset";
 import type { HanafudaState, HanafudaAction, Card } from "@engine/shared/rules/HanafudaRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 import { revealed } from "@/utils/revealed";
 
 const props = defineProps<{
@@ -119,13 +121,12 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ (e: "action", action: HanafudaAction): void }>();
 
+const { isMyTurn, send } = useGameSession(props, emit, HanafudaRuleset);
+
 // --- プレイヤー推論ロジック ---
+// 観戦時は先頭プレイヤーの視点で描く（手札はサーバーでマスク済み）
 const myId = computed(() => {
   return props.myPlayerId || props.state.playerIds[0];
-});
-
-const isPlayer = computed(() => {
-  return props.state.playerIds.includes(props.myPlayerId || "");
 });
 
 const oppId = computed(() => {
@@ -133,10 +134,6 @@ const oppId = computed(() => {
 });
 
 // --- ステートの算出 ---
-const isMyTurn = computed(() => {
-  return isPlayer.value && props.state.playerIds[props.state.turnIndex] === myId.value;
-});
-
 const myHand = computed(() => revealed(props.state.hands[myId.value]) ?? []);
 const oppHand = computed(() => revealed(props.state.hands[oppId.value]) ?? []);
 const myCaptured = computed(() => props.state.captured[myId.value] || []);
@@ -173,26 +170,23 @@ const renderCard = (card: Card) => {
 };
 
 // --- アクション送信 ---
+// send は観戦者なら何もしない
 const playCard = (card: Card) => {
-  if (!isPlayer.value) return; // 観戦者ガード
   if (!isMyTurn.value || props.state.phase !== "PLAY_HAND") return;
-  emit("action", { type: "PLAY_CARD", card });
+  send({ type: "PLAY_CARD", card });
 };
 
 const drawDeck = () => {
-  if (!isPlayer.value) return; // 観戦者ガード
   if (!isMyTurn.value || props.state.phase !== "DRAW_DECK") return;
-  emit("action", { type: "DRAW_DECK" });
+  send({ type: "DRAW_DECK" });
 };
 
 const chooseMatch = (card: Card) => {
-  if (!isPlayer.value) return; // 観戦者ガード
-  emit("action", { type: "CHOOSE_MATCH", card });
+  send({ type: "CHOOSE_MATCH", card });
 };
 
 const callKoiKoi = (isKoikoi: boolean) => {
-  if (!isPlayer.value) return; // 観戦者ガード
-  emit("action", { type: isKoikoi ? "CALL_KOIKOI" : "STOP" });
+  send({ type: isKoikoi ? "CALL_KOIKOI" : "STOP" });
 };
 </script>
 
