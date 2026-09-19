@@ -2,7 +2,7 @@
 
 Universal Game Engine の gRPC RL API（`Reset` / `Step`）を使って、ゲーム AI を自己対戦で学習させる Python パッケージです。
 **DQN**（Double DQN + 合法手マスク）と **AlphaZero 風**（Policy/Value ネット + MCTS、探索は gRPC `BatchSimulate`）の 2 方式を実装しており、
-対応ゲームは **オセロ**、**将棋**（`shogi` / `shogi_3d`）、**チェス**（`chess` / `chess_3d`）です。学習したモデルは `uge_rl.serve` で実際の対局相手として動かせます。
+対応ゲームは **オセロ**、**将棋**（`shogi` / `shogi_3d`）、**チェス**（`chess` / `chess_3d`）、**囲碁**（`go`、9 路盤）です。学習したモデルは `uge_rl.serve` で実際の対局相手として動かせます。
 
 ```
 apps/ml/
@@ -29,12 +29,14 @@ apps/ml/
 ├── notebooks/shogi_alphazero_colab.ipynb    # Google Colab 用ノートブック (将棋 AlphaZero)
 ├── notebooks/chess_dqn_colab.ipynb          # Google Colab 用ノートブック (チェス DQN)
 ├── notebooks/chess_alphazero_colab.ipynb    # Google Colab 用ノートブック (チェス AlphaZero)
+├── notebooks/go_dqn_colab.ipynb             # Google Colab 用ノートブック (囲碁 DQN)
+├── notebooks/go_alphazero_colab.ipynb       # Google Colab 用ノートブック (囲碁 AlphaZero)
 └── requirements.txt
 ```
 
 ## Google Colab で学習する（推奨）
 
-[notebooks/othello_dqn_colab.ipynb](./notebooks/othello_dqn_colab.ipynb)（オセロ DQN）、[notebooks/othello_alphazero_colab.ipynb](./notebooks/othello_alphazero_colab.ipynb)（オセロ AlphaZero）、[notebooks/shogi_dqn_colab.ipynb](./notebooks/shogi_dqn_colab.ipynb)（将棋 DQN）、[notebooks/shogi_alphazero_colab.ipynb](./notebooks/shogi_alphazero_colab.ipynb)（将棋 AlphaZero）、[notebooks/chess_dqn_colab.ipynb](./notebooks/chess_dqn_colab.ipynb)（チェス DQN）、[notebooks/chess_alphazero_colab.ipynb](./notebooks/chess_alphazero_colab.ipynb)（チェス AlphaZero）を Colab で開き、上から順に実行してください。
+[notebooks/othello_dqn_colab.ipynb](./notebooks/othello_dqn_colab.ipynb)（オセロ DQN）、[notebooks/othello_alphazero_colab.ipynb](./notebooks/othello_alphazero_colab.ipynb)（オセロ AlphaZero）、[notebooks/shogi_dqn_colab.ipynb](./notebooks/shogi_dqn_colab.ipynb)（将棋 DQN）、[notebooks/shogi_alphazero_colab.ipynb](./notebooks/shogi_alphazero_colab.ipynb)（将棋 AlphaZero）、[notebooks/chess_dqn_colab.ipynb](./notebooks/chess_dqn_colab.ipynb)（チェス DQN）、[notebooks/chess_alphazero_colab.ipynb](./notebooks/chess_alphazero_colab.ipynb)（チェス AlphaZero）、[notebooks/go_dqn_colab.ipynb](./notebooks/go_dqn_colab.ipynb)（囲碁 DQN）、[notebooks/go_alphazero_colab.ipynb](./notebooks/go_alphazero_colab.ipynb)（囲碁 AlphaZero）を Colab で開き、上から順に実行してください。
 ノートブックが Colab 内で Bun とバックエンドを起動し、学習済みモデルを **Google Drive** (`MyDrive/UniversalGameEngine/models/`) に保存します。
 
 ## ローカルで学習する
@@ -64,6 +66,10 @@ python -m uge_rl.train_az --game shogi --iterations 30 --games-per-iter 10 --sim
 python -m uge_rl.train --game chess --episodes 3000 --max-moves 200 --eps-decay-steps 200000 --out ../../models/chess_dqn.pt
 python -m uge_rl.train_az --game chess --iterations 30 --games-per-iter 10 --simulations 100 --max-moves 200 --dirichlet-alpha 0.3 --out ../../models/chess_az.pt
 
+# 3f. 囲碁（9 路盤）の DQN / AlphaZero（task ml:train-go / ml:train-az-go と同じ）
+python -m uge_rl.train --game go --episodes 3000 --max-moves 200 --eps-decay-steps 200000 --out ../../models/go_dqn.pt
+python -m uge_rl.train_az --game go --iterations 30 --games-per-iter 10 --simulations 100 --max-moves 200 --dirichlet-alpha 0.15 --out ../../models/go_az.pt
+
 # 4. 評価（どちらの形式でも同じコマンド。format を見て復元する）
 python -m uge_rl.evaluate --checkpoint ../../models/othello_az.pt --games 100
 
@@ -84,18 +90,18 @@ python -m pytest tests -q
 
 主なオプション（AlphaZero: `python -m uge_rl.train_az --help`）:
 
-| オプション                | 既定値 | 説明                                                                     |
-| ------------------------- | ------ | ------------------------------------------------------------------------ |
-| `--iterations`            | 30     | イテレーション数                                                         |
-| `--games-per-iter`        | 20     | 1 イテレーションの自己対戦局数                                           |
-| `--simulations`           | 100    | 自己対戦時の 1 手あたり探索回数                                          |
-| `--sim-batch`             | 16     | 1 回の `BatchSimulate` で展開する葉の数（大きいほど RPC が減る）         |
-| `--train-steps-per-iter`  | 200    | 1 イテレーションの勾配更新回数                                           |
-| `--eval-simulations`      | 25     | 評価・対局時の探索回数                                                   |
-| `--temp-moves`            | 10     | 序盤この手数までは温度 1 でサンプリング（以降 argmax）                   |
-| `--max-moves`             | 0      | 1 局の手数上限（0 = 無制限）。超えたら引き分けとして打ち切る             |
-| `--dirichlet-alpha`       | 0.3    | ルートノイズの Dirichlet α（合法手が多い将棋は 0.15 程度、チェスは 0.3） |
-| `--channels` / `--blocks` | 64 / 4 | ResNet の幅と深さ                                                        |
+| オプション                | 既定値 | 説明                                                                                 |
+| ------------------------- | ------ | ------------------------------------------------------------------------------------ |
+| `--iterations`            | 30     | イテレーション数                                                                     |
+| `--games-per-iter`        | 20     | 1 イテレーションの自己対戦局数                                                       |
+| `--simulations`           | 100    | 自己対戦時の 1 手あたり探索回数                                                      |
+| `--sim-batch`             | 16     | 1 回の `BatchSimulate` で展開する葉の数（大きいほど RPC が減る）                     |
+| `--train-steps-per-iter`  | 200    | 1 イテレーションの勾配更新回数                                                       |
+| `--eval-simulations`      | 25     | 評価・対局時の探索回数                                                               |
+| `--temp-moves`            | 10     | 序盤この手数までは温度 1 でサンプリング（以降 argmax）                               |
+| `--max-moves`             | 0      | 1 局の手数上限（0 = 無制限）。超えたら引き分けとして打ち切る                         |
+| `--dirichlet-alpha`       | 0.3    | ルートノイズの Dirichlet α（合法手が多い将棋・9 路の囲碁は 0.15 程度、チェスは 0.3） |
+| `--channels` / `--blocks` | 64 / 4 | ResNet の幅と深さ                                                                    |
 
 `--max-moves` は DQN（`train.py`）と `evaluate.py` にもあります（評価時は省略するとチェックポイントの設定を使う）。
 
@@ -184,6 +190,13 @@ for res in children:
 - **行動（1792 通り）**: `移動先マス（自分視点）× 28 + 種別`。種別は 0-7 が移動方向（上, 左上, 右上, 左, 右, 下, 左下, 右下。ポーンの前進・捕獲、キャスリング（キングが横 2 マス）も含む）、8-15 がナイトの 8 方向、16-27 がポーンの昇格（方向 上/左上/右上 × 駒種 Q/R/B/N）。
   移動元は将棋と同じく「移動先から方向を逆にたどって最初にある駒」（ナイト・昇格は 1 マス手前）なので合法手と 1 対 1。投了は行動空間に含めない。
 - 終局はサーバーの `ChessRuleset`（チェックメイト・ステイルメイト・50 手ルール・三回同形・駒不足）に従う。ランダムに近いうちは長引くので `--max-moves` で引き分け打ち切りにする。
+
+### 囲碁の観測と行動（`GoTensorAdapter` / `games.py`）
+
+- **観測（2N + 2 要素。N = 盤のサイズ²、9 路盤なら 164）**: 自分視点の現在の盤面 N（自分の石 = +1、相手の石 = -1、空 = 0。白番から見ると符号反転。盤は対称なので回転はしない）+ 直前に石が置かれる前の盤面 N（同じ符号規約。開始直後は全 0。コウの禁止点や最後の着手位置が分かる）+ 連続パス数 1（0 か 1。1 なら自分がパスすると終局）+ 自分視点のコミ 1（黒なら -komi、白なら +komi。自分の色も兼ねる）。
+  `games.py` は観測次元から盤のサイズを求め、自分の石 / 相手の石 / 直前の自分の石 / 直前の相手の石の 4 プレーン + パス数・コミ（/10）・定数 1 を盤全体に敷いた 3 プレーン = `(7, size, size)` に展開する。
+- **行動（N + 1 通り。9 路盤なら 82）**: 打つ点の `index`（`y * size + x`）、`N` がパス。投了は行動空間に含めない。
+- 終局はサーバーの `GoRuleset`（2 連続パス → Tromp-Taylor 集計 + コミ。自殺手と positional superko は合法手から除かれる）に従う。弱いうちはパスを覚えるまで長引くので `--max-moves` で引き分け打ち切りにする。盤のサイズ・コミは `CreateGame` の options（`size` / `komi`）で決まり、学習スクリプトはサーバーの既定（9 路・コミ 6.5）を使う。
 
 ## 別のゲームを学習させるには
 

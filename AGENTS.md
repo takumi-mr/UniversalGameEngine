@@ -28,7 +28,7 @@ task up / task down                 # Redis + MongoDB を docker compose で起�
 task dev                            # インフラ起動 + proto 生成 + backend/frontend 同時起動
 task rl                             # backend を RL_MODE=true（インメモリ、DB 不要）で起動 → gRPC 学習用
 task proto                          # packages/shared/network/game.proto → TS 型を再生成
-task ml:train / ml:train-shogi / ml:train-chess / ml:train-az / ml:train-az-shogi / ml:train-az-chess / ml:eval   # apps/ml の DQN 学習 / AlphaZero 学習（オセロ / 将棋 / チェス）/ 評価（RL_MODE の backend が必要）
+task ml:train / ml:train-shogi / ml:train-chess / ml:train-go / ml:train-az / ml:train-az-shogi / ml:train-az-chess / ml:train-az-go / ml:eval   # apps/ml の DQN 学習 / AlphaZero 学習（オセロ / 将棋 / チェス / 囲碁）/ 評価（RL_MODE の backend が必要）
 task ml:serve                       # 学習済みモデルを実対局の「gRPC External」席の相手として動かす（--checkpoint で指定）
 task ml:test                        # apps/ml の単体テスト（pytest、サーバー不要）
 
@@ -78,14 +78,14 @@ applyWinResult?, getTimeoutAction?              // 任意
 ### AI と強化学習
 
 - `packages/shared/ai/AIPlayer/`: `IAIPlayer` 実装（Random, Minimax, MCTS, ISMCTS, GrpcBot, LLM）。
-- `packages/shared/ai/TensorAdapter/`: ゲーム状態 ⇄ テンソル/行動 ID 変換（`IAITensorAdapter`）。`index.ts` で `aiTensorRegistry` に登録する。**登録がないゲームは gRPC `Reset`/`Step` が `UNIMPLEMENTED`** を返す。現在登録済み: `othello`（64 要素・自分=+1/相手=-1、actionId = `y*size+x`）、`shogi` / `shogi_3d`（95 要素 = 自分視点の盤 81 + 持ち駒 7×2、actionId = 移動先マス × 27 + 種別、2187 通り）、`chess` / `chess_3d`（71 要素 = 自分視点の盤 64（黒は上下反転）+ キャスリング権 4 + アンパッサン 1 + 50 手カウンタ 1 + 同形回数 1、actionId = 移動先マス × 28 + 種別、1792 通り）。詳細は [apps/ml/README.md](./apps/ml/README.md)。観測次元 ≠ 行動数のゲームは Python 側 `games.py` の `GameSpec` に `n_actions` を書く。
+- `packages/shared/ai/TensorAdapter/`: ゲーム状態 ⇄ テンソル/行動 ID 変換（`IAITensorAdapter`）。`index.ts` で `aiTensorRegistry` に登録する。**登録がないゲームは gRPC `Reset`/`Step` が `UNIMPLEMENTED`** を返す。現在登録済み: `othello`（64 要素・自分=+1/相手=-1、actionId = `y*size+x`）、`shogi` / `shogi_3d`（95 要素 = 自分視点の盤 81 + 持ち駒 7×2、actionId = 移動先マス × 27 + 種別、2187 通り）、`chess` / `chess_3d`（71 要素 = 自分視点の盤 64（黒は上下反転）+ キャスリング権 4 + アンパッサン 1 + 50 手カウンタ 1 + 同形回数 1、actionId = 移動先マス × 28 + 種別、1792 通り）、`go`（2N + 2 要素 = 自分視点の盤 N + 直前の盤 N + 連続パス数 1 + 自分視点のコミ 1。N = 盤のサイズ²。actionId = 打つ点の index、N がパス。9 路なら 164 / 82）。詳細は [apps/ml/README.md](./apps/ml/README.md)。観測次元 ≠ 行動数のゲームは Python 側 `games.py` の `GameSpec` に `n_actions` を書く。
 - gRPC RL API（`packages/shared/network/game.proto`, 実装 `apps/backend/grpc-server.ts`）は **`RL_MODE=true` のときだけ有効**（それ以外は `PERMISSION_DENIED`）。無認証でセッションを操作し、マスクなしの状態を返すため本番で有効にしない。契約:
   - `Reset(game_id, player_ids?)`: 全席着席 + `PLAYING` 化。`active_players[0]` 視点の観測を返す。
   - `Step(game_id, player_id, action_id)`: 観測・合法手は **次に行動するプレイヤー視点**、`reward` は手を指した `player_id` 視点（勝 1 / 負 -1 / 引分 0.5、終局時のみ）。`Reset`/`Step` は完全な局面 `state_json` も返す。
   - `Simulate(game_type, state_json, player_id, action_id)` / `BatchSimulate(items)`: **セッションに触れないステートレスな 1 手適用**（木探索用）。失敗は gRPC エラーではなく `error` フィールドで返す。サーバーはゲームタイプごとに使い回す `UniversalEngine` に `loadState` → `dispatch` するだけなので、RNG や終局処理は通常対局と同じ挙動。ローカル計測: unary ≈ 1,500 sims/s、`BatchSimulate` x64 ≈ 10,000 sims/s（`apps/ml/scripts/bench_simulate.py`）。
   - E2E テスト: `apps/backend/grpc-rl.test.ts`。
 - **実対局のボット（`grpc_bot`）**: 部屋作成時に `playersConfig` で `grpc_bot` を指定すると `GrpcBotPlayer` が着席し、手番が来るたびに `WaitForTurn` ストリーム（`state_tensor` / `legal_action_ids` / `state_json`）へ通知、外部プロセスが `SubmitTurn(action_id)` で指す（これらは RL_MODE でなくても使える）。`WaitForTurn` は接続時点で既にボットの手番なら、その手番を改めて送る（ボットが後から接続しても止まらない）。`GET /rooms/:gameType` の各部屋には `bots: BotSpec[]` が入るので、外部ボットはそこから自分の席（`playerId`）を見つける。Python 側の実装は `apps/ml/uge_rl/serve.py`（`task ml:serve`）。
-- Python 側（`apps/ml/uge_rl/`）: `GrpcGameEnv` の上に **DQN**（`dqn.py` / `train.py`）と **AlphaZero 風**（`mcts.py` / `az_agent.py` / `train_az.py`。探索は `BatchSimulate`、Python はルールを持たない）。どちらも `select_action(obs, legal, state_json, player_id, env)` を実装し、`checkpoint.py` が `meta.format` で判別して復元する。MCTS の符号規約は `mcts.py` 冒頭のコメントと `tests/test_mcts.py` を正とする。1 局が終わらない・長引くゲーム（将棋・チェス）は `--max-moves` で引き分け打ち切り。詳細は [apps/ml/README.md](./apps/ml/README.md)。
+- Python 側（`apps/ml/uge_rl/`）: `GrpcGameEnv` の上に **DQN**（`dqn.py` / `train.py`）と **AlphaZero 風**（`mcts.py` / `az_agent.py` / `train_az.py`。探索は `BatchSimulate`、Python はルールを持たない）。どちらも `select_action(obs, legal, state_json, player_id, env)` を実装し、`checkpoint.py` が `meta.format` で判別して復元する。MCTS の符号規約は `mcts.py` 冒頭のコメントと `tests/test_mcts.py` を正とする。1 局が終わらない・長引くゲーム（将棋・チェス・囲碁）は `--max-moves` で引き分け打ち切り。詳細は [apps/ml/README.md](./apps/ml/README.md)。
 
 ## 4. 変更手順のレシピ
 

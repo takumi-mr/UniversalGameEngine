@@ -8,7 +8,15 @@ import torch
 
 from uge_rl.az_net import build_policy_value_net
 from uge_rl.dqn import build_qnet
-from uge_rl.games import CHESS_N_ACTIONS, CHESS_OBS_DIM, SHOGI_N_ACTIONS, SHOGI_OBS_DIM, get_game_spec
+from uge_rl.games import (
+    CHESS_N_ACTIONS,
+    CHESS_OBS_DIM,
+    SHOGI_N_ACTIONS,
+    SHOGI_OBS_DIM,
+    get_game_spec,
+    go_n_actions,
+    go_obs_dim,
+)
 
 
 def _shogi_initial_obs() -> np.ndarray:
@@ -152,6 +160,82 @@ def test_chess_networks_forward() -> None:
     assert logits.shape == (2, CHESS_N_ACTIONS) and values.shape == (2,)
     q = build_qnet(spec, CHESS_OBS_DIM)(x)
     assert q.shape == (2, CHESS_N_ACTIONS)
+
+
+def _go_obs(size: int = 9, komi: float = -6.5) -> np.ndarray:
+    """GoTensorAdapter が初期局面で返す観測（黒視点）を再現する。komi は自分視点の符号付き。"""
+    n = size * size
+    obs = np.zeros(go_obs_dim(size), dtype=np.float32)
+    obs[2 * n + 1] = komi
+    return obs
+
+
+def test_go_spec_shape_and_actions() -> None:
+    spec = get_game_spec("go", go_obs_dim(9))
+    assert spec.obs_shape == (7, 9, 9)
+    assert spec.n_actions == go_n_actions(9) == 82
+    # 盤のサイズは観測次元から決まる（13 路 / 19 路も同じ契約）
+    assert get_game_spec("go", go_obs_dim(13)).obs_shape == (7, 13, 13)
+    assert get_game_spec("go", go_obs_dim(19)).n_actions == 362
+    for bad in (81, 82, 163, 165, 0, 1):
+        with pytest.raises(ValueError):
+            get_game_spec("go", bad)
+
+
+def test_go_planes_encode_stones_history_and_scalars() -> None:
+    size = 9
+    n = size * size
+    spec = get_game_spec("go", go_obs_dim(size))
+    obs = _go_obs(size, komi=6.5)  # 白視点
+    obs[4 * size + 4] = 1  # 自分の石 (4,4)
+    obs[0] = -1  # 相手の石 (0,0)
+    obs[n + 4 * size + 4] = 1  # 直前の盤面にも自分の石 (4,4)
+    obs[n + 1] = -1  # 直前の盤面: 相手の石 (1,0)（現在は取られて空）
+    obs[2 * n] = 1  # 相手がパスした直後
+    x = spec.encode(obs)
+    assert x.shape == (7, size, size) and x.dtype == np.float32
+
+    assert x[0, 4, 4] == 1 and x[0].sum() == 1
+    assert x[1, 0, 0] == 1 and x[1].sum() == 1
+    assert x[2, 4, 4] == 1 and x[2].sum() == 1
+    assert x[3, 0, 1] == 1 and x[3].sum() == 1
+    # 各点は高々 1 色
+    assert (x[:2].sum(axis=0) <= 1).all() and (x[2:4].sum(axis=0) <= 1).all()
+    # パス数・コミ / 10・定数 1 は盤全体に敷く
+    assert np.allclose(x[4], 1)
+    assert np.allclose(x[5], 0.65)
+    assert np.allclose(x[6], 1)
+
+
+def test_go_initial_obs_is_empty_with_negative_komi_for_black() -> None:
+    spec = get_game_spec("go", go_obs_dim(9))
+    x = spec.encode(_go_obs())
+    assert x[:5].sum() == 0
+    assert np.allclose(x[5], -0.65)
+    assert np.allclose(x[6], 1)
+
+
+def test_go_encode_handles_batches() -> None:
+    spec = get_game_spec("go", go_obs_dim(9))
+    second = _go_obs()
+    second[40] = 1
+    batch = np.stack([_go_obs(), second, _go_obs()])
+    x = spec.encode(batch)
+    assert x.shape == (3, 7, 9, 9)
+    assert np.array_equal(x[0], spec.encode(_go_obs()))
+    assert np.array_equal(x[1], spec.encode(second))
+    assert x[1, 0, 4, 4] == 1 and x[0, 0].sum() == 0
+
+
+def test_go_networks_forward() -> None:
+    obs_dim = go_obs_dim(9)
+    spec = get_game_spec("go", obs_dim)
+    x = torch.as_tensor(spec.encode(np.stack([_go_obs()] * 2)))
+    net = build_policy_value_net(spec, obs_dim, channels=8, blocks=1)
+    logits, values = net(x)
+    assert logits.shape == (2, 82) and values.shape == (2,)
+    q = build_qnet(spec, obs_dim)(x)
+    assert q.shape == (2, 82)
 
 
 def test_othello_spec_still_square() -> None:

@@ -52,6 +52,7 @@ LLM（Large Language Model）を使用してゲームの指し手を決定する
 | [OthelloTensorAdapter.ts](./TensorAdapter/OthelloTensorAdapter.ts) | `othello`            | `size*size`（自分=+1 / 相手=-1 / 空=0）                                                                                         | `y * size + x`                                                                 |
 | [ShogiTensorAdapter.ts](./TensorAdapter/ShogiTensorAdapter.ts)     | `shogi` / `shogi_3d` | 95 = 自分視点の盤 81（後手は 180 度回転。自分=+駒種 / 相手=-駒種）+ 持ち駒 7×2                                                  | `移動先マス × 27 + 種別`（0-9 移動方向 / 10-19 成り / 20-26 打つ）= 2187 通り  |
 | [ChessTensorAdapter.ts](./TensorAdapter/ChessTensorAdapter.ts)     | `chess` / `chess_3d` | 71 = 自分視点の盤 64（黒は上下反転。自分=+駒種 / 相手=-駒種）+ キャスリング権 4 + アンパッサン 1 + 50 手カウンタ 1 + 同形回数 1 | `移動先マス × 28 + 種別`（0-7 移動方向 / 8-15 ナイト / 16-27 昇格）= 1792 通り |
+| [GoTensorAdapter.ts](./TensorAdapter/GoTensorAdapter.ts)           | `go`                 | 2N + 2（N = 盤のサイズ²。9 路なら 164）= 自分視点の盤 N（自分=+1 / 相手=-1）+ 直前の盤 N + 連続パス数 1 + 自分視点のコミ 1      | 打つ点の `index`（0〜N-1）、`N` がパス = N + 1 通り（9 路なら 82）             |
 
 ## テスト
 
