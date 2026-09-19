@@ -57,6 +57,12 @@ tasks:
     cmds:
       - python -m uge_rl.train --game shogi --max-moves 256 --eps-decay-steps 200000 --out ../../models/shogi_dqn.pt {{.CLI_ARGS}}
 
+  ml:train-chess:
+    desc: Train the Chess DQN against a running RL-mode backend (games are cut off as draws at --max-moves)
+    dir: apps/ml
+    cmds:
+      - python -m uge_rl.train --game chess --max-moves 200 --eps-decay-steps 200000 --out ../../models/chess_dqn.pt {{.CLI_ARGS}}
+
   ml:train-az:
     desc: Train the Othello AlphaZero-style agent (MCTS over gRPC Simulate) against a running RL-mode backend
     dir: apps/ml
@@ -68,6 +74,12 @@ tasks:
     dir: apps/ml
     cmds:
       - python -m uge_rl.train_az --game shogi --max-moves 256 --dirichlet-alpha 0.15 --out ../../models/shogi_az.pt {{.CLI_ARGS}}
+
+  ml:train-az-chess:
+    desc: Train the Chess AlphaZero-style agent (MCTS over gRPC Simulate) against a running RL-mode backend
+    dir: apps/ml
+    cmds:
+      - python -m uge_rl.train_az --game chess --max-moves 200 --dirichlet-alpha 0.3 --out ../../models/chess_az.pt {{.CLI_ARGS}}
 
   ml:eval:
     desc: Evaluate a trained model vs random player (pass --checkpoint to choose the model)

@@ -2,7 +2,7 @@
 
 Universal Game Engine の gRPC RL API（`Reset` / `Step`）を使って、ゲーム AI を自己対戦で学習させる Python パッケージです。
 **DQN**（Double DQN + 合法手マスク）と **AlphaZero 風**（Policy/Value ネット + MCTS、探索は gRPC `BatchSimulate`）の 2 方式を実装しており、
-対応ゲームは **オセロ** と **将棋**（`shogi` / `shogi_3d`）です。学習したモデルは `uge_rl.serve` で実際の対局相手として動かせます。
+対応ゲームは **オセロ**、**将棋**（`shogi` / `shogi_3d`）、**チェス**（`chess` / `chess_3d`）です。学習したモデルは `uge_rl.serve` で実際の対局相手として動かせます。
 
 ```
 apps/ml/
@@ -27,12 +27,14 @@ apps/ml/
 ├── notebooks/othello_alphazero_colab.ipynb  # Google Colab 用ノートブック (オセロ AlphaZero)
 ├── notebooks/shogi_dqn_colab.ipynb          # Google Colab 用ノートブック (将棋 DQN)
 ├── notebooks/shogi_alphazero_colab.ipynb    # Google Colab 用ノートブック (将棋 AlphaZero)
+├── notebooks/chess_dqn_colab.ipynb          # Google Colab 用ノートブック (チェス DQN)
+├── notebooks/chess_alphazero_colab.ipynb    # Google Colab 用ノートブック (チェス AlphaZero)
 └── requirements.txt
 ```
 
 ## Google Colab で学習する（推奨）
 
-[notebooks/othello_dqn_colab.ipynb](./notebooks/othello_dqn_colab.ipynb)（オセロ DQN）、[notebooks/othello_alphazero_colab.ipynb](./notebooks/othello_alphazero_colab.ipynb)（オセロ AlphaZero）、[notebooks/shogi_dqn_colab.ipynb](./notebooks/shogi_dqn_colab.ipynb)（将棋 DQN）、[notebooks/shogi_alphazero_colab.ipynb](./notebooks/shogi_alphazero_colab.ipynb)（将棋 AlphaZero）を Colab で開き、上から順に実行してください。
+[notebooks/othello_dqn_colab.ipynb](./notebooks/othello_dqn_colab.ipynb)（オセロ DQN）、[notebooks/othello_alphazero_colab.ipynb](./notebooks/othello_alphazero_colab.ipynb)（オセロ AlphaZero）、[notebooks/shogi_dqn_colab.ipynb](./notebooks/shogi_dqn_colab.ipynb)（将棋 DQN）、[notebooks/shogi_alphazero_colab.ipynb](./notebooks/shogi_alphazero_colab.ipynb)（将棋 AlphaZero）、[notebooks/chess_dqn_colab.ipynb](./notebooks/chess_dqn_colab.ipynb)（チェス DQN）、[notebooks/chess_alphazero_colab.ipynb](./notebooks/chess_alphazero_colab.ipynb)（チェス AlphaZero）を Colab で開き、上から順に実行してください。
 ノートブックが Colab 内で Bun とバックエンドを起動し、学習済みモデルを **Google Drive** (`MyDrive/UniversalGameEngine/models/`) に保存します。
 
 ## ローカルで学習する
@@ -58,6 +60,10 @@ python -m uge_rl.train --game shogi --episodes 3000 --max-moves 256 --eps-decay-
 # 3d. 将棋の AlphaZero（task ml:train-az-shogi と同じ）
 python -m uge_rl.train_az --game shogi --iterations 30 --games-per-iter 10 --simulations 100 --max-moves 256 --dirichlet-alpha 0.15 --out ../../models/shogi_az.pt
 
+# 3e. チェスの DQN / AlphaZero（task ml:train-chess / ml:train-az-chess と同じ）
+python -m uge_rl.train --game chess --episodes 3000 --max-moves 200 --eps-decay-steps 200000 --out ../../models/chess_dqn.pt
+python -m uge_rl.train_az --game chess --iterations 30 --games-per-iter 10 --simulations 100 --max-moves 200 --dirichlet-alpha 0.3 --out ../../models/chess_az.pt
+
 # 4. 評価（どちらの形式でも同じコマンド。format を見て復元する）
 python -m uge_rl.evaluate --checkpoint ../../models/othello_az.pt --games 100
 
@@ -78,18 +84,18 @@ python -m pytest tests -q
 
 主なオプション（AlphaZero: `python -m uge_rl.train_az --help`）:
 
-| オプション                | 既定値 | 説明                                                             |
-| ------------------------- | ------ | ---------------------------------------------------------------- |
-| `--iterations`            | 30     | イテレーション数                                                 |
-| `--games-per-iter`        | 20     | 1 イテレーションの自己対戦局数                                   |
-| `--simulations`           | 100    | 自己対戦時の 1 手あたり探索回数                                  |
-| `--sim-batch`             | 16     | 1 回の `BatchSimulate` で展開する葉の数（大きいほど RPC が減る） |
-| `--train-steps-per-iter`  | 200    | 1 イテレーションの勾配更新回数                                   |
-| `--eval-simulations`      | 25     | 評価・対局時の探索回数                                           |
-| `--temp-moves`            | 10     | 序盤この手数までは温度 1 でサンプリング（以降 argmax）           |
-| `--max-moves`             | 0      | 1 局の手数上限（0 = 無制限）。超えたら引き分けとして打ち切る     |
-| `--dirichlet-alpha`       | 0.3    | ルートノイズの Dirichlet α（合法手が多い将棋は 0.15 程度）       |
-| `--channels` / `--blocks` | 64 / 4 | ResNet の幅と深さ                                                |
+| オプション                | 既定値 | 説明                                                                     |
+| ------------------------- | ------ | ------------------------------------------------------------------------ |
+| `--iterations`            | 30     | イテレーション数                                                         |
+| `--games-per-iter`        | 20     | 1 イテレーションの自己対戦局数                                           |
+| `--simulations`           | 100    | 自己対戦時の 1 手あたり探索回数                                          |
+| `--sim-batch`             | 16     | 1 回の `BatchSimulate` で展開する葉の数（大きいほど RPC が減る）         |
+| `--train-steps-per-iter`  | 200    | 1 イテレーションの勾配更新回数                                           |
+| `--eval-simulations`      | 25     | 評価・対局時の探索回数                                                   |
+| `--temp-moves`            | 10     | 序盤この手数までは温度 1 でサンプリング（以降 argmax）                   |
+| `--max-moves`             | 0      | 1 局の手数上限（0 = 無制限）。超えたら引き分けとして打ち切る             |
+| `--dirichlet-alpha`       | 0.3    | ルートノイズの Dirichlet α（合法手が多い将棋は 0.15 程度、チェスは 0.3） |
+| `--channels` / `--blocks` | 64 / 4 | ResNet の幅と深さ                                                        |
 
 `--max-moves` は DQN（`train.py`）と `evaluate.py` にもあります（評価時は省略するとチェックポイントの設定を使う）。
 
@@ -170,6 +176,14 @@ for res in children:
 - **行動（2187 通り）**: `移動先マス（自分視点）× 27 + 種別`。種別は 0-9 が移動方向（上, 左上, 右上, 左, 右, 下, 左下, 右下, 桂左, 桂右）、10-19 が同方向 + 成り、20-26 が持ち駒を打つ（歩〜飛）。
   移動元は「移動先から方向を逆にたどって最初にある駒」なので符号化は合法手と 1 対 1（dlshogi と同じ方式）。投了・入玉宣言は行動空間に含めない。
 - 終局はサーバーの `ShogiRuleset`（詰み・千日手・連続王手）に従う。弱いうちは終局しないので `--max-moves` で引き分け打ち切りにする。
+
+### チェスの観測と行動（`ChessTensorAdapter` / `games.py`）
+
+- **観測（71 要素）**: 自分視点の盤面 64 マス（黒は上下反転。180 度回転ではないので、キングサイド / クイーンサイドの左右が白と揃う。自分の駒 = +駒種 1〜6 = P N B R Q K、相手の駒 = -駒種）+ キャスリング権 4（自分 K / 自分 Q / 相手 K / 相手 Q）+ アンパッサンの対象マス 1（自分視点の index、なければ -1）+ 50 手ルールのカウンタ 1 + 現局面の同形回数 1。
+  `games.py` で駒種ごとの one-hot 12 プレーン + キャスリング権・カウンタ（正規化）を盤全体に敷いた 6 プレーン + アンパッサンの one-hot 1 プレーン = `(19, 8, 8)` に展開する。
+- **行動（1792 通り）**: `移動先マス（自分視点）× 28 + 種別`。種別は 0-7 が移動方向（上, 左上, 右上, 左, 右, 下, 左下, 右下。ポーンの前進・捕獲、キャスリング（キングが横 2 マス）も含む）、8-15 がナイトの 8 方向、16-27 がポーンの昇格（方向 上/左上/右上 × 駒種 Q/R/B/N）。
+  移動元は将棋と同じく「移動先から方向を逆にたどって最初にある駒」（ナイト・昇格は 1 マス手前）なので合法手と 1 対 1。投了は行動空間に含めない。
+- 終局はサーバーの `ChessRuleset`（チェックメイト・ステイルメイト・50 手ルール・三回同形・駒不足）に従う。ランダムに近いうちは長引くので `--max-moves` で引き分け打ち切りにする。
 
 ## 別のゲームを学習させるには
 

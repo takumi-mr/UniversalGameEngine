@@ -104,12 +104,80 @@ def _shogi_from_obs_dim(game_type: str) -> Callable[[int], GameSpec]:
     return build
 
 
+# ---------------------------------------------------------------------- チェス
+# ChessTensorAdapter（packages/shared/ai/TensorAdapter/ChessTensorAdapter.ts）の契約:
+#   obs[0:64]  自分視点の盤面（黒は上下反転）。自分の駒 = +駒種 (1..6: P N B R Q K)、相手の駒 = -駒種、空 = 0
+#   obs[64:68] キャスリング権（自分 K / 自分 Q / 相手 K / 相手 Q、0 or 1）
+#   obs[68]    アンパッサンの対象マス（自分視点の index。なければ -1）
+#   obs[69]    50 手ルールのカウンタ（半手数。100 で引き分け）
+#   obs[70]    現局面の同形回数（1..3。3 で引き分け）
+#   action = 移動先マス（自分視点）× 28 + 種別（0-7 移動方向 / 8-15 ナイト / 16-27 昇格）
+CHESS_BOARD = 8
+CHESS_SQUARES = CHESS_BOARD * CHESS_BOARD
+CHESS_PIECE_TYPES = 6
+CHESS_OBS_DIM = CHESS_SQUARES + 4 + 1 + 1 + 1  # 71
+CHESS_ACTION_KINDS = 28
+CHESS_N_ACTIONS = CHESS_SQUARES * CHESS_ACTION_KINDS  # 1792
+CHESS_HALF_MOVES_MAX = 100.0
+CHESS_REPETITION_MAX = 3.0
+# 入力チャンネル: 自分の駒 6 + 相手の駒 6 + キャスリング権 4 + アンパッサン 1 + 50 手カウンタ 1 + 同形回数 1
+CHESS_CHANNELS = CHESS_PIECE_TYPES * 2 + 4 + 1 + 1 + 1  # 19
+
+
+def _chess_planes(obs: np.ndarray) -> np.ndarray:
+    """71 要素の観測 → (19, 8, 8)。駒種ごとの one-hot プレーン + 盤全体に敷いたスカラー特徴 + アンパッサンの one-hot。"""
+    if obs.shape[-1] != CHESS_OBS_DIM:
+        raise ValueError(f"chess: expected obs_dim={CHESS_OBS_DIM}, got {obs.shape[-1]}")
+    lead = obs.shape[:-1]
+    board = obs[..., :CHESS_SQUARES].reshape(*lead, CHESS_BOARD, CHESS_BOARD)
+    own = np.stack([board == t for t in range(1, CHESS_PIECE_TYPES + 1)], axis=-3)
+    opp = np.stack([board == -t for t in range(1, CHESS_PIECE_TYPES + 1)], axis=-3)
+    castling = obs[..., CHESS_SQUARES : CHESS_SQUARES + 4]
+    scalars = np.concatenate(
+        [
+            castling,
+            obs[..., CHESS_SQUARES + 5 : CHESS_SQUARES + 6] / CHESS_HALF_MOVES_MAX,
+            obs[..., CHESS_SQUARES + 6 : CHESS_SQUARES + 7] / CHESS_REPETITION_MAX,
+        ],
+        axis=-1,
+    )
+    scalar_planes = np.broadcast_to(scalars[..., None, None], (*lead, 6, CHESS_BOARD, CHESS_BOARD))
+    ep = obs[..., CHESS_SQUARES + 4].astype(np.int64)
+    squares = np.arange(CHESS_SQUARES).reshape(CHESS_BOARD, CHESS_BOARD)
+    ep_plane = (squares == ep[..., None, None])[..., None, :, :]
+    return np.concatenate([own, opp, scalar_planes, ep_plane], axis=-3).astype(np.float32)
+
+
+def make_chess_spec(game_type: str = "chess") -> GameSpec:
+    return GameSpec(
+        game_type=game_type,
+        obs_shape=(CHESS_CHANNELS, CHESS_BOARD, CHESS_BOARD),
+        n_actions=CHESS_N_ACTIONS,
+        encode=_chess_planes,
+        description=(
+            "Chess 8x8: obs=自分視点の盤面 64 + キャスリング権 4 + アンパッサン 1 + 50 手カウンタ 1 + 同形回数 1, "
+            f"action=移動先 x {CHESS_ACTION_KINDS} + 種別 ({CHESS_N_ACTIONS} 通り)"
+        ),
+    )
+
+
+def _chess_from_obs_dim(game_type: str) -> Callable[[int], GameSpec]:
+    def build(obs_dim: int) -> GameSpec:
+        if obs_dim != CHESS_OBS_DIM:
+            raise ValueError(f"{game_type}: expected obs_dim={CHESS_OBS_DIM}, got {obs_dim}")
+        return make_chess_spec(game_type)
+
+    return build
+
+
 # ---------------------------------------------------------------------- レジストリ
 # game_type → (obs_dim → GameSpec)。サーバーが返す観測次元でアダプタとの整合を確認する
 _REGISTRY: dict[str, Callable[[int], GameSpec]] = {
     "othello": _othello_from_obs_dim,
     "shogi": _shogi_from_obs_dim("shogi"),
     "shogi_3d": _shogi_from_obs_dim("shogi_3d"),
+    "chess": _chess_from_obs_dim("chess"),
+    "chess_3d": _chess_from_obs_dim("chess_3d"),
 }
 
 
