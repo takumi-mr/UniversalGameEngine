@@ -60,6 +60,7 @@ import SoundMenu from "@/components/SoundMenu.vue";
 import type { ReplayStepEvent } from "@/components/replayEvents";
 import { getReplayComponent } from "@/games/registry";
 import { useGameSound } from "@/sound/useGameSound";
+import { API_BASE_URL } from "@/config";
 import { gameRegistry } from "@engine/shared/GameRegistry";
 import type {
   GameRecord,
@@ -127,7 +128,7 @@ const fetchGameRecord = async (id: string) => {
   loading.value = true;
   errorMsg.value = "";
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ""}/replays/${id}`);
+    const response = await fetch(`${API_BASE_URL}/replays/${id}`);
     if (!response.ok) {
       if (response.status === 404) {
         throw new Error("Game record not found on server.");

@@ -305,6 +305,7 @@ import { generatePuzzle } from "@/utils/sudokuGenerator";
 import { useAuthStore } from "@/store/auth";
 import { useRoomStore } from "@/store/room";
 import { useUIStore } from "@/store/ui";
+import { API_BASE_URL } from "@/config";
 
 // ゲーム起動前に呼ばれる汎用フック
 // 各ゲームの初期化処理を追加できる。戻り値は createGame の gameOptions に渡される
@@ -400,8 +401,7 @@ const createNewRoom = async (aiType?: string) => {
     }
 
     const token = authStore.token || "";
-    const API_BASE = "http://127.0.0.1:3000";
-    const client = new SocketIoClient(API_BASE, token);
+    const client = new SocketIoClient(API_BASE_URL, token);
     const id = await client.createGame({
       type: gameType.value.toUpperCase().replace(/-/g, "_"),
       gameOptions,
@@ -424,8 +424,7 @@ const startCustomMatch = async () => {
     gameOptions.playersConfig = customSlots.value;
 
     const token = authStore.token || "";
-    const API_BASE = "http://127.0.0.1:3000";
-    const client = new SocketIoClient(API_BASE, token);
+    const client = new SocketIoClient(API_BASE_URL, token);
     const id = await client.createGame({
       type: gameType.value.toUpperCase().replace(/-/g, "_"),
       gameOptions,

@@ -138,6 +138,7 @@ import { SocketIoClient } from "../../network/SocketIoClient";
 import ChatPanel from "@/components/ChatPanel.vue";
 import { getGameCatalogEntry, getGameComponent } from "@/games/registry";
 import { useGameSound } from "@/sound/useGameSound";
+import { API_BASE_URL } from "@/config";
 import type { BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
 
 // この画面はゲーム種別を問わず動くので、エンジン共通の型で扱う。
@@ -155,8 +156,6 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ (e: "back"): void }>();
-
-const API_BASE = "http://127.0.0.1:3000";
 
 const roomId = ref(props.roomId);
 const errorMsg = ref("");
@@ -242,7 +241,7 @@ useGameSound({
 });
 
 onMounted(() => {
-  client = new SocketIoClient<GameState, GameAction>(API_BASE, props.authToken);
+  client = new SocketIoClient<GameState, GameAction>(API_BASE_URL, props.authToken);
   client.onStateUpdate = (state, meta) => {
     clockSkew.value = client.clockSkew;
     // watch(gameState) で参照するので state より先に入れる

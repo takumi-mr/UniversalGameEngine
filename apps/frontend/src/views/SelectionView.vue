@@ -171,6 +171,7 @@ import ThemeSwitcher from "@/components/ThemeSwitcher.vue";
 
 import { useAuthStore } from "@/store/auth";
 import { useUIStore } from "@/store/ui";
+import { API_BASE_URL } from "@/config";
 import type { RoomSummary } from "@/store/room";
 
 const router = useRouter();
@@ -181,8 +182,6 @@ const drawer = ref(true);
 const selectedCategory = ref("All");
 const joinedRooms = ref<RoomSummary[]>([]);
 const leavingId = ref<string | null>(null);
-
-const API_BASE = "http://127.0.0.1:3000";
 
 const categories = computed(() => {
   const cats = new Set(gameCatalog.map((g) => g.category));
@@ -197,7 +196,7 @@ const filteredGames = computed(() => {
 const fetchJoinedRooms = async () => {
   try {
     const token = authStore.token;
-    const res = await fetch(`${API_BASE}/rooms/my`, {
+    const res = await fetch(`${API_BASE_URL}/rooms/my`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -227,7 +226,7 @@ const leaveRoom = async (roomId: string) => {
   leavingId.value = roomId;
   try {
     const token = authStore.token;
-    const res = await fetch(`${API_BASE}/game/${roomId}/leave`, {
+    const res = await fetch(`${API_BASE_URL}/game/${roomId}/leave`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     });

@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { API_BASE_URL } from "@/config";
 
 /** バックエンド /rooms API が返すルーム 1 件（apps/backend/routes/rooms.ts の RoomSummary と揃える） */
 export interface RoomSummary {
@@ -17,7 +18,6 @@ export const useRoomStore = defineStore("room", {
     async fetchRooms(gameType: string) {
       this.loading = true;
       try {
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:3000";
         const res = await fetch(`${API_BASE_URL}/rooms/${gameType}`);
         const data: { rooms: RoomSummary[] } = await res.json();
         this.rooms = data.rooms;
