@@ -71,6 +71,7 @@ applyWinResult?, getTimeoutAction?              // 任意
   - エンジンを直接進める処理（JOIN / START / 離席、gRPC `Reset`）は `withSession(gameId, async (session) => { ...; await session.server.commit(); })` の中で行う。ロック外で `engine.dispatch` して保存しないと、別インスタンスの更新を上書きする。
   - セッションの取得は `ensureSession(gameId)`（なければストアから復元。`sessions.get` を直接使わない）。削除は `destroySession`。
   - 配信は `commit()` → `broadcastState()`（ローカルソケット + gRPC ストリーム + `serverSideEmit("uge:state-changed")`）。他インスタンスは `onRemoteStateChanged` で自分のクライアントに配り直す。AI の手番は対局を進めたインスタンスだけが起動する。
+  - **配信ペイロードには「その更新を生んだアクション」が同梱される**（`dispatchAction` → `commit(action)` 経由のみ。`state-update` の第 2 引数 `{ action }` / `state-patch` の `action`、クラスタイベントにも載る。型は `StateUpdateMeta`）。フロントの効果音・演出の判定に使う。**部屋の全員（観戦者含む）に届くので、アクションに秘匿情報を載せない**（リプレイ記録も全アクションを公開している）。JOIN / START / 離席・再同期には付かない。
   - Socket.IO の在室判定は `io.in(room).fetchSockets()`（クラスタ全体）、自分のソケットだけなら `io.local`（`network/io.ts` の `countRoomSockets` / `fetchLocalSockets`）。`io.sockets.adapter.rooms` はローカルしか見えないので使わない。
 - リポジトリは `useInMemoryStore()`（`RL_MODE=true` または `NODE_ENV=test`）で `InMemoryDummyRepository`、それ以外は `HybridGameRepository`（Redis + MongoDB）+ Socket.IO Redis アダプタ。**インメモリ実装もロック・クリーンアップ予約・一覧を同じ契約で実装しているので、テストは repo をモックせずそのまま使う**（テストごとに `listSessions` → `deleteSession` で掃除する）。
 - 空室は 5 分で自動削除される（`scheduleRoomCleanup` → Redis ZSET に予約、各インスタンスの `startCleanupSweeper` が 15 秒ごとに回収）。長時間セッションを扱う処理は `clearRoomCleanup` / 再スケジュールを忘れない。
@@ -95,6 +96,7 @@ applyWinResult?, getTimeoutAction?              // 任意
 2. `packages/shared/GameRegistry.ts` に `register({ type, name, ruleset, minPlayers, maxPlayers, ... })`。`type` は小文字スネークケース（例 `othello_3d`）。
 3. テスト `packages/shared/rules/__tests__/<Name>Ruleset.test.ts`（bun:test）。
 4. フロント: `src/components/game/<Name>.vue` を作成し、`apps/frontend/src/games/<type>/index.ts` に `defineGameUI({ type, category, component: () => import(...) })` を置く（`games/registry.ts` が自動収集し、対局・リプレイ・選択画面すべてに反映される。名前・人数などは GameRegistry から取る）。`src/i18n/` の `games.<type>` に name/description/rules を追加。コンポーネント内の「自分は誰か・何ができるか」は `useGameSession(props, emit, Ruleset)` の `isPlayer / isMyTurn / legalActions / can / send` を使い、ルール判定を UI に書かない。駒を選んで動かす系は `useSelectAndMove` も併用（`Chess.vue` 参照）。
+   - 効果音を付けるなら `src/games/<type>/sound.ts` に `defineSoundProfile({ se, bgm?, onAction?, onStateChange?, bgmFor? })` を置き、`defineGameUI` に `sound: () => import("@/games/<type>/sound")` を足す（`src/sound/`、[apps/frontend/README.md](./apps/frontend/README.md) の「サウンド」）。開始 / 手番 / 勝敗の共通音は書かなくても鳴る。音源は `public/sounds/<game>/` に置く（リポジトリには含めない）。
 5. AI 学習対象にするなら `ai/TensorAdapter/<Name>TensorAdapter.ts`（+ `.test.ts` で合法手との 1 対 1 対応を確認）+ `index.ts` 登録 + `apps/ml/uge_rl/games.py` に `GameSpec`。学習したモデルは `uge_rl.serve` でそのまま対局相手になる。
 
 ### proto を変更する

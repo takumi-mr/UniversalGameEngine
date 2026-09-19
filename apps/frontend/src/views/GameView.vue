@@ -9,7 +9,8 @@
       </v-app-bar-title>
       <v-spacer />
 
-      <!-- Theme Switcher -->
+      <!-- Sound / Theme -->
+      <SoundMenu class="mr-1" />
       <ThemeSwitcher class="mr-2" />
 
       <v-menu>
@@ -72,6 +73,7 @@ import GenericGameView from "@/components/GenericGameView.vue";
 import GameHelpDialog from "@/components/game/GameHelpDialog.vue";
 import GameHelpTabs from "@/components/game/GameHelpTabs.vue";
 import ThemeSwitcher from "@/components/ThemeSwitcher.vue";
+import SoundMenu from "@/components/SoundMenu.vue";
 import { getGameCatalogEntry } from "@/games/registry";
 
 import { useAuthStore } from "@/store/auth";

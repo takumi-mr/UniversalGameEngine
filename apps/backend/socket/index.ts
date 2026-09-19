@@ -23,7 +23,7 @@ import { isBotType } from "@engine/backend/ai/botFactory";
 
 /** 他インスタンスからのクラスタイベントを購読する（Redis アダプタ使用時のみ届く） */
 const setupClusterHandlers = () => {
-  onClusterEvent("uge:state-changed", ({ gameId }) => onRemoteStateChanged(gameId));
+  onClusterEvent("uge:state-changed", ({ gameId, action }) => onRemoteStateChanged(gameId, action));
   onClusterEvent("uge:session-deleted", ({ gameId }) => dropLocalSession(gameId));
   onClusterEvent("uge:bot-turn", ({ gameId, playerId, stateTensor, legalActionIds, stateJson }) =>
     streamManager.notifyBotTurn(gameId, playerId, stateTensor, legalActionIds, stateJson),

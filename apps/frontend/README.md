@@ -7,6 +7,7 @@ Vue 3 + Vite + TypeScript をベースとした、インタラクティブで高
 - `/src/components`: UI 基盤部品および各ゲームの Vue コンポーネント。
 - `/src/three`: Three.js による 3D 描画。各ゲームの UI クラスは `BaseThreeUI`（scene / camera / renderer / OrbitControls / リサイズ / 描画ループ / 破棄の共通化）を継承する。
 - `/public/assets/games/<game>/models`: glTF（`.glb`）の駒・牌モデル。無ければ各 UI クラスがプレースホルダで代用する（麻雀は `mahjong/models/README.md` に規約あり）。
+- `/src/sound`: 効果音・BGM（Web Audio）。ゲームごとの定義は `/src/games/<type>/sound.ts`、音源は `/public/sounds/<game>/`（下記「サウンド」）。
 - `/src/network`: **gRPC-web** および Socket.io を統合したネットワーククライアント。
 - `/electron`: Electron メインプロセスおよび プリロードスクリプト。
 - `/src/i18n`: 多言語対応（日本語・英語など）。
@@ -63,3 +64,25 @@ bun run build:electron # Electron デスクトップアプリのパッケージ�
 - **Three.js**: **将棋 3D**, **ルービックキューブ**, **オセロ 3D**, **麻雀** など、実在感のある 3D インタラクション。
 - **SVG / Canvas**: 囲碁や 2D ボードゲームでの正確なグリッド描画。
 - **Vanilla CSS / DOM**: UNO や Wordle などの直感的なカード・テキスト表現。
+
+### 5. サウンド（効果音 / BGM）
+
+ルールセット・エンジンには一切手を入れず、フロント側だけで「サーバーが適用したアクション + 状態差分 → 効果音」を解決します。
+
+```
+src/games/<type>/sound.ts   defineSoundProfile({ se, bgm, onAction, onStateChange, bgmFor })
+        │ defineGameUI({ sound: () => import("@/games/<type>/sound") })
+        ▼
+src/sound/useGameSound.ts   画面のライフサイクルでプロファイルをロード、状態更新ごとに評価、BGM 切替
+        ├── src/sound/common.ts     全ゲーム共通: 開始 / 自分の手番 / 勝敗（checkWinCondition から自動）
+        ├── src/store/sound.ts      音量・ミュート（localStorage）。UI は components/SoundMenu.vue
+        ▼
+src/sound/SoundDriver.ts    Web Audio: デコードキャッシュ、同時発音制限、クールダウン、BGM、自動再生アンロック
+```
+
+- **アクションはサーバーが同梱する**: `state-update` の第 2 引数 / `state-patch` の `action` に「その更新を生んだアクション」が入る（`dispatchAction` 経由のみ。JOIN / START / 離席には付かない）。自分・相手・AI の手がすべて同じ経路で届くので、プロファイルは `onAction(action, prev, next)` の表として書ける。アクションからは分からない結果（流局など）は `onStateChange(prev, next)` で状態差分から拾う。
+- **共通音**（`game_start` / `my_turn` / `victory` / `defeat` / `draw` / `game_end`）はプロファイルを書かなくても鳴る。ゲーム側の `se` に同じキーを定義するとそのゲームだけ差し替わる（解決順: ゲーム → 共通）。
+- **リプレイ**でも同じプロファイルが使われる（1 手ずつ進んだときだけ。シークでは鳴らさない。BGM は流さない）。
+- **音源はリポジトリに含めていない。** `public/sounds/<game>/README.md` のファイル名で置く。未配置の音源は src ごとに 1 回だけ警告して無音（ゲームは止まらない）。
+- 効果音は `{ key, delayMs }` で遅らせられる（盤面アニメーションに合わせるため。オセロの裏返しなど）。
+- 画面から直接鳴らしたいときは `useSoundStore().playSE(key)`。

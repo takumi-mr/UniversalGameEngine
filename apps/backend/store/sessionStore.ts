@@ -11,6 +11,7 @@ import type { BaseGameAction, BaseGameState } from "@engine/shared/GameRules";
 import { InMemoryDummyRepository } from "@engine/backend/infra/InMemoryDummyRepository";
 import { HybridGameRepository } from "@engine/backend/infra/HybridGameRepository";
 import { GenericGameServer } from "@engine/shared/network/GenericGameServer";
+import type { StateUpdateMeta } from "@engine/shared/network/INetworkClient";
 import { compare, type Operation } from "fast-json-patch";
 import { calculateStateHash } from "@engine/shared";
 import { streamManager } from "@engine/backend/network/StreamManager";
@@ -117,13 +118,17 @@ export class SocketGameServer extends GenericGameServer<BaseGameState, BaseGameA
    * このインスタンスのクライアントには保存を待たせずに配る。保存はロック内で完了させ、
    * 他インスタンスへの通知（ストアを読み直させる）は保存が終わってから行うので、
    * 「真実はストア」の契約は変わらない。
+   *
+   * @param action この更新を生んだアクション（dispatchAction が渡す）。状態と一緒にクライアントへ配られ、
+   *   演出・効果音の判定に使われる。JOIN / START / 離席のように 1 回の commit に複数の dispatch が
+   *   混ざり得る経路では渡さない（クライアント側は状態差分で拾う）
    */
-  public async commit(): Promise<void> {
+  public async commit(action?: BaseGameAction): Promise<void> {
     const state = this.engine.getState();
     const finished = state.status === "FINISHED";
 
     // 1. まずこのインスタンスに接続しているクライアントへ配る
-    this.broadcastLocal();
+    this.broadcastLocal(undefined, action);
 
     // 2. 溜まった履歴をリプレイ記録へ追記し、メモリから切り詰める（セッション記録が手数に比例して肥大しないように）
     await this.persistReplay(finished);
@@ -137,7 +142,7 @@ export class SocketGameServer extends GenericGameServer<BaseGameState, BaseGameA
     ]);
 
     // 4. 保存済みになったので他インスタンスへ知らせ、AI の手番があれば進める
-    this.notifySaved();
+    this.notifySaved(action);
   }
 
   /**
@@ -189,7 +194,7 @@ export class SocketGameServer extends GenericGameServer<BaseGameState, BaseGameA
       action.playerId = playerId;
       action.timestamp = Date.now();
       const success = this.engine.dispatch(action);
-      if (success) await this.commit();
+      if (success) await this.commit(action);
       return success;
     });
   }
@@ -209,10 +214,11 @@ export class SocketGameServer extends GenericGameServer<BaseGameState, BaseGameA
   }
 
   /** 保存が完了した後の後処理: 他インスタンスへの通知と AI の手番の自動実行 */
-  private notifySaved(): void {
+  private notifySaved(action?: BaseGameAction): void {
     publishClusterEvent("uge:state-changed", {
       gameId: this.roomId,
       version: this.engine.getState().version ?? 0,
+      action,
     });
     // AI のターンであれば自動実行する（対局を進めたインスタンスだけが行う）
     this.checkAndExecuteAiTurns();
@@ -223,12 +229,17 @@ export class SocketGameServer extends GenericGameServer<BaseGameState, BaseGameA
    * マスク・ハッシュ・シリアライズは配信先ごとではなく targetId（各プレイヤー / SPECTATOR）ごとに 1 回だけ行い、
    * 差分（パッチ）も同じ targetId・同じ基準バージョンなら使い回す（観戦者が多いときに効く）。
    * @param targetSocketId 指定するとそのソケットにだけフル状態を送る（再同期要求）
+   * @param action この更新を生んだアクション。状態本体には入れず（hash・差分計算に影響するため）
+   *   state-update の第 2 引数 / state-patch の action フィールドとして同梱する。
+   *   部屋の全員（観戦者含む）に届くので、アクションに秘匿情報を載せないこと
    */
-  public broadcastLocal(targetSocketId?: string): void {
+  public broadcastLocal(targetSocketId?: string, action?: BaseGameAction): void {
     const state = this.engine.getState();
     const version = state.version ?? 0;
     const players = state.players ? (Object.values(state.players).filter(Boolean) as string[]) : [];
     const isForceFull = !!targetSocketId;
+    // 再同期（特定ソケットへのフル送信）は「どの手で進んだか」を伴わない
+    const meta: StateUpdateMeta = isForceFull ? {} : { action };
 
     const prepared = new Map<string, PreparedState>();
     const prepare = (userId: string): PreparedState => {
@@ -283,6 +294,7 @@ export class SocketGameServer extends GenericGameServer<BaseGameState, BaseGameA
                 baseVersion: previousState.version,
                 targetVersion: version,
                 hash: maskedState.hash,
+                ...meta,
               });
               this.lastSentState.set(socketId, entry.sent);
               continue;
@@ -291,7 +303,7 @@ export class SocketGameServer extends GenericGameServer<BaseGameState, BaseGameA
 
           // 初回送信、パッチの方が大きい場合、または強制フル更新の場合はフルデータを送信
           socket.emit("server-time", Date.now());
-          socket.emit("state-update", maskedState);
+          socket.emit("state-update", maskedState, meta);
           this.lastSentState.set(socketId, entry.sent);
         }
       })
@@ -483,8 +495,9 @@ export function dropLocalSession(gameId: string): void {
  * 別インスタンスが対局を進めたときの処理。
  * このインスタンスにそのルームのクライアント（ソケット / gRPC ストリーム）が居るなら
  * ストアから最新状態を読み込んで配信し直す。誰も居なければキャッシュだけ捨てる。
+ * action は進めたインスタンスから届いた「その更新を生んだアクション」（あれば配信に同梱する）。
  */
-export async function onRemoteStateChanged(gameId: string): Promise<void> {
+export async function onRemoteStateChanged(gameId: string, action?: BaseGameAction): Promise<void> {
   const cached = sessions.get(gameId);
   const hasLocalSockets = (await fetchLocalSockets(gameId)).length > 0;
   const hasLocalStreams = streamManager.hasStreams(gameId);
@@ -499,5 +512,5 @@ export async function onRemoteStateChanged(gameId: string): Promise<void> {
   const session = cached ?? (await ensureSession(gameId));
   if (!session) return;
   await session.server.refreshFromStore();
-  session.server.broadcastLocal();
+  session.server.broadcastLocal(undefined, action);
 }

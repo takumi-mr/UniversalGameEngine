@@ -4,6 +4,7 @@ import type {
   GameMetadata,
   ChatMessage,
   GameCreateOptions,
+  StateUpdateMeta,
 } from "@engine/shared/network/INetworkClient";
 import { applyPatch } from "fast-json-patch";
 import type { Operation } from "fast-json-patch";
@@ -18,7 +19,8 @@ export class SocketIoClient<TState extends BaseGameState, TAction> implements IN
   public gameId: string | null = null;
   private localState: TState | null = null;
 
-  public onStateUpdate: (state: TState) => void = () => {};
+  /** meta.action はその更新を生んだアクション（サーバーが同梱したときだけ。演出・効果音用） */
+  public onStateUpdate: (state: TState, meta?: StateUpdateMeta) => void = () => {};
   public onError: (message: string) => void = () => {};
   public onMetadataUpdate: (metadata: GameMetadata) => void = () => {};
   public onChatMessage: (chat: ChatMessage) => void = () => {};
@@ -37,19 +39,21 @@ export class SocketIoClient<TState extends BaseGameState, TAction> implements IN
     });
 
     // サーバーからのプッシュ通知イベント
-    this.socket.on("state-update", (state: TState) => {
+    this.socket.on("state-update", (state: TState, meta?: StateUpdateMeta) => {
       this.localState = state;
-      this.onStateUpdate(state);
+      this.onStateUpdate(state, meta);
     });
 
     this.socket.on(
       "state-patch",
-      (payload: {
-        patch: Operation[];
-        baseVersion: number;
-        targetVersion: number;
-        hash: string;
-      }) => {
+      (
+        payload: {
+          patch: Operation[];
+          baseVersion: number;
+          targetVersion: number;
+          hash: string;
+        } & StateUpdateMeta,
+      ) => {
         if (!this.localState) {
           console.warn("[SocketIoClient] Received patch but no local state exists. Ignoring.");
           return;
@@ -84,7 +88,7 @@ export class SocketIoClient<TState extends BaseGameState, TAction> implements IN
             }
 
             this.localState = nextState;
-            this.onStateUpdate(this.localState);
+            this.onStateUpdate(this.localState, { action: payload.action });
           }
         } catch (err) {
           console.error("[SocketIoClient] Failed to apply patch. Requesting full sync:", err);

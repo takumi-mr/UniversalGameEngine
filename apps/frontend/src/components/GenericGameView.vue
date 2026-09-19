@@ -137,6 +137,7 @@ import { useRouter } from "vue-router";
 import { SocketIoClient } from "../../network/SocketIoClient";
 import ChatPanel from "@/components/ChatPanel.vue";
 import { getGameCatalogEntry, getGameComponent } from "@/games/registry";
+import { useGameSound } from "@/sound/useGameSound";
 import type { BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
 
 // この画面はゲーム種別を問わず動くので、エンジン共通の型で扱う。
@@ -160,6 +161,8 @@ const API_BASE = "http://127.0.0.1:3000";
 const roomId = ref(props.roomId);
 const errorMsg = ref("");
 const gameState = ref<GameState | null>(null);
+// 直近の状態更新を生んだアクション（サーバーが同梱したときだけ。効果音の判定に使う）
+const lastAction = ref<GameAction | null>(null);
 // サーバー時計との差（締切カウントダウンと、リアルタイム系ゲームの予測に使う）
 const clockSkew = ref(0);
 // 締切カウントダウン（サーバー時計との差を補正）
@@ -228,10 +231,22 @@ const currentPlayersList = computed(() => {
   return Object.values(gameState.value.players).filter(Boolean) as string[];
 });
 
+// 効果音・BGM（ゲームごとの定義は src/games/<type>/sound.ts、共通音は src/sound/common.ts）
+useGameSound({
+  gameType: props.gameType,
+  state: gameState,
+  lastAction,
+  // 着席していなければ観戦者扱い（手番音・勝敗音を鳴らさない）
+  myPlayerId: () => (isPlayer.value ? myPlayerId.value : "SPECTATOR"),
+  mode: "live",
+});
+
 onMounted(() => {
   client = new SocketIoClient<GameState, GameAction>(API_BASE, props.authToken);
-  client.onStateUpdate = (state) => {
+  client.onStateUpdate = (state, meta) => {
     clockSkew.value = client.clockSkew;
+    // watch(gameState) で参照するので state より先に入れる
+    lastAction.value = meta?.action ?? null;
     gameState.value = state;
     connectionStatus.value = "Connected";
     errorMsg.value = "";

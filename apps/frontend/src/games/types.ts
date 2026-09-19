@@ -1,4 +1,5 @@
 import type { Component } from "vue";
+import type { GameSoundProfile } from "@/sound/types";
 
 /** ゲーム選択画面のカテゴリ */
 export type GameCategory = "Board Games" | "Card Games" | "Puzzles" | "Special";
@@ -24,6 +25,12 @@ export interface GameUIDefinition {
    * リプレイ（観戦者視点・アクション不可）で崩れるコンポーネントは false にする。
    */
   replay?: boolean;
+  /**
+   * ゲーム固有の効果音・BGM の定義（遅延ロード）。`src/games/<type>/sound.ts` に
+   * `defineSoundProfile({...})` を default export して `() => import("./sound")` を置く。
+   * 未指定でも開始・手番・勝敗の共通音は鳴る（`sound/common.ts`）。
+   */
+  sound?: () => Promise<{ default: GameSoundProfile }>;
 }
 
 /** 型推論のためのヘルパー。各 `src/games/<type>/index.ts` の default export に使う */

@@ -6,6 +6,8 @@
         <div v-if="recordId" class="room-id">
           📁 Record ID: <span>{{ recordId }}</span>
         </div>
+        <v-spacer />
+        <SoundMenu />
       </div>
 
       <div v-if="loading" class="connecting">
@@ -26,7 +28,12 @@
       </div>
 
       <div v-else-if="gameRecord && ruleset" class="game-container">
-        <ReplayViewer :record="gameRecord" :ruleset="ruleset" :play-speed-ms="800">
+        <ReplayViewer
+          :record="gameRecord"
+          :ruleset="ruleset"
+          :play-speed-ms="800"
+          @step="onReplayStep"
+        >
           <template #default="{ state }">
             <component
               :is="gameComponent"
@@ -49,7 +56,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import ReplayViewer from "@/components/ReplayViewer.vue";
+import SoundMenu from "@/components/SoundMenu.vue";
+import type { ReplayStepEvent } from "@/components/replayEvents";
 import { getReplayComponent } from "@/games/registry";
+import { useGameSound } from "@/sound/useGameSound";
 import { gameRegistry } from "@engine/shared/GameRegistry";
 import type {
   GameRecord,
@@ -77,6 +87,24 @@ const fileInput = ref<HTMLInputElement | null>(null);
 
 // 盤面コンポーネントは src/games/<type>/index.ts の定義から引く（replay: false のゲームは JSON 表示）
 const gameComponent = computed(() => getReplayComponent(props.gameType));
+
+// 効果音: 1 手ずつ進んだときだけ鳴らす（シークで飛んだときは鳴らさない）。BGM はリプレイでは流さない
+const replayState = ref<BaseGameState | null>(null);
+const replayAction = ref<BaseGameAction | null>(null);
+let steppedForward = false;
+useGameSound({
+  gameType: props.gameType,
+  state: replayState,
+  lastAction: replayAction,
+  myPlayerId: () => "SPECTATOR",
+  mode: "replay",
+  shouldPlay: () => steppedForward,
+});
+const onReplayStep = (ev: ReplayStepEvent) => {
+  steppedForward = ev.step === ev.prevStep + 1;
+  replayAction.value = ev.action;
+  replayState.value = ev.state;
+};
 
 onMounted(async () => {
   try {
@@ -161,6 +189,13 @@ const onFileSelected = (event: Event) => {
   justify-content: center;
   align-items: center;
   height: 100vh;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
 }
 
 .upload-prompt {
