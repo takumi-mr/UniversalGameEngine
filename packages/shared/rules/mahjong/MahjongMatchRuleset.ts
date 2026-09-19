@@ -2,6 +2,9 @@
 //
 // リーチ麻雀の対局（東風戦・半荘戦）。各局は MahjongRuleset をサブゲームとして進め、
 // 親の連荘・本場・供託・トビ・オーラスの親の和了止め（アガリ止め）・最終順位を管理する。
+//
+// 進行: 空席の WAITING で始まり、エンジンの組み込み JOIN で 4 人が着席したら START で東 1 局を配牌する。
+// options.playerIds（または players）を渡した場合は最初から着席・開始済み（テスト・RL 用）。
 import type { BaseGameAction, BaseGameState, GameRuleset } from "@engine/shared/GameRules";
 import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 import {
@@ -12,6 +15,7 @@ import {
   type SubGameEntry,
 } from "@engine/shared/rules/MetaGameRuleset";
 import {
+  MahjongRuleset,
   WINDS,
   type MahjongHandResult,
   type MahjongState,
@@ -37,10 +41,8 @@ export interface MahjongMatchState extends BaseGameState {
   lastResult?: MahjongHandResult;
 }
 
-export interface MahjongMatchAction extends BaseGameAction {
-  type: "SUBGAME_ACTION";
-  subAction: BaseGameAction;
-}
+export type MahjongMatchAction = BaseGameAction &
+  ({ type: "START" } | { type: "SUBGAME_ACTION"; subAction: BaseGameAction });
 
 export interface MahjongMatchOptions {
   // エンジンのシード（serverSeed / clientSeed）などもこのオブジェクトで渡される
@@ -55,9 +57,13 @@ export interface MahjongMatchOptions {
 const INITIAL_SCORE = 25_000;
 
 function playerIdsFrom(options: MahjongMatchOptions): string[] {
-  const ids =
-    options.playerIds ?? Object.values(options.players ?? {}).filter((id): id is string => !!id);
-  return ids.length > 0 ? ids : ["player1", "player2", "player3", "player4"];
+  return (
+    options.playerIds ?? Object.values(options.players ?? {}).filter((id): id is string => !!id)
+  );
+}
+
+function seatedPlayerIds(state: MahjongMatchState): string[] {
+  return Object.values(state.players ?? {}).filter((id): id is string => typeof id === "string");
 }
 
 /** 同点は起家に近い順 */
@@ -99,7 +105,7 @@ function createMahjongGame(
 }
 
 /** 外側のアクションの playerId とタイムスタンプ（締切の基準）をサブアクションへ引き継ぐ */
-function toSubAction(action: MahjongMatchAction): BaseGameAction {
+function toSubAction(action: MahjongMatchAction & { type: "SUBGAME_ACTION" }): BaseGameAction {
   return {
     ...action.subAction,
     playerId: action.playerId,
@@ -116,6 +122,34 @@ function handLabel(state: Pick<MahjongMatchState, "wind" | "round" | "honba">): 
   return `${windName}${state.round}局${state.honba > 0 ? ` ${state.honba}本場` : ""}`;
 }
 
+/** 着席した 4 人で東 1 局を配牌し、対局を開始する（スロット 0 が起家） */
+function startMatch(state: MahjongMatchState, akaDora: boolean | undefined, rng?: IGameRNG) {
+  const playerIds = seatedPlayerIds(state);
+  const scores = Object.fromEntries(playerIds.map((id) => [id, state.scores[id] ?? INITIAL_SCORE]));
+  const setup: HandSetup = {
+    playerIds,
+    scores,
+    wind: "EAST",
+    round: 1,
+    dealerIndex: 0,
+    honba: 0,
+    riichiSticks: 0,
+  };
+  const currentGame = createMahjongGame(setup, akaDora, rng);
+  return {
+    ...state,
+    status: "PLAYING" as const,
+    ...setup,
+    currentGameId: "hand-1",
+    currentGame,
+    completedGames: 0,
+    ranking: ranking(scores, playerIds),
+    activePlayers: currentGame.state.activePlayers,
+    turnDeadline: currentGame.state.turnDeadline,
+    message: `Mahjong match started. ${handLabel(setup)}`,
+  };
+}
+
 export const MahjongMatchRuleset: GameRuleset<
   MahjongMatchState,
   MahjongMatchAction,
@@ -123,42 +157,43 @@ export const MahjongMatchRuleset: GameRuleset<
 > = {
   getInitialState: (options = {}, rng) => {
     const playerIds = playerIdsFrom(options);
-    if (playerIds.length !== 4) {
+    if (playerIds.length !== 0 && playerIds.length !== 4) {
       throw new Error("Mahjong match requires exactly four players.");
     }
-    const scores = Object.fromEntries(
-      playerIds.map((id) => [id, options.initialScores?.[id] ?? INITIAL_SCORE]),
-    );
-    const setup: HandSetup = {
-      playerIds,
-      scores,
+    const waiting: MahjongMatchState = {
+      status: "WAITING",
+      players: { 0: null, 1: null, 2: null, 3: null },
+      playerIds: [],
+      activePlayers: [],
+      mode: options.mode ?? "HANCHAN",
+      currentGameId: "",
+      // 開始前のプレースホルダ（配牌前の空の局）
+      currentGame: { type: "mahjong", state: MahjongRuleset.getInitialState() },
+      completedGames: 0,
       wind: "EAST",
       round: 1,
       dealerIndex: 0,
       honba: 0,
       riichiSticks: 0,
+      scores: options.initialScores ?? {},
+      ranking: [],
     };
-    const currentGame = createMahjongGame(setup, options.akaDora, rng);
-    return {
-      status: "PLAYING",
-      players: allPlayers(playerIds),
-      ...setup,
-      mode: options.mode ?? "HANCHAN",
-      currentGameId: "hand-1",
-      currentGame,
-      completedGames: 0,
-      ranking: ranking(scores, playerIds),
-      activePlayers: currentGame.state.activePlayers,
-      message: `Mahjong match started. ${handLabel(setup)}`,
-    };
+    if (playerIds.length === 0) return waiting;
+    return startMatch({ ...waiting, players: allPlayers(playerIds) }, options.akaDora, rng);
   },
 
   isValidAction: (state, action) => {
+    if (action.type === "START") {
+      return state.status === "WAITING" && seatedPlayerIds(state).length === 4;
+    }
     if (state.status !== "PLAYING" || action.type !== "SUBGAME_ACTION") return false;
     return isValidSubGameAction(state.currentGame, toSubAction(action));
   },
 
   reduce: (state, action, rng) => {
+    if (action.type === "START") {
+      return startMatch(state, (state.currentGame.state as MahjongState).akaDora, rng);
+    }
     if (action.type !== "SUBGAME_ACTION") return state;
     const updated = applySubGameAction(state.currentGame, toSubAction(action), rng);
     if (!updated.result) {
@@ -251,10 +286,15 @@ export const MahjongMatchRuleset: GameRuleset<
     return { type: "SUBGAME_ACTION", playerId, subAction: { type: "PASS", playerId } };
   },
 
-  getLegalActions: (state, playerId) =>
-    subGameLegalActions(state.currentGame, playerId).map((subAction) => ({
+  getLegalActions: (state, playerId) => {
+    if (state.status === "WAITING") {
+      const start: MahjongMatchAction = { type: "START", playerId };
+      return MahjongMatchRuleset.isValidAction(state, start) ? [start] : [];
+    }
+    return subGameLegalActions(state.currentGame, playerId).map((subAction) => ({
       type: "SUBGAME_ACTION",
       playerId,
       subAction,
-    })),
+    }));
+  },
 };

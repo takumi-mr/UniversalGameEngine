@@ -8,6 +8,7 @@ import {
 } from "@engine/shared/rules/mahjong/MahjongMatchRuleset";
 import type { MahjongState, Tile } from "@engine/shared/rules/mahjong/MahjongRuleset";
 import { ProvablyFairRNG } from "@engine/shared/utils/ProvablyFairRNG";
+import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import { createSecret } from "@engine/shared/GameRules";
 
 const players = ["p1", "p2", "p3", "p4"];
@@ -122,6 +123,37 @@ function withSticks(state: MahjongMatchState, sticks: number): MahjongMatchState
 }
 
 describe("MahjongMatchRuleset", () => {
+  test("playerIds を渡さなければ空席の WAITING で始まり、4 人揃って START すると東1局が配牌される", () => {
+    const engine = new UniversalEngine<MahjongMatchState, MahjongMatchAction>(MahjongMatchRuleset, {
+      clientSeed: "c",
+      serverSeed: "s",
+    });
+    expect(engine.getState().status).toBe("WAITING");
+    expect(engine.getState().players).toEqual({ 0: null, 1: null, 2: null, 3: null });
+
+    for (const id of players.slice(0, 3)) {
+      expect(engine.dispatch({ type: "JOIN", playerId: id })).toBe(true);
+    }
+    expect(engine.getLegalActions("p1")).toEqual([]);
+    expect(engine.dispatch({ type: "JOIN", playerId: "p4" })).toBe(true);
+    expect(engine.getLegalActions("p1")).toEqual([{ type: "START", playerId: "p1" }]);
+    expect(engine.dispatch({ type: "START", playerId: "p1" })).toBe(true);
+
+    const state = engine.getState();
+    expect(state.status).toBe("PLAYING");
+    expect(state.playerIds).toEqual(players);
+    expect(state.scores).toEqual({ p1: 25_000, p2: 25_000, p3: 25_000, p4: 25_000 });
+    expect(hand(state).status).toBe("PLAYING");
+    expect(hand(state).hands.p1.value).toHaveLength(14);
+    expect(state.activePlayers).toEqual(["p1"]);
+    // 自分の手牌だけ見え、他家は伏せられる
+    const masked = engine.getMaskedState("p2") as unknown as MahjongMatchState;
+    // マスク後は Secret が展開されて配列になる
+    const maskedHands = hand(masked).hands as unknown as Record<string, Tile[]>;
+    expect(maskedHands.p2).toHaveLength(13);
+    expect(maskedHands.p1).toEqual(Array(14).fill("?"));
+  });
+
   test("東風戦を東1局 0 本場、起家 p1 の親で開始する", () => {
     const state = start({ mode: "TONPU" });
 

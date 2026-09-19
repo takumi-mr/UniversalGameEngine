@@ -359,6 +359,16 @@
         }
       }
     },
+    "mahjong_match": {
+      "name": "リーチ麻雀（対局）",
+      "description": "東風戦・半荘戦に対応したリーチ麻雀の対局。",
+      "rules": "局を順番に進め、親・本場・連荘と最終順位を管理します。誰かの点数がマイナスになるか、最終局で親が流れると終了です。",
+      "modes": {
+        "TONPU": "東風戦",
+        "HANCHAN": "半荘戦"
+      },
+      "final": "対局終了"
+    },
     "mahjong": {
       "name": "麻雀",
       "description": "本格的な四人麻雀。",
@@ -369,6 +379,27 @@
       "dora": "ドラ",
       "remaining_tiles": "残り",
       "finished": "対局終了",
+      "honba": "{n}本場",
+      "riichi_sticks": "供託 {n}本",
+      "remaining": "残り {n}枚",
+      "dealer": "親",
+      "riichi": "リーチ",
+      "select_riichi_tile": "リーチ宣言牌を選んでください",
+      "discarded": "{player} が {tile} を捨てました",
+      "cancel": "キャンセル",
+      "result": {
+        "win": "和了",
+        "exhaustive_draw": "荒牌流局",
+        "abortive_draw": "途中流局",
+        "tsumo": "ツモ",
+        "ron": "ロン（{from}）",
+        "han_fu": "{han}翻 {fu}符",
+        "yakuman": "役満",
+        "points": "{ten}点",
+        "tenpai": "聴牌",
+        "noten": "ノーテン",
+        "close": "閉じる"
+      },
       "winds": {
         "EAST": "東",
         "SOUTH": "南",
