@@ -1,6 +1,7 @@
 // packages/shared/rules/HighLowRuleset.ts
 import { requireRng } from "@engine/shared/utils/requireRng";
 import type { GameRuleset, BaseGameState } from "@engine/shared/GameRules";
+import { createSecret, type Secret } from "@engine/shared/GameRules";
 import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 // --- 1. ドメイン（トランプ特有）の型定義 ---
@@ -14,7 +15,7 @@ export interface Card {
 
 // --- 2. 状態とアクションの型定義 ---
 export interface HighLowState extends BaseGameState {
-  deck: Card[]; // 山札
+  deck: Secret<Card[]>; // 山札（誰にも見えない。他人には枚数分の "?"）
   currentTurn: PlayerId; // 現在のターン
   baseCard: Card | null; // 基準となるカード
   lastGuess: "HIGH" | "LOW" | null; // 直前の予想
@@ -44,6 +45,15 @@ function createDeck(rng?: IGameRNG): Card[] {
   return deck;
 }
 
+/** 山札を Secret に包む（誰にも見えない。枚数だけ公開） */
+export function secretDeck(cards: Card[]): Secret<Card[]> {
+  return createSecret(
+    cards,
+    [],
+    cards.map(() => "?"),
+  );
+}
+
 const getRankLabel = (rank: number) => {
   if (rank === 1) return "A";
   if (rank === 11) return "J";
@@ -58,7 +68,7 @@ export const HighLowRuleset: GameRuleset<HighLowState, HighLowAction> = {
     return {
       status: "WAITING",
       message: "Waiting for players...",
-      deck: [],
+      deck: secretDeck([]),
       currentTurn: 1,
       baseCard: null,
       lastGuess: null,
@@ -85,7 +95,7 @@ export const HighLowRuleset: GameRuleset<HighLowState, HighLowAction> = {
       return false;
     }
 
-    if (state.deck.length === 0) return false;
+    if (state.deck.value.length === 0) return false;
     return true;
   },
 
@@ -96,7 +106,7 @@ export const HighLowRuleset: GameRuleset<HighLowState, HighLowAction> = {
       return {
         ...state,
         status: "PLAYING",
-        deck,
+        deck: secretDeck(deck),
         baseCard,
         message: `Game Started! Base card is ${baseCard.suit}${getRankLabel(baseCard.rank)}. Player 1's turn!`,
         activePlayers: state.players
@@ -109,13 +119,13 @@ export const HighLowRuleset: GameRuleset<HighLowState, HighLowAction> = {
 
     if (action.type !== "GUESS") return state;
 
+    const deck = [...state.deck.value];
+    const resultCard = deck.pop()!;
     const newState: HighLowState = {
       ...state,
-      deck: [...state.deck],
+      deck: secretDeck(deck),
       scores: { ...state.scores },
     };
-
-    const resultCard = newState.deck.pop()!;
     const baseCard = state.baseCard!;
 
     newState.lastGuess = action.choice;
@@ -167,7 +177,7 @@ export const HighLowRuleset: GameRuleset<HighLowState, HighLowAction> = {
       };
     }
     // 山札切れ
-    if (state.deck.length === 0) {
+    if (state.deck.value.length === 0) {
       const p1 = state.scores[1];
       const p2 = state.scores[2];
       const winners = [];

@@ -118,6 +118,15 @@ export interface GameRuleset<
   maskState?: (state: TState, playerId: string) => TState;
 
   /**
+   * 配信メタ（「その更新を生んだアクション」）を閲覧者ごとに隠す (オプショナル)。
+   * アクション自体に他人へ見せてはいけない項目があるゲーム（秘密の入札・同時選択・人狼の夜行動など）だけ実装する。
+   * 行動した本人（action.playerId === viewerId）には呼ばれず、そのまま届く。
+   * 隠したい項目を落としたアクションを返す。null を返すとそのアクションは配信されない
+   * （誰が行動したかも隠したい場合）。state はアクション適用後の状態。純粋関数であること
+   */
+  maskAction?: (state: TState, action: TAction, viewerId: string) => TAction | null;
+
+  /**
    * 制限時間切れ（state.turnDeadline 経過）の際に、playerId の代わりに自動実行するアクションを返す (オプショナル)。
    * エンジンは組み込みの TIMEOUT アクションを受け取るとこれを呼び、null なら RESIGN（受け付けなければ強制終了）にする。
    * 純粋関数であること（時刻は action.timestamp で渡される）

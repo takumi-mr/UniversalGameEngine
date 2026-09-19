@@ -19,7 +19,7 @@
         <div class="deck-card" :class="{ 'can-click': isMyTurn }" @click="drawCard">
           <div class="uno-logo-back">UNO</div>
         </div>
-        <div class="deck-count">{{ state.deck.length }}枚</div>
+        <div class="deck-count">{{ deckCount }}枚</div>
       </div>
 
       <div class="discard-area">
@@ -46,8 +46,8 @@
         <div class="op-name">
           {{ opId }}
         </div>
-        <div class="op-cards">残り: {{ state.hands[opId]?.length || 0 }}枚</div>
-        <div v-if="state.hands[opId]?.length === 1" class="uno-call-badge">UNO!</div>
+        <div class="op-cards">残り: {{ handCount(opId) }}枚</div>
+        <div v-if="handCount(opId) === 1" class="uno-call-badge">UNO!</div>
       </div>
     </div>
 
@@ -90,6 +90,7 @@ import { ref, computed, defineComponent } from "vue";
 import { UnoRuleset } from "@engine/shared/rules/UnoRuleset";
 import type { UnoState, UnoAction } from "@engine/shared/rules/UnoRuleset";
 import { useGameSession } from "@/composables/useGameSession";
+import { revealed } from "@/utils/revealed";
 
 const props = defineProps<{
   state: UnoState;
@@ -146,7 +147,14 @@ const myPlayerId = computed(() => {
   return props.myPlayerId || props.state.playerOrder[0];
 });
 
-const myHand = computed(() => props.state.hands[myPlayerId.value] || []);
+// 手札・山札は Secret。自分の手札は数値の配列、他人の手札と山札は枚数分の "?" に展開されて届く
+const myHand = computed(() =>
+  (revealed(props.state.hands[myPlayerId.value]) ?? []).filter(
+    (card): card is number => typeof card === "number",
+  ),
+);
+const handCount = (playerId: string) => revealed(props.state.hands[playerId])?.length ?? 0;
+const deckCount = computed(() => revealed(props.state.deck)?.length ?? 0);
 const currentPlayerId = computed(() => props.state.playerOrder[props.state.turnIndex]);
 const isMyTurn = computed(() => isPlayer.value && currentPlayerId.value === myPlayerId.value);
 const topCard = computed(() => props.state.discard[props.state.discard.length - 1]);

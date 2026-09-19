@@ -527,6 +527,19 @@ export const EquilibriumRuleset: GameRuleset<EquilibriumState, EquilibriumAction
     return next;
   },
 
+  // 秘密の入札額と、秘密の勝利条件の差し替え先は本人以外に見せない（入札した・差し替えた事実は公開）
+  maskAction(_state: EquilibriumState, action: EquilibriumAction): EquilibriumAction | null {
+    if (action.type === "BID") {
+      const { amount: _amount, ...rest } = action;
+      return rest as EquilibriumAction;
+    }
+    if (action.type === "ALTER_GOAL") {
+      const { newGoalCardId: _newGoalCardId, ...rest } = action;
+      return rest as EquilibriumAction;
+    }
+    return action;
+  },
+
   checkWinCondition(state: EquilibriumState): {
     isFinished: boolean;
     winnerIds?: string[];

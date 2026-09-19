@@ -1,5 +1,6 @@
 import { requireRng } from "@engine/shared/utils/requireRng";
 import type { BaseGameState, GameRuleset } from "@engine/shared/GameRules";
+import { createSecret, type Secret } from "@engine/shared/GameRules";
 import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 import type { EnergyType } from "@engine/shared/rules/PokemonPocket/PokemonPocketRegistry";
 import { PokemonPocketRegistry } from "@engine/shared/rules/PokemonPocket/PokemonPocketRegistry";
@@ -17,8 +18,8 @@ export interface PokemonInstance {
 
 export interface PocketPlayer {
   id: string;
-  deck: string[];
-  hand: string[];
+  deck: Secret<string[]>; // 山札（誰にも見えない。他人には枚数分の "?"）
+  hand: Secret<string[]>; // 手札（本人のみ。他人には枚数分の "?"）
   discard: string[];
   points: number; // サイドカードの代わりにポイント (3ポイントで勝利)
   active: PokemonInstance | null; // バトル場 (1体)
@@ -73,6 +74,15 @@ export type PokemonPocketAction =
 // 2. ルールセット本体
 // ==========================================
 
+/** 山札・手札を Secret に包む（visibleTo が空なら誰にも見えない。他人には枚数分の "?"） */
+function secretCards(cards: string[], visibleTo: string[]): Secret<string[]> {
+  return createSecret(
+    cards,
+    visibleTo,
+    cards.map(() => "?"),
+  );
+}
+
 export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, PokemonPocketAction> {
   public getInitialState(options?: { playerIds?: string[] }, _rng?: IGameRNG): PokemonPocketState {
     const playerData: Record<string, PocketPlayer> = {};
@@ -89,14 +99,17 @@ export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, Pok
 
       playerData[id] = {
         id,
-        deck,
-        hand: [
-          "t_professor_research",
-          "t_potion",
-          initialCardId,
-          isP1 ? "p_pikachu_ex" : "p_charizard_ex",
-          isP1 ? "p_pikachu" : "p_charmeleon",
-        ],
+        deck: secretCards(deck, []),
+        hand: secretCards(
+          [
+            "t_professor_research",
+            "t_potion",
+            initialCardId,
+            isP1 ? "p_pikachu_ex" : "p_charizard_ex",
+            isP1 ? "p_pikachu" : "p_charmeleon",
+          ],
+          [id],
+        ),
         discard: [],
         points: 0,
         active: {
@@ -146,7 +159,7 @@ export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, Pok
     }
     if (action.type === "EVOLVE") {
       const def = PokemonPocketRegistry[action.cardDefId];
-      if (!player.hand.includes(action.cardDefId) || def.stage === "BASIC" || !def.stage)
+      if (!player.hand.value.includes(action.cardDefId) || def.stage === "BASIC" || !def.stage)
         return false;
 
       const target = [player.active, ...player.bench].find(
@@ -160,7 +173,7 @@ export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, Pok
     if (action.type === "PLAY_BASIC") {
       const def = PokemonPocketRegistry[action.cardDefId];
       if (
-        !player.hand.includes(action.cardDefId) ||
+        !player.hand.value.includes(action.cardDefId) ||
         def.category !== "POKEMON" ||
         def.stage === "STAGE1" ||
         def.stage === "STAGE2"
@@ -172,7 +185,7 @@ export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, Pok
     }
     if (action.type === "PLAY_TRAINER") {
       return (
-        player.hand.includes(action.cardDefId) &&
+        player.hand.value.includes(action.cardDefId) &&
         PokemonPocketRegistry[action.cardDefId].category === "TRAINER"
       );
     }
@@ -188,9 +201,9 @@ export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, Pok
     const player = nextState.playerData[action.playerId];
 
     if (action.type === "PLAY_BASIC") {
-      const handIdx = player.hand.indexOf(action.cardDefId);
+      const handIdx = player.hand.value.indexOf(action.cardDefId);
       if (handIdx > -1) {
-        player.hand.splice(handIdx, 1);
+        player.hand.value.splice(handIdx, 1);
         const newPokemon: PokemonInstance = {
           instanceId: Math.floor(requireRng(rng, "PokemonPocket").nextFloat() * 1000000).toString(),
           evolutionStack: [action.cardDefId],
@@ -207,8 +220,8 @@ export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, Pok
         (p) => p?.instanceId === action.targetInstanceId,
       );
       if (target) {
-        const handIdx = player.hand.indexOf(action.cardDefId);
-        player.hand.splice(handIdx, 1);
+        const handIdx = player.hand.value.indexOf(action.cardDefId);
+        player.hand.value.splice(handIdx, 1);
         target.evolutionStack.push(action.cardDefId);
 
         const def = PokemonPocketRegistry[action.cardDefId];
@@ -229,9 +242,9 @@ export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, Pok
         player.hasAttachedEnergyThisTurn = true;
       }
     } else if (action.type === "PLAY_TRAINER") {
-      const handIdx = player.hand.indexOf(action.cardDefId);
+      const handIdx = player.hand.value.indexOf(action.cardDefId);
       if (handIdx > -1) {
-        player.hand.splice(handIdx, 1);
+        player.hand.value.splice(handIdx, 1);
         player.discard.push(action.cardDefId);
         const def = PokemonPocketRegistry[action.cardDefId];
         if (def.onPlay) {
@@ -319,8 +332,8 @@ export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, Pok
     } else if (event.type === "DRAW_CARDS") {
       const player = state.playerData[event.playerId];
       for (let i = 0; i < event.amount; i++) {
-        if (player.deck.length > 0) {
-          player.hand.push(player.deck.pop()!);
+        if (player.deck.value.length > 0) {
+          player.hand.value.push(player.deck.value.pop()!);
         }
       }
     } else if (event.type === "RESOLVE_END_TURN") {
@@ -341,8 +354,8 @@ export class PokemonPocketRuleset implements GameRuleset<PokemonPocketState, Pok
 
     // ターン開始時にワンドロー
     const nextPlayer = state.playerData[nextPlayerId];
-    if (nextPlayer.deck.length > 0) {
-      nextPlayer.hand.push(nextPlayer.deck.pop()!);
+    if (nextPlayer.deck.value.length > 0) {
+      nextPlayer.hand.value.push(nextPlayer.deck.value.pop()!);
     }
   }
 

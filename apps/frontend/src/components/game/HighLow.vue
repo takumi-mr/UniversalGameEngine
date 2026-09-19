@@ -65,9 +65,9 @@
         <div class="vs-divider">
           <div class="deck-container">
             <div class="deck-count">
-              {{ state.deck.length }}
+              {{ deckCount }}
             </div>
-            <div class="deck-visual" :class="{ 'is-empty': state.deck.length === 0 }" />
+            <div class="deck-visual" :class="{ 'is-empty': deckCount === 0 }" />
           </div>
         </div>
 
@@ -127,9 +127,11 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import { HighLowRuleset } from "@engine/shared/rules/HighLowRuleset";
 import type { HighLowState, HighLowAction } from "@engine/shared/rules/HighLowRuleset";
 import { useGameSession } from "@/composables/useGameSession";
+import { revealed } from "@/utils/revealed";
 
 const props = defineProps<{
   state: HighLowState;
@@ -139,6 +141,9 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: "action", action: HighLowAction): void }>();
 
 const { myRole, isPlaying, send } = useGameSession(props, emit, HighLowRuleset);
+
+// 山札は Secret（誰にも見えない）。サーバーからは枚数分の "?" に展開されて届くので枚数だけ使う
+const deckCount = computed(() => revealed(props.state.deck)?.length ?? 0);
 
 const getRankLabel = (rank: number) => {
   if (rank === 1) return "A";

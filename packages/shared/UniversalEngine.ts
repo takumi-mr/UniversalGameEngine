@@ -266,6 +266,18 @@ export class UniversalEngine<
   }
 
   /**
+   * 配信メタとして閲覧者へ渡すアクションを返す。
+   * ルールセットが maskAction を持たなければそのまま、行動した本人にもそのまま。
+   * null はそのアクションを配信しないことを表す
+   * @param action 現在の状態を生んだアクション
+   * @param viewerId 閲覧者（プレイヤー ID または "SPECTATOR"）
+   */
+  public getMaskedAction(action: TAction, viewerId: string): TAction | null {
+    if (!this.rules.maskAction || action.playerId === viewerId) return action;
+    return this.rules.maskAction(this.state, action, viewerId);
+  }
+
+  /**
    * オブジェクト内を再帰的に走査し、Secret型を見つけたら閲覧権限に応じてマスクする
    */
   private autoMask(obj: unknown, playerId: string): unknown {

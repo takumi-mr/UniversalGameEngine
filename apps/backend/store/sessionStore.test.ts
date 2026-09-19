@@ -20,6 +20,7 @@ import {
   type TicTacToeState,
 } from "@engine/shared/rules/TicTacToeRuleset";
 import { ReplayEngine } from "@engine/shared/ReplayEngine";
+import { CaveDiveRuleset, type CaveDiveAction } from "@engine/shared/rules/CaveDiveRuleset";
 import type { BaseGameAction, BaseGameState, GameRecord } from "@engine/shared/GameRules";
 import type { Server } from "socket.io";
 
@@ -27,7 +28,7 @@ import type { Server } from "socket.io";
 let localSockets: {
   id: string;
   data: { userId: string };
-  emit: (ev: string, p: unknown) => void;
+  emit: (ev: string, p: unknown, meta?: unknown) => void;
 }[] = [];
 const mockIo = {
   in: () => ({ fetchSockets: async () => localSockets }),
@@ -242,6 +243,38 @@ describe("sessionStore", () => {
     expect(
       ((await repo.loadSession("g-secret"))!.state as { prngSecret?: string }).prngSecret,
     ).toBeTruthy();
+  });
+
+  it("配信メタのアクションは閲覧者ごとにルールセットの maskAction で隠される", async () => {
+    // CaveDive の CHOOSE は同時秘密選択。本人には choice が届き、他人・観戦者には落ちる
+    const engine = new UniversalEngine(CaveDiveRuleset, {});
+    engine.dispatch({ type: "JOIN", playerId: "a" });
+    engine.dispatch({ type: "JOIN", playerId: "b" });
+    engine.dispatch({ type: "START", playerId: "a", timestamp: Date.now() });
+    const { server } = createSession("g-mask", engine, "cave_dive");
+    await server.commit();
+
+    const metas: Record<string, unknown> = {};
+    const socketFor = (id: string, userId: string) => ({
+      id,
+      data: { userId },
+      emit: (ev: string, _p: unknown, meta?: unknown) => {
+        if (ev === "state-update") metas[userId] = meta;
+      },
+    });
+    localSockets = [socketFor("s1", "a"), socketFor("s2", "b"), socketFor("s3", "watcher")];
+
+    const choose: CaveDiveAction = { type: "CHOOSE", choice: "STAY" };
+    expect(await server.dispatchAction("a", choose)).toBe(true);
+    await new Promise((r) => setTimeout(r, 0)); // fetchSockets の then を待つ
+
+    expect(metas.a).toMatchObject({ action: { type: "CHOOSE", playerId: "a", choice: "STAY" } });
+    const forB = (metas.b as { action?: Record<string, unknown> }).action!;
+    expect(forB.type).toBe("CHOOSE");
+    expect(forB.playerId).toBe("a");
+    expect("choice" in forB).toBe(false);
+    const forWatcher = (metas.watcher as { action?: Record<string, unknown> }).action!;
+    expect("choice" in forWatcher).toBe(false);
   });
 
   it("destroySession はストアとキャッシュの両方から消す", async () => {

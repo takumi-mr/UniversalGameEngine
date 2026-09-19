@@ -1,10 +1,11 @@
 import { requireRng } from "@engine/shared/utils/requireRng";
+import { createSecret, type Secret } from "@engine/shared/GameRules";
 import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
 import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 export interface UnoState extends BaseGameState {
-  hands: Record<string, number[]>; // playerId -> cards
-  deck: number[];
+  hands: Record<string, Secret<number[]>>; // playerId -> 手札（本人のみ。他人には枚数分の "?"）
+  deck: Secret<number[]>; // 山札（誰にも見えない。枚数分の "?"）
   discard: number[];
 
   turnIndex: number;
@@ -17,7 +18,7 @@ export interface UnoState extends BaseGameState {
   playerOrder: string[];
 }
 
-export type UnoActionType = "PLAY" | "DRAW" | "PASS";
+export type UnoActionType = "PLAY" | "DRAW" | "PASS" | "START";
 
 export interface UnoAction extends BaseGameAction {
   type: UnoActionType;
@@ -31,39 +32,80 @@ export interface UnoOptions {
   players?: string[];
 }
 
+const MIN_PLAYERS = 2;
+const HAND_SIZE = 7;
+
+/** 手札を Secret に包む（本人だけが見える。他人には枚数分の "?"） */
+function secretHand(cards: number[], playerId: string): Secret<number[]> {
+  return createSecret(
+    cards,
+    [playerId],
+    cards.map(() => "?"),
+  );
+}
+
+/** 山札を Secret に包む（誰にも見えない。枚数だけ公開） */
+function secretDeck(cards: number[]): Secret<number[]> {
+  return createSecret(
+    cards,
+    [],
+    cards.map(() => "?"),
+  );
+}
+
+/** 山札をシャッフルして配り、場札を 1 枚めくる */
+function deal(state: UnoState, players: string[], rng?: IGameRNG): UnoState {
+  const deck = createDeck();
+  shuffle(deck, rng);
+
+  const hands: Record<string, Secret<number[]>> = {};
+  for (const p of players) {
+    hands[p] = secretHand(deck.splice(0, HAND_SIZE), p);
+  }
+  const first = deck.pop()!;
+
+  return {
+    ...state,
+    hands,
+    deck: secretDeck(deck),
+    discard: [first],
+    turnIndex: 0,
+    direction: 1,
+    currentColor: cardColor(first),
+    drawStack: 0,
+    playerOrder: players,
+  };
+}
+
 export const UnoRuleset: GameRuleset<UnoState, UnoAction, UnoOptions> = {
   getInitialState: (options?: UnoOptions, rng?: IGameRNG): UnoState => {
     const players: string[] = options?.players ?? [];
 
-    const deck = createDeck();
-    shuffle(deck, rng);
-
-    const hands: Record<string, number[]> = {};
-
-    for (const p of players) {
-      hands[p] = deck.splice(0, 7);
-    }
-
-    const first = deck.pop()!;
-
-    return {
+    const waiting: UnoState = {
       status: "WAITING",
-      hands,
-      deck,
-      discard: [first],
+      hands: {},
+      deck: secretDeck([]),
+      discard: [],
       turnIndex: 0,
       direction: 1,
-      currentColor: cardColor(first),
+      currentColor: 0,
       drawStack: 0,
-      playerOrder: players,
+      playerOrder: [],
       players:
         players.length > 0
           ? ({ ...players } as Record<number, string>)
           : { 0: null, 1: null, 2: null, 3: null }, // 4 slots
     };
+    // players を渡された（テスト・RL 用）ときは配札まで済ませる。通常は START で配る
+    return players.length > 0 ? deal(waiting, players, rng) : waiting;
   },
 
   isValidAction: (state, action) => {
+    if (action.type === "START") {
+      const seated = Object.values(state.players ?? {}).filter((p): p is string => p !== null);
+      return state.status === "WAITING" && seated.length >= MIN_PLAYERS;
+    }
+
     if (state.status !== "PLAYING") return false;
 
     const player = state.playerOrder[state.turnIndex];
@@ -73,7 +115,7 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction, UnoOptions> = {
     if (action.type === "DRAW") return true;
 
     if (action.type === "PLAY") {
-      const hand = state.hands[player];
+      const hand = state.hands[player].value;
 
       if (!hand.includes(action.card!)) return false;
 
@@ -96,12 +138,19 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction, UnoOptions> = {
     return false;
   },
 
-  reduce: (state, action, _rng?: IGameRNG) => {
+  reduce: (state, action, rng?: IGameRNG) => {
+    if (action.type === "START") {
+      const seated = Object.values(state.players ?? {}).filter((p): p is string => p !== null);
+      // options.players で配札済みなら配り直さない
+      const dealt = state.playerOrder.length > 0 ? state : deal(state, seated, rng);
+      return { ...dealt, status: "PLAYING", activePlayers: [dealt.playerOrder[0]] };
+    }
+
     const newState = structuredClone(state);
     const player = newState.playerOrder[newState.turnIndex];
 
     if (action.type === "DRAW") {
-      drawCards(newState, player, 1);
+      drawCards(newState, player, 1, rng);
       // In some rules, you can play the drawn card immediately,
       // but for simplicity, we'll just end the turn if they can't play it or choose not to.
       // Actually, after DRAW, typical UNO rules allow you to PLAY that card or PASS.
@@ -111,11 +160,12 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction, UnoOptions> = {
 
     if (action.type === "PLAY") {
       const card = action.card!;
-      const hand = newState.hands[player];
+      const hand = newState.hands[player].value;
       const index = hand.indexOf(card);
       if (index === -1) return state; // Should not happen if isValidAction works
 
       hand.splice(index, 1);
+      newState.hands[player] = secretHand(hand, player);
       newState.discard.push(card);
 
       const value = cardValue(card);
@@ -154,7 +204,7 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction, UnoOptions> = {
         // Apply draw stack immediately to next player
         const nextIndex = getNextTurnIndex(newState);
         const nextPlayer = newState.playerOrder[nextIndex];
-        drawCards(newState, nextPlayer, newState.drawStack);
+        drawCards(newState, nextPlayer, newState.drawStack, rng);
         newState.drawStack = 0;
         // The drawn player is also skipped
         advanceTurn(newState); // skip the one who drew
@@ -168,12 +218,14 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction, UnoOptions> = {
       advanceTurn(newState);
     }
 
+    // 手番プレイヤー（AI の自動実行・UI の手番表示に使う）
+    newState.activePlayers = [newState.playerOrder[newState.turnIndex]];
     return newState;
   },
 
   checkWinCondition: (state) => {
     for (const p of state.playerOrder) {
-      if (state.hands[p].length === 0) {
+      if (state.hands[p].value.length === 0) {
         return {
           isFinished: true,
           winnerIds: [p],
@@ -185,12 +237,16 @@ export const UnoRuleset: GameRuleset<UnoState, UnoAction, UnoOptions> = {
   },
 
   getLegalActions: (state, playerId) => {
+    if (state.status === "WAITING") {
+      const start: UnoAction = { type: "START", playerId };
+      return UnoRuleset.isValidAction(state, start) ? [start] : [];
+    }
     if (state.status !== "PLAYING") return [];
     const player = state.playerOrder[state.turnIndex];
     if (player !== playerId) return [];
 
     const actions: UnoAction[] = [];
-    const hand = state.hands[player];
+    const hand = state.hands[player].value;
     const top = state.discard[state.discard.length - 1];
 
     for (const card of hand) {
@@ -261,20 +317,24 @@ function shuffle(array: number[], rng?: IGameRNG) {
   }
 }
 
-function drawCards(state: UnoState, playerId: string, count: number) {
+function drawCards(state: UnoState, playerId: string, count: number, rng?: IGameRNG) {
+  const deck = [...state.deck.value];
+  const hand = [...state.hands[playerId].value];
   for (let i = 0; i < count; i++) {
-    if (state.deck.length === 0) {
+    if (deck.length === 0) {
       // Reshuffle discard pile except the top card
       const top = state.discard.pop()!;
-      state.deck = [...state.discard];
+      deck.push(...state.discard);
       state.discard = [top];
-      shuffle(state.deck);
+      shuffle(deck, rng);
     }
-    const card = state.deck.pop();
+    const card = deck.pop();
     if (card !== undefined) {
-      state.hands[playerId].push(card);
+      hand.push(card);
     }
   }
+  state.deck = secretDeck(deck);
+  state.hands[playerId] = secretHand(hand, playerId);
 }
 
 function getNextTurnIndex(state: UnoState): number {
