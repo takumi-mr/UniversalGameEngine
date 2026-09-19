@@ -297,7 +297,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { availableGames } from "@/constants/games";
+import { getGameCatalogEntry } from "@/games/registry";
 import { SocketIoClient } from "../../network/SocketIoClient";
 import GameHelpDialog from "@/components/game/GameHelpDialog.vue";
 import ThemeSwitcher from "@/components/ThemeSwitcher.vue";
@@ -343,7 +343,7 @@ const playerTypeOptions = [
   { label: "☁️ gRPC External", value: "grpc_bot" },
 ];
 
-const gameInfo = computed(() => availableGames.find((g) => g.type === gameType.value));
+const gameInfo = computed(() => getGameCatalogEntry(gameType.value));
 const gameEmoji = computed(() => gameInfo.value?.emoji || "🎮");
 const customMinPlayers = computed(() => gameInfo.value?.minPlayers ?? 2);
 const customMaxPlayers = computed(() => gameInfo.value?.maxPlayers ?? 2);

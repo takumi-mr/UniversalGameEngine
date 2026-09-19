@@ -166,7 +166,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { availableGames } from "@/constants/games";
+import { gameCatalog, getGameCatalogEntry } from "@/games/registry";
 import ThemeSwitcher from "@/components/ThemeSwitcher.vue";
 
 import { useAuthStore } from "@/store/auth";
@@ -185,13 +185,13 @@ const leavingId = ref<string | null>(null);
 const API_BASE = "http://127.0.0.1:3000";
 
 const categories = computed(() => {
-  const cats = new Set(availableGames.map((g) => g.category));
+  const cats = new Set(gameCatalog.map((g) => g.category));
   return Array.from(cats).sort();
 });
 
 const filteredGames = computed(() => {
-  if (selectedCategory.value === "All") return availableGames;
-  return availableGames.filter((g) => g.category === selectedCategory.value);
+  if (selectedCategory.value === "All") return gameCatalog;
+  return gameCatalog.filter((g) => g.category === selectedCategory.value);
 });
 
 const fetchJoinedRooms = async () => {
@@ -210,7 +210,7 @@ const fetchJoinedRooms = async () => {
 onMounted(fetchJoinedRooms);
 
 const getGameEmoji = (type: string) => {
-  const game = availableGames.find((g) => g.type === type.toLowerCase());
+  const game = getGameCatalogEntry(type.toLowerCase());
   return game?.emoji || "🎮";
 };
 
