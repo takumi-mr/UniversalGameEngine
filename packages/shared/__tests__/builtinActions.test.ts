@@ -86,6 +86,49 @@ describe("UniversalEngine builtin JOIN / START", () => {
     expect(replay.getState().board).toEqual(engine.getState().board);
   });
 
+  it("builtin: false では JOIN / START のフォールバック / TIMEOUT を適用しないこと", () => {
+    // クライアント由来のアクションはこのモードで dispatch される。
+    // ルールセットが受け付けない組み込みアクションで、着席・開始・時間切れを起こせてはならない
+    const engine = new UniversalEngine(OthelloRuleset, {});
+    expect(engine.dispatch({ type: "JOIN", playerId: "A" }, { builtin: false })).toBe(false);
+    expect(engine.getState().players).toEqual({ 1: null, [-1]: null });
+
+    engine.dispatch({ type: "JOIN", playerId: "A" });
+    // 1 人しか居ない部屋を開始させられない（Othello は START を持たないのでフォールバックが唯一の経路）
+    expect(engine.dispatch({ type: "START", playerId: "A" }, { builtin: false })).toBe(false);
+    expect(engine.getState().status).toBe("WAITING");
+
+    engine.dispatch({ type: "JOIN", playerId: "B" });
+    engine.dispatch({ type: "START", playerId: "A" });
+    expect(engine.getState().status).toBe("PLAYING");
+
+    // 時間切れはサーバーだけが起こせる
+    const timedOut = engine.dispatch(
+      { type: "TIMEOUT", playerId: "A", timestamp: Number.MAX_SAFE_INTEGER },
+      { builtin: false },
+    );
+    expect(timedOut).toBe(false);
+    expect(engine.getState().status).toBe("PLAYING");
+    expect(engine.history.map((a) => a.type as string)).toEqual(["JOIN", "JOIN", "START"]);
+  });
+
+  it("builtin: false でも、ルールセット自身が START を扱うゲームでは isValidAction に従うこと", () => {
+    const engine = new UniversalEngine(HighLowRuleset, {});
+    engine.dispatch({ type: "JOIN", playerId: "p1" });
+    expect(engine.dispatch({ type: "START", playerId: "p1" }, { builtin: false })).toBe(true);
+    expect(engine.getState().status).toBe("PLAYING");
+    expect(engine.getState().baseCard).not.toBeNull();
+  });
+
+  it("builtin: false では、人数が足りない START をルールセットが拒否したら WAITING のままであること", () => {
+    // 麻雀の START は 4 人揃わないと無効。フォールバックで PLAYING にしてしまうと配牌のない壊れた対局になる
+    const mahjong = gameRegistry.getDefinition("mahjong")!;
+    const engine = new UniversalEngine(mahjong.ruleset, {});
+    engine.dispatch({ type: "JOIN", playerId: "p1" });
+    expect(engine.dispatch({ type: "START", playerId: "p1" }, { builtin: false })).toBe(false);
+    expect(engine.getState().status).toBe("WAITING");
+  });
+
   it("全ゲームで JOIN → START が dispatch を通じて成立すること（players を持つゲーム）", () => {
     for (const def of gameRegistry.getAllDefinitions()) {
       const full = gameRegistry.getDefinition(def.type)!;

@@ -19,6 +19,7 @@ import type { BaseGameAction, BaseGameState } from "@engine/shared/GameRules";
 import type { AnyRuleset } from "@engine/shared/rules/subGameResolver";
 import { GrpcBotPlayer } from "@engine/shared/ai/AIPlayer/GrpcBotPlayer";
 import { encodeBotTurn } from "@engine/backend/ai/botFactory";
+import { sanitizeCreateOptions } from "@engine/backend/gameOptions";
 import type { ProtoGrpcType } from "@engine/shared/network/generated/game";
 import type { GameServiceHandlers } from "@engine/shared/network/generated/universal_game_engine/GameService";
 import type { CreateGameRequest__Output } from "@engine/shared/network/generated/universal_game_engine/CreateGameRequest";
@@ -193,9 +194,11 @@ const gameServiceHandlers: GameServiceHandlers = {
 
     try {
       const gameId = Math.random().toString(36).substring(7);
-      const options = JSON.parse(rawOptionsJson || "{}");
+      const gameType = normalizeGameType(rawGameType);
+      // クライアントの options は許可リストを通す（serverSeed や initialScores 等は捨てる）
+      const options = sanitizeCreateOptions(gameType, JSON.parse(rawOptionsJson || "{}"));
       const engine = new UniversalEngine(def.ruleset, options);
-      const { server } = createSession(gameId, engine, normalizeGameType(rawGameType));
+      const { server } = createSession(gameId, engine, gameType);
       // 他のインスタンスからも見えるように保存する
       await server.commit();
 

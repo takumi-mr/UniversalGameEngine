@@ -1,5 +1,5 @@
 import { expect, test, describe, beforeEach } from "bun:test";
-import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { UniversalEngine, type InternalGameState } from "@engine/shared/UniversalEngine";
 import {
   type BaseGameState,
   type BaseGameAction,
@@ -140,6 +140,21 @@ describe("UniversalEngine", () => {
     // Player2 (unauthorized)
     const stateForP2 = engine.getMaskedState("player2");
     expect(stateForP2.secretData).toBe("???");
+  });
+
+  test("getMaskedState はサーバーシード（prngSecret）を誰にも渡さないこと", () => {
+    // 内部状態には残る（RNG の再生成・終局後の開示に使う）
+    expect((engine.getState() as InternalGameState).prngSecret).toBeTruthy();
+    expect(engine.getState().prngConfig?.serverSeedHash).toBeTruthy();
+
+    for (const viewer of ["player1", "player2", "SPECTATOR"]) {
+      const masked = engine.getMaskedState(viewer) as InternalGameState;
+      expect(masked.prngSecret, `viewer=${viewer}`).toBeUndefined();
+      // 公開してよい prngConfig（ハッシュ・clientSeed・nonce）はそのまま
+      expect(masked.prngConfig).toEqual(engine.getState().prngConfig);
+    }
+    // マスクは複製に対して行われ、元の状態からは消えない
+    expect((engine.getState() as InternalGameState).prngSecret).toBeTruthy();
   });
 
   test("should handle recursive masking", () => {
