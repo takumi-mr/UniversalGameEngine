@@ -5,7 +5,8 @@ Vue 3 + Vite + TypeScript をベースとした、インタラクティブで高
 ## 🏗️ ディレクトリ構造
 
 - `/src/components`: UI 基盤部品および各ゲームの Vue コンポーネント。
-- `/src/three`: Three.js による複雑な 3D 空間描画ロジック。
+- `/src/three`: Three.js による 3D 描画。各ゲームの UI クラスは `BaseThreeUI`（scene / camera / renderer / OrbitControls / リサイズ / 描画ループ / 破棄の共通化）を継承する。
+- `/public/assets/games/<game>/models`: glTF（`.glb`）の駒・牌モデル。無ければ各 UI クラスがプレースホルダで代用する（麻雀は `mahjong/models/README.md` に規約あり）。
 - `/src/network`: **gRPC-web** および Socket.io を統合したネットワーククライアント。
 - `/electron`: Electron メインプロセスおよび プリロードスクリプト。
 - `/src/i18n`: 多言語対応（日本語・英語など）。
@@ -59,6 +60,6 @@ bun run build:electron # Electron デスクトップアプリのパッケージ�
 
 ゲームの性質に応じた最適な描画手法を提供します。
 
-- **Three.js**: **将棋 3D**, **ルービックキューブ**, **オセロ 3D** など、実在感のある 3D インタラクション。
+- **Three.js**: **将棋 3D**, **ルービックキューブ**, **オセロ 3D**, **麻雀** など、実在感のある 3D インタラクション。
 - **SVG / Canvas**: 囲碁や 2D ボードゲームでの正確なグリッド描画。
 - **Vanilla CSS / DOM**: UNO や Wordle などの直感的なカード・テキスト表現。

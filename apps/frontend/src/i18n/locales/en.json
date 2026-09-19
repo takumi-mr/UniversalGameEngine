@@ -359,6 +359,16 @@
         }
       }
     },
+    "mahjong_match": {
+      "name": "Riichi Mahjong Match",
+      "description": "Riichi mahjong match with East-only and half-game modes.",
+      "rules": "Hands are played in order, tracking the dealer, honba and renchan. The match ends when someone goes below zero or the dealer loses the final hand.",
+      "modes": {
+        "TONPU": "East only",
+        "HANCHAN": "Half game"
+      },
+      "final": "Match finished"
+    },
     "mahjong": {
       "name": "Mahjong",
       "description": "Authentic 4-player Mahjong experience.",
@@ -369,6 +379,27 @@
       "dora": "Dora",
       "remaining_tiles": "Left",
       "finished": "Game Over",
+      "honba": "{n} honba",
+      "riichi_sticks": "Riichi sticks: {n}",
+      "remaining": "{n} left",
+      "dealer": "Dealer",
+      "riichi": "Riichi",
+      "select_riichi_tile": "Choose the tile to declare riichi with",
+      "discarded": "{player} discarded {tile}",
+      "cancel": "Cancel",
+      "result": {
+        "win": "Win",
+        "exhaustive_draw": "Exhaustive draw",
+        "abortive_draw": "Abortive draw",
+        "tsumo": "Tsumo",
+        "ron": "Ron ({from})",
+        "han_fu": "{han} han {fu} fu",
+        "yakuman": "Yakuman",
+        "points": "{ten} pts",
+        "tenpai": "Tenpai",
+        "noten": "Noten",
+        "close": "Close"
+      },
       "winds": {
         "EAST": "East",
         "SOUTH": "South",
