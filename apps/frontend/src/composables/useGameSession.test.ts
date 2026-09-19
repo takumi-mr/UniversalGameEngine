@@ -61,6 +61,22 @@ describe("useGameSession", () => {
     expect(emit).toHaveBeenCalledWith("action", { type: "PLACE", index: 4, playerId: "alice" });
   });
 
+  it("state.players を持たないゲームでは誰でも isPlayer（着席の概念がない）", () => {
+    const { session, emit } = setup(makeState({ players: undefined }), "anyone");
+    expect(session.isPlayer.value).toBe(true);
+    expect(session.myRole.value).toBeUndefined();
+    session.send({ type: "PLACE", index: 0 });
+    expect(emit).toHaveBeenCalledTimes(1);
+  });
+
+  it("ruleset を省略すると合法手は常に空", () => {
+    const props = reactive({ state: makeState(), myPlayerId: "alice" });
+    const session = useGameSession(props, vi.fn());
+    expect(session.isMyTurn.value).toBe(true);
+    expect(session.legalActions.value).toEqual([]);
+    expect(session.can(() => true)).toBe(false);
+  });
+
   it("props.state の差し替えに追従する", () => {
     const { props, session } = setup(makeState(), "bob");
     expect(session.isMyTurn.value).toBe(false);

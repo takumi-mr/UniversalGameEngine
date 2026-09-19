@@ -33,7 +33,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import { ShogiUI } from "@/three/ShogiUI";
+import { ShogiRuleset } from "@engine/shared/rules/ShogiRuleset";
 import type { ShogiState, ShogiAction } from "@engine/shared/rules/ShogiRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: ShogiState;
@@ -43,6 +45,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "action", action: ShogiAction): void;
 }>();
+
+const { isMyTurn, send } = useGameSession(props, emit, ShogiRuleset);
 
 const canvasContainer = ref<HTMLElement | null>(null);
 
@@ -103,9 +107,7 @@ watch(
 // Three.js 側からのアクション（クリック）を受け取る
 const handleActionFromUI = (action: ShogiAction, canPromote: boolean) => {
   // 観戦者ガード & 手番ガード
-  const isMyTurn =
-    props.state.players && props.state.players[props.state.turn as 1 | -1] === props.myPlayerId;
-  if (!isMyTurn) return;
+  if (!isMyTurn.value) return;
 
   if (action.type === "MOVE" && canPromote) {
     // 成れる移動の場合、ダイアログを表示して待機
@@ -113,15 +115,14 @@ const handleActionFromUI = (action: ShogiAction, canPromote: boolean) => {
     showPromoteDialog.value = true;
   } else {
     // それ以外（成り不可、または打つ）は即送信
-    emit("action", action);
+    send(action);
   }
 };
 
 // ダイアログで成り/不成を選択した時
 const confirmMove = (promote: boolean) => {
   if (pendingMoveAction.value) {
-    pendingMoveAction.value.promote = promote;
-    emit("action", pendingMoveAction.value);
+    send({ ...pendingMoveAction.value, promote });
   }
   showPromoteDialog.value = false;
   pendingMoveAction.value = null;

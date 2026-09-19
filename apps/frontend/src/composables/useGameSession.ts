@@ -7,8 +7,19 @@ export interface GameSessionProps<S extends BaseGameState> {
   myPlayerId?: string;
 }
 
+/**
+ * playerId は send が付与するので、呼び出し側は省略できる。
+ * union 型のアクションでも各メンバーごとに Omit するため、判別子（type）は保たれる。
+ */
+export type OutgoingAction<A> = A extends unknown
+  ? Omit<A, "playerId"> & { playerId?: string }
+  : never;
+
 export interface GameSession<A extends BaseGameAction> {
-  /** 自分が着席しているか（false なら観戦者） */
+  /**
+   * 自分が着席しているか（false なら観戦者）。
+   * state.players を持たないゲーム（着席の概念がない 1 人用パズルなど）では常に true。
+   */
   isPlayer: ComputedRef<boolean>;
   /** state.status === "PLAYING" */
   isPlaying: ComputedRef<boolean>;
@@ -25,7 +36,7 @@ export interface GameSession<A extends BaseGameAction> {
    * 合法性の検証はサーバーが行うので、ここでは手番チェックまではしない
    * （麻雀の割り込みやリアルタイム系のように、手番概念に乗らないアクションもあるため）。
    */
-  send: (action: A) => void;
+  send: (action: OutgoingAction<A>) => void;
 }
 
 /**
@@ -33,6 +44,8 @@ export interface GameSession<A extends BaseGameAction> {
  *
  * 合法手はルールセットの getLegalActions から取るので、コンポーネント側でルールを
  * 再実装せずに済む（例: `can((a) => a.type === "PLACE" && a.index === i)`）。
+ *
+ * ruleset は legalActions / can を使わないゲーム（合法手を列挙しないサンドボックス系など）では省略できる。
  *
  * @example
  * const props = defineProps<{ state: TicTacToeState; myPlayerId?: string }>();
@@ -42,7 +55,7 @@ export interface GameSession<A extends BaseGameAction> {
 export function useGameSession<S extends BaseGameState, A extends BaseGameAction>(
   props: GameSessionProps<S>,
   emit: (e: "action", action: A) => void,
-  ruleset: Pick<GameRuleset<S, A>, "getLegalActions">,
+  ruleset?: Pick<GameRuleset<S, A>, "getLegalActions">,
 ): GameSession<A> {
   const myId = () => props.myPlayerId ?? "";
 
@@ -51,20 +64,22 @@ export function useGameSession<S extends BaseGameState, A extends BaseGameAction
     if (!players || !props.myPlayerId) return undefined;
     return Object.entries(players).find(([, id]) => id === props.myPlayerId)?.[0];
   });
-  const isPlayer = computed(() => myRole.value !== undefined);
+  // players を持たないゲームは着席の概念がない（エンジンの JOIN も対象外）ので誰でも操作できる
+  const isPlayer = computed(() => !props.state.players || myRole.value !== undefined);
   const isPlaying = computed(() => props.state.status === "PLAYING");
   const isMyTurn = computed(
     () => isPlaying.value && isPlayer.value && !!props.state.activePlayers?.includes(myId()),
   );
   const legalActions = computed<A[]>(() =>
-    isMyTurn.value ? ruleset.getLegalActions(props.state, myId()) : [],
+    isMyTurn.value && ruleset ? ruleset.getLegalActions(props.state, myId()) : [],
   );
 
   const can = (pred: (action: A) => boolean) => legalActions.value.some(pred);
 
-  const send = (action: A) => {
+  const send = (action: OutgoingAction<A>) => {
     if (!isPlayer.value) return;
-    emit("action", { ...action, playerId: myId() });
+    // OutgoingAction<A> + playerId は A と同じ形だが、条件型なので TS には直接推論できない
+    emit("action", { ...action, playerId: myId() } as unknown as A);
   };
 
   return { isPlayer, isPlaying, isMyTurn, myRole, legalActions, can, send };

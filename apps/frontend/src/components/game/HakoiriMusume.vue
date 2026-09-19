@@ -80,11 +80,13 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { HakoiriMusumeRuleset } from "@engine/shared/rules/HakoiriMusumeRuleset";
 import type {
   HakoiriMusumeState,
   HakoiriMusumeAction,
   Block,
 } from "@engine/shared/rules/HakoiriMusumeRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: HakoiriMusumeState;
@@ -94,6 +96,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "action", action: HakoiriMusumeAction): void;
 }>();
+
+// send は観戦者なら何もしない
+const { isPlaying, send } = useGameSession(props, emit, HakoiriMusumeRuleset);
 
 const selectedBlockId = ref<string | null>(null);
 
@@ -108,7 +113,7 @@ const getBlockStyle = (block: Block) => {
 };
 
 const handleBlockClick = (block: Block) => {
-  if (props.state.status !== "PLAYING") return;
+  if (!isPlaying.value) return;
 
   const possible = getPossibleDirections(block);
   if (possible.length === 0) {
@@ -126,12 +131,7 @@ const handleBlockClick = (block: Block) => {
 };
 
 const moveBlock = (blockId: string, direction: "U" | "D" | "L" | "R") => {
-  emit("action", {
-    type: "MOVE",
-    blockId,
-    direction,
-    playerId: props.myPlayerId,
-  });
+  send({ type: "MOVE", blockId, direction });
 };
 
 const getPossibleDirections = (block: Block) => {

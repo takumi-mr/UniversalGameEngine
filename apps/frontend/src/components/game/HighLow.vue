@@ -21,10 +21,10 @@
         </div>
 
         <div v-if="state.status === 'PLAYING' && state.currentTurn === 2" class="guess-controls">
-          <button class="guess-btn high" :disabled="!isMyTurn(2)" @click="makeGuess('HIGH')">
+          <button class="guess-btn high" :disabled="!isMe(2)" @click="makeGuess('HIGH')">
             <span class="icon">▲</span> HIGH
           </button>
-          <button class="guess-btn low" :disabled="!isMyTurn(2)" @click="makeGuess('LOW')">
+          <button class="guess-btn low" :disabled="!isMe(2)" @click="makeGuess('LOW')">
             <span class="icon">▼</span> LOW
           </button>
         </div>
@@ -102,10 +102,10 @@
       <!-- Player 1 (Bottom) -->
       <div class="player-zone player1-zone" :class="{ 'active-turn': state.currentTurn === 1 }">
         <div v-if="state.status === 'PLAYING' && state.currentTurn === 1" class="guess-controls">
-          <button class="guess-btn high" :disabled="!isMyTurn(1)" @click="makeGuess('HIGH')">
+          <button class="guess-btn high" :disabled="!isMe(1)" @click="makeGuess('HIGH')">
             <span class="icon">▲</span> HIGH
           </button>
-          <button class="guess-btn low" :disabled="!isMyTurn(1)" @click="makeGuess('LOW')">
+          <button class="guess-btn low" :disabled="!isMe(1)" @click="makeGuess('LOW')">
             <span class="icon">▼</span> LOW
           </button>
         </div>
@@ -127,7 +127,9 @@
 </template>
 
 <script setup lang="ts">
+import { HighLowRuleset } from "@engine/shared/rules/HighLowRuleset";
 import type { HighLowState, HighLowAction } from "@engine/shared/rules/HighLowRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: HighLowState;
@@ -135,6 +137,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ (e: "action", action: HighLowAction): void }>();
+
+const { myRole, isPlaying, send } = useGameSession(props, emit, HighLowRuleset);
 
 const getRankLabel = (rank: number) => {
   if (rank === 1) return "A";
@@ -144,14 +148,12 @@ const getRankLabel = (rank: number) => {
   return rank.toString();
 };
 
-const isMyTurn = (playerNumber: 1 | 2) => {
-  if (!props.state.players) return false;
-  return props.state.players[playerNumber] === props.myPlayerId;
-};
+// その席が自分か（自分の側のボタンだけ押せるようにする）
+const isMe = (playerNumber: 1 | 2) => myRole.value === String(playerNumber);
 
 const makeGuess = (choice: "HIGH" | "LOW") => {
-  if (props.state.status !== "PLAYING") return;
-  emit("action", { type: "GUESS", choice, playerId: props.myPlayerId });
+  if (!isPlaying.value) return;
+  send({ type: "GUESS", choice });
 };
 </script>
 

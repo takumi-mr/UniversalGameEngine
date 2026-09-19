@@ -107,7 +107,9 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
+import { SpeedRuleset } from "@engine/shared/rules/SpeedRuleset";
 import type { SpeedState, SpeedAction, Card } from "@engine/shared/rules/SpeedRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 import { revealed } from "@/utils/revealed";
 
 const props = defineProps<{
@@ -118,6 +120,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "action", action: SpeedAction): void;
 }>();
+
+// リアルタイム制で手番がないので send（観戦者ガード + playerId 付与）だけ使う
+const { send } = useGameSession(props, emit, SpeedRuleset);
 
 const selectedHandIndex = ref<number | null>(null);
 
@@ -167,7 +172,7 @@ function getCardColorClass(card: Card): string {
 
 // --- Actions ---
 function startGame() {
-  emit("action", { type: "START", playerId: myPlayerId.value });
+  send({ type: "START" });
 }
 
 function selectCard(index: number) {
@@ -182,24 +187,19 @@ function playCardToPile(pileIndex: number) {
   if (selectedHandIndex.value === null) return;
   const card = myHand.value[selectedHandIndex.value];
 
-  emit("action", {
-    type: "PLAY",
-    card,
-    pileIndex,
-    playerId: myPlayerId.value,
-  });
+  send({ type: "PLAY", card, pileIndex });
 
   selectedHandIndex.value = null;
 }
 
 function toggleStuck() {
-  emit("action", { type: "FLIP", playerId: myPlayerId.value });
+  send({ type: "FLIP" });
 }
 
 function startNewGame() {
   // In many of these engines, START works to reset or the room owner does it
   if (isHost.value) {
-    emit("action", { type: "START", playerId: myPlayerId.value });
+    send({ type: "START" });
   }
 }
 </script>

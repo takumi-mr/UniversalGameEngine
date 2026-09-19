@@ -35,10 +35,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import type { OthelloState, OthelloAction } from "@engine/shared/rules/OthelloRuleset";
 import { OthelloRuleset } from "@engine/shared/rules/OthelloRuleset";
 import { OthelloUI } from "@/three/OthelloUI";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: OthelloState;
@@ -46,24 +47,15 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ (e: "action", action: OthelloAction): void }>();
 
+// legalActions は自分の手番のときだけ入る（Three.js 側の着手候補ハイライトに使う）
+const { legalActions, send } = useGameSession(props, emit, OthelloRuleset);
+
 const canvasContainer = ref<HTMLElement | null>(null);
 let threeUI: OthelloUI;
 
-const legalActions = computed(() => {
-  if (!props.state || !props.myPlayerId) return [];
-  return OthelloRuleset.getLegalActions(props.state, props.myPlayerId);
-});
-
 onMounted(() => {
   if (canvasContainer.value) {
-    threeUI = new OthelloUI(canvasContainer.value, (action) => {
-      // 観戦者ガード
-      const isPlayer =
-        props.state.players && Object.values(props.state.players).includes(props.myPlayerId || "");
-      if (!isPlayer) return;
-
-      emit("action", action);
-    });
+    threeUI = new OthelloUI(canvasContainer.value, send);
     // 初回レンダリング
     threeUI.renderState(props.state, legalActions.value);
   }

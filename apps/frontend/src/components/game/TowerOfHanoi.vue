@@ -75,10 +75,12 @@
 
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import { TowerOfHanoiRuleset } from "@engine/shared/rules/TowerOfHanoiRuleset";
 import type {
   TowerOfHanoiState,
   TowerOfHanoiAction,
 } from "@engine/shared/rules/TowerOfHanoiRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: TowerOfHanoiState;
@@ -86,6 +88,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ (e: "action", action: TowerOfHanoiAction): void }>();
+
+const { isPlaying, send } = useGameSession(props, emit, TowerOfHanoiRuleset);
 
 const selectedTower = ref<number | null>(null);
 const selectedDiskCount = ref(props.state.diskCount);
@@ -99,7 +103,7 @@ watch(
 );
 
 const handleTowerClick = (towerIdx: number) => {
-  if (props.state.status !== "PLAYING") return;
+  if (!isPlaying.value) return;
 
   if (selectedTower.value === null) {
     // Pick up
@@ -112,11 +116,7 @@ const handleTowerClick = (towerIdx: number) => {
   } else {
     // Try to move
     if (isValidMove(selectedTower.value, towerIdx)) {
-      emit("action", {
-        type: "MOVE",
-        from: selectedTower.value,
-        to: towerIdx,
-      });
+      send({ type: "MOVE", from: selectedTower.value, to: towerIdx });
       selectedTower.value = null;
     } else {
       // Invalid move, maybe select the new tower if it has disks?
@@ -165,7 +165,7 @@ const getDiskStyle = (diskSize: number, index: number) => {
 
 const resetGame = () => {
   selectedTower.value = null;
-  emit("action", { type: "RESET", diskCount: selectedDiskCount.value });
+  send({ type: "RESET", diskCount: selectedDiskCount.value });
 };
 </script>
 

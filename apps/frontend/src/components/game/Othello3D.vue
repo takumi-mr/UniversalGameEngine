@@ -33,13 +33,18 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import { Othello3DUI } from "@/three/Othello3DUI";
+import { Othello3DRuleset } from "@engine/shared/rules/Othello3DRuleset";
 import type { GameState, MoveAction } from "@engine/shared/rules/Othello3DRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: GameState;
   myPlayerId?: string;
 }>();
 const emit = defineEmits<{ (e: "action", action: MoveAction): void }>();
+
+// send は観戦者なら何もしないので、Three.js 側からのクリックをそのまま渡せる
+const { send } = useGameSession(props, emit, Othello3DRuleset);
 
 const canvasContainer = ref<HTMLElement | null>(null);
 const GAME_SIZE = 4;
@@ -48,14 +53,7 @@ let threeUI: Othello3DUI;
 
 onMounted(() => {
   if (canvasContainer.value) {
-    threeUI = new Othello3DUI(canvasContainer.value, GAME_SIZE, (action: MoveAction) => {
-      // 観戦者ガード
-      const isPlayer =
-        props.state.players && Object.values(props.state.players).includes(props.myPlayerId || "");
-      if (!isPlayer) return;
-
-      emit("action", action);
-    });
+    threeUI = new Othello3DUI(canvasContainer.value, GAME_SIZE, send);
 
     if (props.state) {
       threeUI.renderState(props.state);

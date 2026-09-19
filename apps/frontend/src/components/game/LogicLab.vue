@@ -9,11 +9,11 @@
         <h2 class="text-h5 font-weight-bold">Circuit Sandbox</h2>
       </div>
       <div class="actions">
-        <v-btn icon="mdi-refresh" variant="text" @click="emit('action', { type: 'RESET' })"></v-btn>
+        <v-btn icon="mdi-refresh" variant="text" @click="send({ type: 'RESET' })"></v-btn>
         <v-btn
           v-if="'currentLevelId' in state"
           color="primary"
-          @click="emit('action', { type: 'CHECK_SOLUTION' })"
+          @click="send({ type: 'CHECK_SOLUTION' })"
         >
           Check Solution
         </v-btn>
@@ -231,6 +231,7 @@ import {
   type LogicCircuitAction,
 } from "@engine/shared/rules/LogicCircuitRuleset";
 import type { LogicBlock, Connection } from "@engine/shared/utils/LogicCircuitEngine";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: LogicLabState | LogicCircuitState;
@@ -239,6 +240,9 @@ const props = defineProps<{
 
 // LogicLab / LogicCircuit のどちらのルールセットにも使う画面なので、両方のアクションを送れる
 const emit = defineEmits<{ (e: "action", action: LogicLabAction | LogicCircuitAction): void }>();
+
+// どちらのルールセットで動いているか画面側では分からない（合法手も使わない）ので ruleset は渡さない
+const { send } = useGameSession(props, emit);
 
 const canvasContainer = ref<HTMLElement | null>(null);
 const canvasWidth = ref(1500);
@@ -310,7 +314,7 @@ const onMouseMove = (e: MouseEvent) => {
   if (draggingBlock.value) {
     const newX = Math.round((mousePos.value.x - dragOffset.value.x) / 10) * 10;
     const newY = Math.round((mousePos.value.y - dragOffset.value.y) / 10) * 10;
-    emit("action", { type: "MOVE_BLOCK", blockId: draggingBlock.value.id, x: newX, y: newY });
+    send({ type: "MOVE_BLOCK", blockId: draggingBlock.value.id, x: newX, y: newY });
   }
 };
 
@@ -350,7 +354,7 @@ const onPinMouseUp = (blockId: string, pinIndex: number, type: "in" | "out") => 
     const toId = type === "in" ? blockId : draggingPin.value.blockId;
     const toPin = type === "in" ? pinIndex : draggingPin.value.pinIndex;
 
-    emit("action", {
+    send({
       type: "CONNECT",
       fromBlockId: fromId,
       fromPinIndex: fromPin,
@@ -364,7 +368,7 @@ const onPinMouseUp = (blockId: string, pinIndex: number, type: "in" | "out") => 
 const onBlockClick = (block: LogicBlock) => {
   selectedBlock.value = block;
   if (block.type === "SWITCH") {
-    emit("action", { type: "TOGGLE_SWITCH", blockId: block.id });
+    send({ type: "TOGGLE_SWITCH", blockId: block.id });
   } else if (block.type === "ROM") {
     romDataArray.value = block.romData ? [...block.romData] : new Array(16).fill(0);
     romEditorOpen.value = true;
@@ -377,14 +381,14 @@ const pulseClock = () => {
       block.type === "SWITCH" &&
       (block.id.toLowerCase().includes("clock") || block.id.toLowerCase().includes("clk"))
     ) {
-      emit("action", { type: "TOGGLE_SWITCH", blockId: block.id });
+      send({ type: "TOGGLE_SWITCH", blockId: block.id });
     }
   });
 };
 
 const saveRomData = () => {
   if (selectedBlock.value && selectedBlock.value.type === "ROM") {
-    emit("action", {
+    send({
       type: "ROM_SET_DATA",
       blockId: selectedBlock.value.id,
       data: [...romDataArray.value],
@@ -464,19 +468,19 @@ const addBlock = (gateType: string) => {
   const rect = canvasContainer.value?.getBoundingClientRect();
   const x = rect ? (canvasContainer.value?.scrollLeft || 0) + 200 : 200;
   const y = rect ? (canvasContainer.value?.scrollTop || 0) + 200 : 200;
-  emit("action", { type: "ADD_BLOCK", gateType, x, y });
+  send({ type: "ADD_BLOCK", gateType, x, y });
 };
 
 const addCustomBlock = (levelId: number) => {
-  emit("action", { type: "ADD_CUSTOM_BLOCK", levelId, x: 200, y: 200 });
+  send({ type: "ADD_CUSTOM_BLOCK", levelId, x: 200, y: 200 });
 };
 
 const removeBlock = (blockId: string) => {
-  emit("action", { type: "REMOVE_BLOCK", blockId });
+  send({ type: "REMOVE_BLOCK", blockId });
 };
 
 const removeConnection = (conn: Connection) => {
-  emit("action", { type: "DISCONNECT", ...conn });
+  send({ type: "DISCONNECT", ...conn });
 };
 </script>
 

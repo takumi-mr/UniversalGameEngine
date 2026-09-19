@@ -134,20 +134,26 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
 import { Equilibrium } from "@/three/Equilibrium";
 import {
   cardNeedsTarget,
+  EquilibriumRuleset,
   type EquilibriumState,
   type EquilibriumAction,
   type Card,
   type PlayerState,
 } from "@engine/shared/rules/EquilibriumRuleset";
 import { revealed } from "@/utils/revealed";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: EquilibriumState;
+  myPlayerId?: string;
 }>();
 
 const emit = defineEmits<{
   (e: "action", action: EquilibriumAction): void;
 }>();
+
+// send は観戦者なら何もしない & playerId を付与する
+const { isMyTurn, send } = useGameSession(props, emit, EquilibriumRuleset);
 
 // --- Refs ---
 const containerRef = ref<HTMLElement | null>(null);
@@ -158,15 +164,7 @@ const bidAmount = ref(1);
 const pendingTargetCardId = ref<string | null>(null);
 
 // --- Computed ---
-const myPlayerId = computed(() => {
-  // 自分が名指しで参加しているかチェック
-  const urlUsername = localStorage.getItem("game_username") || "";
-  if (props.state.playerData[urlUsername]) {
-    return urlUsername;
-  }
-  // 観戦者の場合、暫定的に適当なIDを返すか、nullを許容する
-  return urlUsername;
-});
+const myPlayerId = computed(() => props.myPlayerId ?? "");
 
 const myData = computed(() => props.state.playerData[myPlayerId.value]);
 const opponentData = computed(() => {
@@ -174,7 +172,6 @@ const opponentData = computed(() => {
   delete data[myPlayerId.value];
   return data;
 });
-const isMyTurn = computed(() => props.state.activePlayers?.includes(myPlayerId.value));
 // 倒れた相手は対象にできない
 const targetableOpponents = computed(() =>
   Object.entries(opponentData.value)
@@ -183,74 +180,46 @@ const targetableOpponents = computed(() =>
 );
 
 // --- Helpers ---
-const isPlayer = computed(() => {
-  return !!props.state.playerData[myPlayerId.value];
-});
-
 const getRevealedCard = (opponentData: PlayerState) => {
   return revealed(opponentData.hand)?.find((c) => c.id !== "hidden");
 };
 
 // --- Actions ---
 const submitBid = () => {
-  if (!isPlayer.value) return;
-  emit("action", {
-    type: "BID",
-    playerId: myPlayerId.value,
-    amount: bidAmount.value,
-  });
+  send({ type: "BID", amount: bidAmount.value });
   bidAmount.value = 1;
 };
 const passAuction = () => {
-  if (!isPlayer.value) return;
-  emit("action", { type: "PASS_AUCTION", playerId: myPlayerId.value });
+  send({ type: "PASS_AUCTION" });
 };
 const endTurn = () => {
-  if (!isPlayer.value) return;
-  emit("action", { type: "END_TURN", playerId: myPlayerId.value });
+  send({ type: "END_TURN" });
 };
 
 // サクリファイス処理
 const sacrifice = () => {
-  if (!isPlayer.value) return;
-  emit("action", { type: "SACRIFICE", playerId: myPlayerId.value });
+  send({ type: "SACRIFICE" });
 };
 
 const alterGoal = (newGoalCardId: string) => {
-  if (!isPlayer.value) return;
-  emit("action", {
-    type: "ALTER_GOAL",
-    playerId: myPlayerId.value,
-    newGoalCardId,
-  });
+  send({ type: "ALTER_GOAL", newGoalCardId });
 };
 
 const bluffReveal = (fakeCard: Card) => {
-  if (!isPlayer.value) return;
-  emit("action", { type: "BLUFF_REVEAL", playerId: myPlayerId.value, fakeCard });
+  send({ type: "BLUFF_REVEAL", fakeCard });
 };
 
 const initiatePlay = (card: Card) => {
-  if (!isPlayer.value) return;
   // 対象を取るカード（攻撃・吸収・Peep・Mind_Control・Corruption・対象持ちを複製する Echo）はターゲット選択UIを開く
   if (cardNeedsTarget(card, props.state.lastPlayedCard)) {
     pendingTargetCardId.value = card.id;
   } else {
-    emit("action", {
-      type: "PLAY_CARD",
-      playerId: myPlayerId.value,
-      cardId: card.id,
-    });
+    send({ type: "PLAY_CARD", cardId: card.id });
   }
 };
 
 const confirmPlayWithTarget = (cardId: string, targetId: string) => {
-  emit("action", {
-    type: "PLAY_CARD",
-    playerId: myPlayerId.value,
-    cardId,
-    targetId,
-  });
+  send({ type: "PLAY_CARD", cardId, targetId });
   pendingTargetCardId.value = null;
 };
 
