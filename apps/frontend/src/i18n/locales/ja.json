@@ -33,7 +33,14 @@
     "choose_join_mode": "プレイするか、観戦するか選んでください。",
     "join_as_player": "プレイヤーとして参加",
     "join_as_spectator": "観戦者として参加",
-    "cancel": "キャンセル"
+    "cancel": "キャンセル",
+    "sound": {
+      "title": "サウンド",
+      "enabled": "有効",
+      "master": "全体",
+      "bgm": "BGM",
+      "se": "効果音"
+    }
   },
   "games": {
     "tictactoe": {

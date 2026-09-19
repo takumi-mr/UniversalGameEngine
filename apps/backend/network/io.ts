@@ -7,6 +7,7 @@
 // 通知には Socket.io の serverSideEmit（アダプタの pub/sub）をそのまま使う。
 import { randomUUID } from "crypto";
 import type { Server } from "socket.io";
+import type { BaseGameAction } from "@engine/shared/GameRules";
 
 /** このプロセスを識別する ID（自分が発行したイベントを無視するために使う） */
 export const INSTANCE_ID = randomUUID();
@@ -27,8 +28,11 @@ export const getIoInstance = (): Server => {
 export const isClusterEnabled = () => clusterEnabled;
 
 export interface ClusterEvents {
-  /** 対局の状態が更新された（保存済み）。各インスタンスは自分のクライアントへ配信し直す */
-  "uge:state-changed": { gameId: string; version: number };
+  /**
+   * 対局の状態が更新された（保存済み）。各インスタンスは自分のクライアントへ配信し直す。
+   * action はこの更新を生んだアクション（dispatchAction 経由のときだけ。クライアントの演出・効果音用）
+   */
+  "uge:state-changed": { gameId: string; version: number; action?: BaseGameAction };
   /** セッションが削除された。各インスタンスはローカルキャッシュを捨てる */
   "uge:session-deleted": { gameId: string };
   /** gRPC ボットの手番が来た。ボットのストリームを持つインスタンスが転送する */

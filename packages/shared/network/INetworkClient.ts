@@ -1,4 +1,13 @@
-import type { BaseGameState } from "@engine/shared/GameRules";
+import type { BaseGameAction, BaseGameState } from "@engine/shared/GameRules";
+
+/**
+ * 状態配信（state-update の第 2 引数 / state-patch の追加フィールド）に同梱される付随情報。
+ * action はその更新を生んだアクション（サーバーの dispatchAction 経由のときだけ入る。
+ * JOIN / START / 離席・再同期では undefined）。クライアントの演出・効果音の判定に使う。
+ */
+export interface StateUpdateMeta {
+  action?: BaseGameAction;
+}
 
 export interface GameMetadata {
   playerCount: number;
@@ -22,7 +31,8 @@ export interface ChatMessage {
 
 export interface INetworkClient<TState extends BaseGameState, TAction> {
   // 外部（UI層など）からセットされるコールバック
-  onStateUpdate: (state: TState) => void;
+  // meta.action はその更新を生んだアクション（配信元が同梱したときだけ）
+  onStateUpdate: (state: TState, meta?: StateUpdateMeta) => void;
   onError: (message: string) => void;
   onMetadataUpdate?: (metadata: GameMetadata) => void;
   onChatMessage?: (chat: ChatMessage) => void;

@@ -276,6 +276,52 @@ describe("sessionStore", () => {
     expect(patches[0].p.hash).toBe(patches[2].p.hash);
   });
 
+  it("dispatchAction の配信には適用したアクションが同梱され、JOIN/START の commit や再同期には付かない", async () => {
+    const { server } = createSession("g8b", newTicTacToe(), "tictactoe");
+    // state-update は (state, meta)、state-patch は payload.action で受け取る
+    const received: { ev: string; action?: BaseGameAction }[] = [];
+    localSockets = [
+      {
+        id: "s1",
+        data: { userId: "p1" },
+        emit: (ev: string, p: unknown, meta?: unknown) => {
+          if (ev === "state-update")
+            received.push({
+              ev,
+              action: (meta as { action?: BaseGameAction } | undefined)?.action,
+            });
+          if (ev === "state-patch")
+            received.push({ ev, action: (p as { action?: BaseGameAction }).action });
+        },
+      },
+    ];
+    const flush = () => new Promise((r) => setTimeout(r, 0));
+
+    await server.commit(); // JOIN / START のみ: アクションは付かない
+    await flush();
+    expect(received.at(-1)).toEqual({ ev: "state-update", action: undefined });
+
+    await server.dispatchAction("p1", { type: "PLACE", index: 4 });
+    await flush();
+    expect(received.at(-1)!.ev).toBe("state-patch");
+    expect(received.at(-1)!.action).toMatchObject({ type: "PLACE", index: 4, playerId: "p1" });
+
+    // 再同期（特定ソケットへのフル送信）にはアクションを付けない
+    server.broadcastLocal("s1", { type: "PLACE", playerId: "p2" });
+    await flush();
+    expect(received.at(-1)).toEqual({ ev: "state-update", action: undefined });
+
+    // 別インスタンスから届いたアクションも配信に同梱する
+    const other = new UniversalEngine(TicTacToeRuleset, {});
+    other.loadState(asTTT(structuredClone((await repo.loadSession("g8b"))!.state)));
+    const remoteAction: TicTacToeAction = { type: "PLACE", index: 8, playerId: "p2" };
+    other.dispatch(remoteAction);
+    await repo.saveSession("g8b", { type: "tictactoe", state: other.getState() });
+    await onRemoteStateChanged("g8b", remoteAction);
+    await flush();
+    expect(received.at(-1)!.action).toMatchObject(remoteAction);
+  });
+
   it("履歴が replayFlushSize に達したら記録へ追記して切り詰め、完全なリプレイは記録側に残る", async () => {
     const prev = SocketGameServer.replayFlushSize;
     SocketGameServer.replayFlushSize = 4;

@@ -86,6 +86,7 @@ import type {
 } from "@engine/shared/GameRules";
 import { ProvablyFairRNG } from "@engine/shared/utils/ProvablyFairRNG";
 import { deepFreeze } from "@engine/shared/utils/freeze";
+import type { ReplayStepEvent } from "@/components/replayEvents";
 
 // リプレイはゲーム種別を問わず再生するので、レジストリ由来の共通型で受け取る
 const props = defineProps<{
@@ -93,6 +94,8 @@ const props = defineProps<{
   ruleset: GameRuleset<BaseGameState, BaseGameAction>;
   playSpeedMs?: number;
 }>();
+
+const emit = defineEmits<{ (e: "step", ev: ReplayStepEvent): void }>();
 
 const states = ref<BaseGameState[]>([]);
 const actions = computed<BaseGameAction[]>(() => props.record.actions);
@@ -143,9 +146,18 @@ const reconstructStates = () => {
   states.value = reconstructed;
   currentStep.value = 0;
   pause();
+  notifyStep(0, -1);
+};
+
+/** 表示ステップの変化を親に知らせる（記録の読み込み直後は prevStep = -1） */
+const notifyStep = (step: number, prevStep: number) => {
+  const state = states.value[step];
+  if (!state) return;
+  emit("step", { step, prevStep, state, action: actions.value[step - 1] ?? null });
 };
 
 watch(() => props.record, reconstructStates, { deep: true, immediate: true });
+watch(currentStep, (step, prevStep) => notifyStep(step, prevStep));
 
 // --- Playback Controls ---
 const togglePlay = () => {

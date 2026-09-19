@@ -4,4 +4,5 @@ export default defineGameUI({
   type: "mahjong_match",
   category: "Board Games",
   component: () => import("@/components/game/MahjongMatch.vue"),
+  sound: () => import("@/games/mahjong_match/sound"),
 });
