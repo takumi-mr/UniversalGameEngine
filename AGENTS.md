@@ -94,7 +94,7 @@ applyWinResult?, getTimeoutAction?              // 任意
 1. `packages/shared/rules/<Name>Ruleset.ts` を実装（[rules/README.md](./packages/shared/rules/README.md) のベストプラクティス: アクションディスパッチャ、フェーズ分割、`Secret<T>`）。
 2. `packages/shared/GameRegistry.ts` に `register({ type, name, ruleset, minPlayers, maxPlayers, ... })`。`type` は小文字スネークケース（例 `othello_3d`）。
 3. テスト `packages/shared/rules/__tests__/<Name>Ruleset.test.ts`（bun:test）。
-4. フロント: `apps/frontend/src/constants/games.ts` に追加、`src/components/game/<Name>.vue` を作成し `GenericGameView.vue` の型ユニオン/マッピングに追加、必要なら `src/i18n/`。
+4. フロント: `src/components/game/<Name>.vue` を作成し、`apps/frontend/src/games/<type>/index.ts` に `defineGameUI({ type, category, component: () => import(...) })` を置く（`games/registry.ts` が自動収集し、対局・リプレイ・選択画面すべてに反映される。名前・人数などは GameRegistry から取る）。`src/i18n/` の `games.<type>` に name/description/rules を追加。コンポーネント内の「自分は誰か・何ができるか」は `useGameSession(props, emit, Ruleset)` の `isPlayer / isMyTurn / legalActions / can / send` を使い、ルール判定を UI に書かない。駒を選んで動かす系は `useSelectAndMove` も併用（`Chess.vue` 参照）。
 5. AI 学習対象にするなら `ai/TensorAdapter/<Name>TensorAdapter.ts`（+ `.test.ts` で合法手との 1 対 1 対応を確認）+ `index.ts` 登録 + `apps/ml/uge_rl/games.py` に `GameSpec`。学習したモデルは `uge_rl.serve` でそのまま対局相手になる。
 
 ### proto を変更する

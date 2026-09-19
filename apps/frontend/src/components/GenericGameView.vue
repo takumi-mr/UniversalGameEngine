@@ -132,89 +132,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, defineAsyncComponent, type Component } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { SocketIoClient } from "../../network/SocketIoClient";
 import ChatPanel from "@/components/ChatPanel.vue";
-import { availableGames } from "@/constants/games";
+import { getGameCatalogEntry, getGameComponent } from "@/games/registry";
 import type { BaseGameState, BaseGameAction } from "@engine/shared/GameRules";
 
-// 各ゲームの型をインポート
-import type { TicTacToeState, TicTacToeAction } from "@engine/shared/rules/TicTacToeRuleset";
-import type { OthelloState, OthelloAction } from "@engine/shared/rules/OthelloRuleset";
-import type {
-  GameState as Othello3DState,
-  MoveAction as Othello3DAction,
-} from "@engine/shared/rules/Othello3DRuleset";
-import type { RubiksState, RubiksAction } from "@engine/shared/rules/RubicCubeRuleset";
-import type { ChessState, ChessAction } from "@engine/shared/rules/ChessRuleset";
-import type { EquilibriumState, EquilibriumAction } from "@engine/shared/rules/EquilibriumRuleset";
-import type { ShogiState, ShogiAction } from "@engine/shared/rules/ShogiRuleset";
-import type { HighLowState, HighLowAction } from "@engine/shared/rules/HighLowRuleset";
-import type { MancalaState, MancalaAction } from "@engine/shared/rules/MancalaRuleset";
-import type { SudokuState, SudokuAction } from "@engine/shared/rules/SudokuRuleset";
-import type { MahjongState, MahjongAction } from "@engine/shared/rules/mahjong/MahjongRuleset";
-import type { WordleState, WordleAction } from "@engine/shared/rules/WordleRuleset";
-import type { SpeedState, SpeedAction } from "@engine/shared/rules/SpeedRuleset";
-import type { MinesweeperState, MinesweeperAction } from "@engine/shared/rules/MinesweeperRuleset";
-import type {
-  HakoiriMusumeState,
-  HakoiriMusumeAction,
-} from "@engine/shared/rules/HakoiriMusumeRuleset";
-import type {
-  TowerOfHanoiState,
-  TowerOfHanoiAction,
-} from "@engine/shared/rules/TowerOfHanoiRuleset";
-import type {
-  LogicCircuitState,
-  LogicCircuitAction,
-} from "@engine/shared/rules/LogicCircuitRuleset";
-import type { LogicLabState, LogicLabAction } from "@engine/shared/rules/LogicLabRuleset";
-import type { CyberStrikeState, CyberStrikeAction } from "@engine/shared/rules/CyberStrikeRuleset";
-
-// 共用体型の定義
-type GameState =
-  | TicTacToeState
-  | OthelloState
-  | Othello3DState
-  | RubiksState
-  | ChessState
-  | EquilibriumState
-  | ShogiState
-  | BaseGameState
-  | HighLowState
-  | MancalaState
-  | SudokuState
-  | MahjongState
-  | WordleState
-  | SpeedState
-  | MinesweeperState
-  | HakoiriMusumeState
-  | TowerOfHanoiState
-  | LogicCircuitState
-  | LogicLabState
-  | CyberStrikeState;
-type GameAction =
-  | TicTacToeAction
-  | OthelloAction
-  | Othello3DAction
-  | RubiksAction
-  | ChessAction
-  | EquilibriumAction
-  | ShogiAction
-  | BaseGameAction
-  | HighLowAction
-  | MancalaAction
-  | SudokuAction
-  | MahjongAction
-  | WordleAction
-  | SpeedAction
-  | MinesweeperAction
-  | HakoiriMusumeAction
-  | TowerOfHanoiAction
-  | LogicCircuitAction
-  | LogicLabAction
-  | CyberStrikeAction;
+// この画面はゲーム種別を問わず動くので、エンジン共通の型で扱う。
+// 具体的な State / Action 型は各盤面コンポーネント側が持つ。
+type GameState = BaseGameState;
+type GameAction = BaseGameAction;
 
 const props = defineProps<{
   gameType: string;
@@ -257,36 +185,8 @@ const chatMessages = ref<
   }[]
 >([]);
 
-// 動的コンポーネントのマッピング
-const components: Record<string, Component> = {
-  tictactoe: defineAsyncComponent(() => import("@/components/game/TicTacToe.vue")),
-  othello: defineAsyncComponent(() => import("@/components/game/Othello.vue")),
-  othello_3d: defineAsyncComponent(() => import("@/components/game/Othello3D.vue")),
-  shogi: defineAsyncComponent(() => import("@/components/game/Shogi.vue")),
-  rubiks_cube: defineAsyncComponent(() => import("@/components/game/RubiksCube.vue")),
-  chess: defineAsyncComponent(() => import("@/components/game/Chess.vue")),
-  chess_3d: defineAsyncComponent(() => import("@/components/game/Chess3D.vue")),
-  go: defineAsyncComponent(() => import("@/components/game/Go.vue")),
-  equilibrium: defineAsyncComponent(() => import("@/components/game/Equilibrium.vue")),
-  daifugo: defineAsyncComponent(() => import("@/components/game/Daifugo/Daifugo.vue")),
-  high_low: defineAsyncComponent(() => import("@/components/game/HighLow.vue")),
-  texas_holdem: defineAsyncComponent(() => import("@/components/game/TexasHoldem.vue")),
-  uno: defineAsyncComponent(() => import("@/components/game/Uno.vue")),
-  mancala: defineAsyncComponent(() => import("@/components/game/Mancala.vue")),
-  sudoku: defineAsyncComponent(() => import("@/components/game/Sudoku.vue")),
-  mahjong: defineAsyncComponent(() => import("@/components/game/Mahjong.vue")),
-  shogi_3d: defineAsyncComponent(() => import("@/components/game/Shogi3D.vue")),
-  wordle: defineAsyncComponent(() => import("@/components/game/Wordle.vue")),
-  speed: defineAsyncComponent(() => import("@/components/game/Speed.vue")),
-  minesweeper: defineAsyncComponent(() => import("@/components/game/Minesweeper.vue")),
-  hakoiri_musume: defineAsyncComponent(() => import("@/components/game/HakoiriMusume.vue")),
-  tower_of_hanoi: defineAsyncComponent(() => import("@/components/game/TowerOfHanoi.vue")),
-  logic_circuit: defineAsyncComponent(() => import("@/components/game/LogicLab.vue")),
-  logic_lab: defineAsyncComponent(() => import("@/components/game/LogicLab.vue")),
-  cyber_strike: defineAsyncComponent(() => import("@/components/game/CyberStrike.vue")),
-};
-
-const gameComponent = computed(() => components[props.gameType] || null);
+// 盤面コンポーネントは src/games/<type>/index.ts の定義から引く
+const gameComponent = computed(() => getGameComponent(props.gameType));
 
 let client: SocketIoClient<GameState, GameAction>;
 
@@ -302,10 +202,7 @@ const playerEntries = computed<[string, string | null][]>(() => {
   return Object.entries(gameState.value.players) as [string, string | null][];
 });
 
-const gameMinPlayers = computed(() => {
-  const game = availableGames.find((g) => g.type === props.gameType);
-  return game?.minPlayers ?? 0;
-});
+const gameMinPlayers = computed(() => getGameCatalogEntry(props.gameType)?.minPlayers ?? 0);
 
 const currentPlayerCount = computed(() => {
   if (!gameState.value?.players) return 0;

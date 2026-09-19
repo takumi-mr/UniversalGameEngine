@@ -1,15 +1,19 @@
 <template>
   <div v-if="state" class="chess-container">
-    <div v-if="showPromotionDialog" class="promotion-overlay">
+    <div v-if="pending" class="promotion-overlay">
       <div class="promotion-modal">
         <h3>プロモーションする駒を選択</h3>
         <div class="promotion-options">
-          <button @click="confirmPromotion(5)">{{ state.turn === 1 ? "♕" : "♛" }} Queen</button>
-          <button @click="confirmPromotion(4)">{{ state.turn === 1 ? "♖" : "♜" }} Rook</button>
-          <button @click="confirmPromotion(3)">{{ state.turn === 1 ? "♗" : "♝" }} Bishop</button>
-          <button @click="confirmPromotion(2)">{{ state.turn === 1 ? "♘" : "♞" }} Knight</button>
+          <button
+            v-for="option in pending"
+            :key="option.promotion"
+            @click="choosePromotion(option)"
+          >
+            {{ getPieceChar((option.promotion ?? 0) * state.turn) }}
+            {{ PROMOTION_NAMES[option.promotion ?? 0] }}
+          </button>
         </div>
-        <button class="cancel-btn" @click="cancelPromotion">キャンセル</button>
+        <button class="cancel-btn" @click="cancelPromotion()">キャンセル</button>
       </div>
     </div>
 
@@ -21,8 +25,8 @@
           class="cell"
           :class="[
             isLightSquare(index) ? 'light-square' : 'dark-square',
-            { 'is-selected': selectedIndex === index },
-            { 'is-valid-move': isValidMove(index) },
+            { 'is-selected': selected === index },
+            { 'is-valid-move': isTarget(index) },
             { 'is-in-check': isKingInCheck(index) },
           ]"
           @click="onSquareClick(index)"
@@ -34,7 +38,7 @@
           >
             {{ getPieceChar(state.board[index]) }}
           </span>
-          <div v-if="isValidMove(index)" class="hint-dot" />
+          <div v-if="isTarget(index)" class="hint-dot" />
         </div>
       </div>
     </div>
@@ -42,9 +46,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
 import { ChessRuleset } from "@engine/shared/rules/ChessRuleset";
 import type { ChessState, ChessAction } from "@engine/shared/rules/ChessRuleset";
+import { useGameSession } from "@/composables/useGameSession";
+import { useSelectAndMove } from "@/composables/useSelectAndMove";
 
 const props = defineProps<{
   state: ChessState;
@@ -53,10 +58,16 @@ const props = defineProps<{
 
 const emit = defineEmits<{ (e: "action", action: ChessAction): void }>();
 
-// UIのインタラクション状態
-const selectedIndex = ref<number | null>(null);
-const showPromotionDialog = ref<boolean>(false);
-const pendingMove = ref<{ from: number; to: number } | null>(null);
+const { legalActions, send } = useGameSession(props, emit, ChessRuleset);
+// 駒選択 → 移動先 → （昇格なら）駒種選択。すべて合法手リストから判定する
+const {
+  selected,
+  pending,
+  isTarget,
+  click: onSquareClick,
+  choose: choosePromotion,
+  cancel: cancelPromotion,
+} = useSelectAndMove(legalActions, send);
 
 // --- ヘルパー関数 ---
 
@@ -79,6 +90,13 @@ const getPieceChar = (val: number): string => {
   return chars[val] || "";
 };
 
+const PROMOTION_NAMES: Record<number, string> = {
+  5: "Queen",
+  4: "Rook",
+  3: "Bishop",
+  2: "Knight",
+};
+
 // チェス盤の市松模様の判定（左上 A8 が白マス(Light)になるように調整）
 const isLightSquare = (index: number): boolean => {
   const x = index % 8;
@@ -86,102 +104,10 @@ const isLightSquare = (index: number): boolean => {
   return (x + y) % 2 === 0;
 };
 
-// --- ロジック ---
-
-// 現在選択されている駒の合法手リストを計算
-const validActionsForSelected = computed<ChessAction[]>(() => {
-  if (selectedIndex.value === null || !props.state || props.state.status !== "PLAYING") return [];
-
-  // 現在のターンのプレイヤーからのアクションとして取得
-  const currentPlayerId = props.state.players?.[props.state.turn] || "";
-  const allActions = ChessRuleset.getLegalActions(props.state, currentPlayerId);
-
-  // 選択したマスからの移動のみにフィルタリング
-  return allActions.filter((a) => a.from === selectedIndex.value);
-});
-
-const isValidMove = (index: number): boolean => {
-  return validActionsForSelected.value.some((a) => a.to === index);
-};
-
 // キングがチェックされているマスを赤くするための簡易判定
 const isKingInCheck = (_index: number): boolean => {
   // Engine側でCheck判定が実装されたらここを更新
   return false;
-};
-
-// 盤面クリック時の処理
-const onSquareClick = (index: number) => {
-  if (!props.state || props.state.status !== "PLAYING") return;
-
-  // 観戦者ガード
-  const isPlayer =
-    props.state.players && Object.values(props.state.players).includes(props.myPlayerId || "");
-  if (!isPlayer) return;
-
-  const clickedPiece = props.state.board[index];
-
-  // 1. 何も選択されていない場合、自分の駒をクリックしたら選択
-  if (selectedIndex.value === null) {
-    if (clickedPiece !== 0 && Math.sign(clickedPiece) === props.state.turn) {
-      selectedIndex.value = index;
-    }
-    return;
-  }
-
-  // 2. 既に選択されている場合
-  if (selectedIndex.value === index) {
-    // 同じマスをクリックしたら選択解除
-    selectedIndex.value = null;
-    return;
-  }
-
-  if (clickedPiece !== 0 && Math.sign(clickedPiece) === props.state.turn) {
-    // 別の自分の駒をクリックしたら選択を切り替え
-    selectedIndex.value = index;
-    return;
-  }
-
-  // 移動先の候補をクリックしたか判定
-  const actions = validActionsForSelected.value.filter((a) => a.to === index);
-  if (actions.length > 0) {
-    // プロモーション（昇格）を伴うアクションが複数（Q, R, B, N）含まれている場合
-    const isPromotion = actions.some((a) => a.promotion !== undefined);
-
-    if (isPromotion) {
-      pendingMove.value = { from: selectedIndex.value, to: index };
-      showPromotionDialog.value = true;
-    } else {
-      // 通常の移動
-      emit("action", actions[0]);
-      selectedIndex.value = null;
-    }
-  } else {
-    // 合法手ではない関係ないマスをクリックした場合は選択解除
-    selectedIndex.value = null;
-  }
-};
-
-// プロモーションのダイアログ処理
-const confirmPromotion = (promoPiece: number) => {
-  if (pendingMove.value) {
-    const action: ChessAction = {
-      type: "MOVE",
-      from: pendingMove.value.from,
-      to: pendingMove.value.to,
-      promotion: promoPiece,
-    };
-    emit("action", action);
-  }
-  showPromotionDialog.value = false;
-  pendingMove.value = null;
-  selectedIndex.value = null;
-};
-
-const cancelPromotion = () => {
-  showPromotionDialog.value = false;
-  pendingMove.value = null;
-  selectedIndex.value = null;
 };
 </script>
 

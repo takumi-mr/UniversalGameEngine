@@ -14,9 +14,7 @@
         </div>
 
         <div class="actions">
-          <button class="pass-btn" :disabled="state.status !== 'PLAYING'" @click="passTurn">
-            🏳️ パス
-          </button>
+          <button class="pass-btn" :disabled="!canPass" @click="passTurn">🏳️ パス</button>
         </div>
 
         <div v-if="state.scores" class="score-board">
@@ -37,9 +35,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { Go3DUI } from "@/three/GoUI";
+import { GoRuleset } from "@engine/shared/rules/GoRuleset";
 import type { GoState, GoAction } from "@engine/shared/rules/GoRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: GoState;
@@ -47,19 +47,15 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ (e: "action", action: GoAction): void }>();
 
+// send は観戦者なら何もしないので、Three.js 側からのクリックもそのまま渡せる
+const { can, send } = useGameSession(props, emit, GoRuleset);
+
 const canvasContainer = ref<HTMLElement | null>(null);
 let threeUI: Go3DUI | null = null;
 
 onMounted(() => {
   if (canvasContainer.value && props.state) {
-    threeUI = new Go3DUI(canvasContainer.value, props.state.size, (action) => {
-      // 観戦者ガード
-      const isPlayer =
-        props.state.players && Object.values(props.state.players).includes(props.myPlayerId || "");
-      if (!isPlayer) return;
-
-      emit("action", action);
-    });
+    threeUI = new Go3DUI(canvasContainer.value, props.state.size, send);
     threeUI.renderState(props.state);
   }
 });
@@ -78,15 +74,10 @@ watch(
   { deep: true },
 );
 
-const passTurn = () => {
-  if (props.state.status === "PLAYING") {
-    // 観戦者ガード
-    const isPlayer =
-      props.state.players && Object.values(props.state.players).includes(props.myPlayerId || "");
-    if (!isPlayer) return;
+const canPass = computed(() => can((a) => a.type === "PASS"));
 
-    emit("action", { type: "PASS" });
-  }
+const passTurn = () => {
+  if (canPass.value) send({ type: "PASS" });
 };
 </script>
 

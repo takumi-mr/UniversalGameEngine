@@ -94,7 +94,7 @@ class GameRegistry {
       minPlayers: 2,
       maxPlayers: 2,
       description: "古典的なチェス。",
-      emoji: "♔",
+      emoji: "♟️",
       rules:
         "キング、クイーン、ルーク、ビショップ、ナイト、ポーンを動かして、相手のキングをチェックメイトします。",
     });
@@ -147,7 +147,7 @@ class GameRegistry {
       minPlayers: 2,
       maxPlayers: 6,
       description: "テキサスホールデムポーカー。",
-      emoji: "🂡",
+      emoji: "🎰",
       rules: "2枚の手札と5枚の共通カードを組み合わせて最強の役を作ります。",
     });
     this.register({
@@ -177,7 +177,7 @@ class GameRegistry {
       minPlayers: 2,
       maxPlayers: 4,
       description: "大富豪（ジョーカー入り54枚）。",
-      emoji: "👑",
+      emoji: "🎴",
       rules:
         "手札を早く出し切り、大富豪を目指すトランプゲームです。オプションで革命（4枚以上の同ランク出しで強弱反転）・8切り（8を出すと場が流れる）といったローカルルールを有効にできます。",
     });
@@ -228,7 +228,7 @@ class GameRegistry {
       minPlayers: 2,
       maxPlayers: 2,
       description: "古典的な将棋。",
-      emoji: "☗",
+      emoji: "☖",
       rules: "取った駒を自駒として使えるのが特徴です。相手の玉将を詰ませれば勝利。",
     });
     this.register({

@@ -55,7 +55,9 @@
 </template>
 
 <script setup lang="ts">
+import { TicTacToeRuleset } from "@engine/shared/rules/TicTacToeRuleset";
 import type { TicTacToeState, TicTacToeAction } from "@engine/shared/rules/TicTacToeRuleset";
+import { useGameSession } from "@/composables/useGameSession";
 
 const props = defineProps<{
   state: TicTacToeState;
@@ -63,25 +65,20 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ (e: "action", action: TicTacToeAction): void }>();
 
+const { can, send } = useGameSession(props, emit, TicTacToeRuleset);
+
 // 勝利マスのハイライト（シンプルに盤面がいっぱいかチェックするロジックなどはバックエンドにあるため、
 // 本来的にはバックエンドから勝利ラインが送られてくるのが理想。今回は暫定的に表示のみ。）
 const isWinningCell = (_index: number) => {
   return false; // バックエンドから情報が来るまで一旦無効
 };
 
-const isClickable = (index: number): boolean => {
-  if (props.state.status !== "PLAYING") return false;
-  // 自分がプレイヤーリストに含まれているかチェック
-  const isPlayer =
-    props.state.players && Object.values(props.state.players).includes(props.myPlayerId || "");
-  if (!isPlayer) return false;
-
-  return props.state.board[index] === 0;
-};
+// 「空きマスか」「自分の手番か」「観戦者でないか」は合法手リストがまとめて答えてくれる
+const isClickable = (index: number): boolean => can((a) => a.type === "PLACE" && a.index === index);
 
 const placePiece = (index: number) => {
   if (!isClickable(index)) return;
-  emit("action", { type: "PLACE", index });
+  send({ type: "PLACE", index });
 };
 </script>
 

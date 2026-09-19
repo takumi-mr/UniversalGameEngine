@@ -72,7 +72,7 @@ import GenericGameView from "@/components/GenericGameView.vue";
 import GameHelpDialog from "@/components/game/GameHelpDialog.vue";
 import GameHelpTabs from "@/components/game/GameHelpTabs.vue";
 import ThemeSwitcher from "@/components/ThemeSwitcher.vue";
-import { availableGames } from "@/constants/games";
+import { getGameCatalogEntry } from "@/games/registry";
 
 import { useAuthStore } from "@/store/auth";
 import { useGameStore } from "@/store/game";
@@ -93,7 +93,7 @@ const username = computed(() => authStore.username || "Unknown");
 
 const showHelp = ref(false);
 
-const gameInfo = computed(() => availableGames.find((g) => g.type === gameType.value));
+const gameInfo = computed(() => getGameCatalogEntry(gameType.value));
 
 import { onMounted } from "vue";
 onMounted(() => {

@@ -32,6 +32,7 @@
               :is="gameComponent"
               v-if="gameComponent"
               :state="state"
+              :game-id="recordId ?? 'replay'"
               my-player-id="SPECTATOR"
             />
 
@@ -46,8 +47,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, defineAsyncComponent, type Component } from "vue";
+import { ref, computed, onMounted } from "vue";
 import ReplayViewer from "@/components/ReplayViewer.vue";
+import { getReplayComponent } from "@/games/registry";
 import { gameRegistry } from "@engine/shared/GameRegistry";
 import type {
   GameRecord,
@@ -73,13 +75,8 @@ const ruleset = ref<GameRuleset<BaseGameState, BaseGameAction> | null>(null);
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 const fileInput = ref<HTMLInputElement | null>(null);
 
-const components: Record<string, Component> = {
-  tictactoe: defineAsyncComponent(() => import("@/components/game/TicTacToe.vue")),
-  othello: defineAsyncComponent(() => import("@/components/game/Othello.vue")),
-  mahjong: defineAsyncComponent(() => import("@/components/game/Mahjong.vue")),
-};
-
-const gameComponent = computed(() => components[props.gameType] || null);
+// 盤面コンポーネントは src/games/<type>/index.ts の定義から引く（replay: false のゲームは JSON 表示）
+const gameComponent = computed(() => getReplayComponent(props.gameType));
 
 onMounted(async () => {
   try {
