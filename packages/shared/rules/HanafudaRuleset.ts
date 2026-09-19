@@ -27,6 +27,7 @@ export interface HanafudaState extends BaseGameState {
 }
 
 export type HanafudaActionType =
+  | "START"
   | "PLAY_CARD"
   | "CHOOSE_MATCH"
   | "DRAW_DECK"
@@ -121,67 +122,86 @@ const proceedToNextTurnOrYakuCheck = (state: HanafudaState, playerId: string): H
   return state;
 };
 
+const seatedPlayerIds = (state: HanafudaState): string[] =>
+  Object.values(state.players ?? {}).filter((p): p is string => typeof p === "string");
+
+// 着席した 2 人に配札して対局を開始する（スロット "1" が親）
+const startGame = (state: HanafudaState, rng?: IGameRNG): HanafudaState => {
+  const playerIds = seatedPlayerIds(state);
+  const deckArr = createDeck(rng);
+  const handsRaw: Record<string, Card[]> = { [playerIds[0]]: [], [playerIds[1]]: [] };
+  const field: Card[] = [];
+
+  for (let i = 0; i < 8; i++) {
+    handsRaw[playerIds[0]].push(deckArr.pop()!);
+    handsRaw[playerIds[1]].push(deckArr.pop()!);
+    field.push(deckArr.pop()!);
+  }
+
+  const hands: Record<string, Secret<Card[]>> = {};
+  for (const pid of playerIds) {
+    hands[pid] = createSecret(
+      handsRaw[pid],
+      [pid],
+      handsRaw[pid].map(() => "?"),
+    );
+  }
+
+  return {
+    ...state,
+    status: "PLAYING",
+    activePlayers: [playerIds[0]], // 最初は親の番
+    playerIds,
+    turnIndex: 0,
+    deck: createSecret(
+      deckArr,
+      [],
+      deckArr.map(() => "?"),
+    ),
+    field,
+    hands,
+    captured: { [playerIds[0]]: [], [playerIds[1]]: [] },
+    phase: "PLAY_HAND",
+    pendingCard: undefined,
+    matchingOptions: undefined,
+    yakuScores: { [playerIds[0]]: 0, [playerIds[1]]: 0 },
+    koikoiCount: { [playerIds[0]]: 0, [playerIds[1]]: 0 },
+  };
+};
+
 export interface HanafudaOptions {
+  // エンジンのシード（serverSeed / clientSeed）などもこのオブジェクトで渡される
+  [key: string]: unknown;
+  /** テスト・RL 用。指定すると最初から着席済みにする（配札は START 時） */
   playerIds?: string[];
 }
 
 // --- 3. ルールセット本体 ---
 
 export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction, HanafudaOptions> = {
-  getInitialState: (options?: HanafudaOptions, rng?: IGameRNG): HanafudaState => {
-    // [TODO] 実運用時はoptions.playerIdsが存在するかチェックする
-    const playerIds = options?.playerIds || ["player1", "player2"];
-    const deckArr = createDeck(rng);
-    const handsRaw = {
-      [playerIds[0]]: [] as Card[],
-      [playerIds[1]]: [] as Card[],
-    };
-    const captured: Record<string, Card[]> = {
-      [playerIds[0]]: [],
-      [playerIds[1]]: [],
-    };
-    const field: Card[] = [];
-
-    for (let i = 0; i < 8; i++) {
-      handsRaw[playerIds[0]].push(deckArr.pop()!);
-      handsRaw[playerIds[1]].push(deckArr.pop()!);
-      field.push(deckArr.pop()!);
-    }
-
-    const hands: Record<string, Secret<Card[]>> = {
-      [playerIds[0]]: createSecret(
-        handsRaw[playerIds[0]],
-        [playerIds[0]],
-        handsRaw[playerIds[0]].map(() => "?"),
-      ),
-      [playerIds[1]]: createSecret(
-        handsRaw[playerIds[1]],
-        [playerIds[1]],
-        handsRaw[playerIds[1]].map(() => "?"),
-      ),
-    };
-
+  getInitialState: (options?: HanafudaOptions): HanafudaState => {
+    // 席は空で始め、エンジンの組み込み JOIN で埋める。配札は START で行う
+    const [p1 = null, p2 = null] = options?.playerIds ?? [];
     return {
       status: "WAITING",
-      players: { [playerIds[0]]: playerIds[0], [playerIds[1]]: playerIds[1] },
-      activePlayers: [playerIds[0]], // 最初は親の番
-      playerIds,
+      players: { "1": p1, "2": p2 },
+      activePlayers: [],
+      playerIds: [],
       turnIndex: 0,
-      deck: createSecret(
-        deckArr,
-        [],
-        deckArr.map(() => "?"),
-      ),
-      field,
-      hands,
-      captured,
+      deck: createSecret([], [], []),
+      field: [],
+      hands: {},
+      captured: {},
       phase: "PLAY_HAND",
-      yakuScores: { [playerIds[0]]: 0, [playerIds[1]]: 0 },
-      koikoiCount: { [playerIds[0]]: 0, [playerIds[1]]: 0 },
+      yakuScores: {},
+      koikoiCount: {},
     };
   },
 
   isValidAction: (state, action) => {
+    if (action.type === "START") {
+      return state.status === "WAITING" && seatedPlayerIds(state).length === 2;
+    }
     if (state.status !== "PLAYING") return false;
 
     // エンジン側で検証済みの playerId を使用
@@ -228,7 +248,9 @@ export const HanafudaRuleset: GameRuleset<HanafudaState, HanafudaAction, Hanafud
     return actions;
   },
 
-  reduce: (state, action, _rng?: IGameRNG) => {
+  reduce: (state, action, rng?: IGameRNG) => {
+    if (action.type === "START") return startGame(state, rng);
+
     const newState = structuredClone(state);
     const pId = action.playerId!;
 
