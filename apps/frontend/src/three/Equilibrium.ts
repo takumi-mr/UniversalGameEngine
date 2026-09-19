@@ -1,41 +1,26 @@
-// Equilibrium3D.ts
+// src/three/Equilibrium.ts
 import * as THREE from "three";
 import type { EquilibriumState } from "@engine/shared/rules/EquilibriumRuleset";
+import { BaseThreeUI } from "./BaseThreeUI";
 
-export class Equilibrium {
-  private scene: THREE.Scene;
-  private camera: THREE.PerspectiveCamera;
-  private renderer: THREE.WebGLRenderer;
-  private animationId: number = 0;
-
+export class Equilibrium extends BaseThreeUI {
   private cardMeshes: THREE.Group = new THREE.Group();
 
   constructor(canvas: HTMLCanvasElement) {
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0f172a); // Tailwindのslate-900
-
-    this.camera = new THREE.PerspectiveCamera(
-      50,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000,
-    );
-    this.camera.position.set(0, 12, 12);
-    this.camera.lookAt(0, 0, 0);
-
-    this.renderer = new THREE.WebGLRenderer({
+    // Vue 側の canvas に直接描画する。サイズは ResizeObserver から resize() で渡される
+    super(canvas, {
       canvas,
-      antialias: true,
-      alpha: true,
+      fov: 50,
+      cameraPosition: [0, 12, 12],
+      background: 0x0f172a, // Tailwindのslate-900
+      orbitControls: false,
+      pixelRatio: Math.min(window.devicePixelRatio, 2), // パフォーマンス最適化
     });
-    this.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // パフォーマンス最適化
 
     this.scene.add(this.cardMeshes);
 
     this.setupLighting();
     this.setupTable();
-    this.startLoop();
   }
 
   private setupLighting() {
@@ -118,32 +103,14 @@ export class Equilibrium {
     this.cardMeshes.add(mesh);
   }
 
-  private startLoop() {
-    const animate = () => {
-      this.animationId = requestAnimationFrame(animate);
-
-      // カードをフワフワ浮遊させるアニメーション
-      const time = Date.now() * 0.002;
-      this.cardMeshes.children.forEach((child) => {
-        const mesh = child as THREE.Mesh;
-        const { initialY, floatSpeed, floatOffset } = mesh.userData;
-        mesh.position.y = initialY + Math.sin(time * floatSpeed + floatOffset) * 0.2 + 0.2;
-        mesh.rotation.y = Math.sin(time * floatSpeed * 0.5) * 0.1;
-      });
-
-      this.renderer.render(this.scene, this.camera);
-    };
-    animate();
-  }
-
-  public resize(width: number, height: number) {
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height);
-  }
-
-  public destroy() {
-    cancelAnimationFrame(this.animationId);
-    this.renderer.dispose();
+  protected override onFrame() {
+    // カードをフワフワ浮遊させるアニメーション
+    const time = Date.now() * 0.002;
+    this.cardMeshes.children.forEach((child) => {
+      const mesh = child as THREE.Mesh;
+      const { initialY, floatSpeed, floatOffset } = mesh.userData;
+      mesh.position.y = initialY + Math.sin(time * floatSpeed + floatOffset) * 0.2 + 0.2;
+      mesh.rotation.y = Math.sin(time * floatSpeed * 0.5) * 0.1;
+    });
   }
 }

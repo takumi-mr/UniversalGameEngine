@@ -1,18 +1,10 @@
 // src/three/OthelloUI.ts
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { OthelloState, OthelloAction } from "@engine/shared/rules/OthelloRuleset";
+import { BaseThreeUI } from "./BaseThreeUI";
 
-export class OthelloUI {
+export class OthelloUI extends BaseThreeUI {
   private onAction: (action: OthelloAction) => void;
-  private container: HTMLElement;
-
-  private scene!: THREE.Scene;
-  private camera!: THREE.PerspectiveCamera;
-  private renderer!: THREE.WebGLRenderer;
-  private controls!: OrbitControls;
-  private raycaster!: THREE.Raycaster;
-  private mouse!: THREE.Vector2;
 
   private pieces: (THREE.Mesh | null)[][] = [];
   private hitBoxes: THREE.Mesh[][] = [];
@@ -26,8 +18,6 @@ export class OthelloUI {
     targetRot: number;
     progress: number;
   }[] = [];
-  private animationId: number | null = null;
-  private isDisposed = false;
 
   // マテリアル定義
   private matBoard = new THREE.MeshLambertMaterial({ color: 0x1e5631 }); // 深い緑色（フェルト生地風）
@@ -48,38 +38,20 @@ export class OthelloUI {
   ];
 
   constructor(container: HTMLElement, onActionCallback: (action: OthelloAction) => void) {
-    this.container = container;
+    super(container, {
+      fov: 50,
+      cameraPosition: [0, 7, 7],
+      background: 0x1a1a2e, // 少し青みがかったダークな背景
+      shadowMap: true, // 影を有効化してリッチに
+    });
     this.onAction = onActionCallback;
+    this.controls!.maxPolarAngle = Math.PI / 2 - 0.1; // 真下からは見えないように制限
 
     // 8x8の配列を初期化
     for (let y = 0; y < 8; y++) {
       this.pieces[y] = Array(8).fill(null);
       this.hitBoxes[y] = [];
     }
-
-    this.initThreeJS(container);
-  }
-
-  private initThreeJS(container: HTMLElement) {
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x1a1a2e); // 少し青みがかったダークな背景
-
-    this.camera = new THREE.PerspectiveCamera(
-      50,
-      container.clientWidth / container.clientHeight,
-      0.1,
-      1000,
-    );
-    this.camera.position.set(0, 7, 7);
-
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
-    this.renderer.shadowMap.enabled = true; // 影を有効化してリッチに
-    container.appendChild(this.renderer.domElement);
-
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
-    this.controls.maxPolarAngle = Math.PI / 2 - 0.1; // 真下からは見えないように制限
 
     // --- ライティング ---
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.4));
@@ -90,15 +62,7 @@ export class OthelloUI {
 
     this.initBoard();
 
-    this.raycaster = new THREE.Raycaster();
-    this.mouse = new THREE.Vector2();
-
-    this.onClick = this.onClick.bind(this);
-    this.onResize = this.onResize.bind(this);
-    window.addEventListener("click", this.onClick, false);
-    window.addEventListener("resize", this.onResize, false);
-
-    this.animate();
+    this.addListener(window, "click", this.onClick.bind(this));
   }
 
   private initBoard() {
@@ -194,10 +158,7 @@ export class OthelloUI {
   private onClick(event: MouseEvent) {
     if (!this.currentState || this.currentState.status !== "PLAYING") return;
 
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
+    this.updateMouse(event);
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
     // 当たり判定用ボックス（hitBoxes）のみを対象にする
@@ -219,49 +180,12 @@ export class OthelloUI {
     }
   }
 
-  private onResize() {
-    if (!this.container) return;
-    this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-  }
-
   // --- イージング関数（滑らかなアニメーション用） ---
   private easeInOutSine(x: number): number {
     return -(Math.cos(Math.PI * x) - 1) / 2;
   }
 
-  public dispose() {
-    this.isDisposed = true;
-    if (this.animationId !== null) {
-      cancelAnimationFrame(this.animationId);
-    }
-    window.removeEventListener("click", this.onClick);
-    window.removeEventListener("resize", this.onResize);
-
-    // リソースの解放
-    this.renderer.dispose();
-    this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.geometry.dispose();
-        if (Array.isArray(object.material)) {
-          object.material.forEach((m) => m.dispose());
-        } else {
-          object.material.dispose();
-        }
-      }
-    });
-
-    if (this.container && this.renderer.domElement) {
-      this.container.removeChild(this.renderer.domElement);
-    }
-  }
-
-  private animate() {
-    if (this.isDisposed) return;
-    this.animationId = requestAnimationFrame(this.animate.bind(this));
-    if (this.controls) this.controls.update();
-
+  protected override onFrame() {
     // --- アニメーションの進行処理 ---
     for (let i = this.flipAnimations.length - 1; i >= 0; i--) {
       const anim = this.flipAnimations[i];
@@ -297,7 +221,5 @@ export class OthelloUI {
         }
       }
     }
-
-    this.renderer.render(this.scene, this.camera);
   }
 }

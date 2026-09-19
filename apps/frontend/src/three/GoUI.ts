@@ -1,27 +1,16 @@
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { GoState, GoAction } from "@engine/shared/rules/GoRuleset";
+import { BaseThreeUI } from "./BaseThreeUI";
 
-export class Go3DUI {
-  private container: HTMLElement;
+export class Go3DUI extends BaseThreeUI {
   private size: number;
   private onAction: (action: GoAction) => void;
-
-  private scene!: THREE.Scene;
-  private camera!: THREE.PerspectiveCamera;
-  private renderer!: THREE.WebGLRenderer;
-  private controls!: OrbitControls;
-  private raycaster!: THREE.Raycaster;
-  private mouse!: THREE.Vector2;
 
   private stones: (THREE.Mesh | null)[] = [];
   private hitBoxes: THREE.Mesh[] = [];
 
   private currentState: GoState | null = null;
   private ghostStone: THREE.Mesh | null = null;
-
-  private animationId: number | null = null;
-  private isDisposed = false;
 
   // --- マテリアルとジオメトリ ---
   private matBoard = new THREE.MeshLambertMaterial({ color: 0xdeb887 }); // 碁盤（木目調）
@@ -42,34 +31,16 @@ export class Go3DUI {
   private stoneYOffset = 0.48 * 0.4;
 
   constructor(container: HTMLElement, size: number, onActionCallback: (action: GoAction) => void) {
-    this.container = container;
+    super(container, {
+      fov: 50,
+      cameraPosition: [0, size * 1.2, size * 1.0],
+      background: 0x1a1a2e,
+      shadowMap: true,
+    });
     this.size = size;
     this.onAction = onActionCallback;
     this.stones = Array(size * size).fill(null);
-
-    this.initThreeJS(container);
-  }
-
-  private initThreeJS(container: HTMLElement) {
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x1a1a2e);
-
-    this.camera = new THREE.PerspectiveCamera(
-      50,
-      container.clientWidth / container.clientHeight,
-      0.1,
-      1000,
-    );
-    this.camera.position.set(0, this.size * 1.2, this.size * 1.0);
-
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
-    this.renderer.shadowMap.enabled = true;
-    container.appendChild(this.renderer.domElement);
-
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
-    this.controls.maxPolarAngle = Math.PI / 2 - 0.1; // 真下からは見えないように
+    this.controls!.maxPolarAngle = Math.PI / 2 - 0.1; // 真下からは見えないように
 
     // ライト設定
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.5));
@@ -80,18 +51,8 @@ export class Go3DUI {
 
     this.initBoard();
 
-    this.raycaster = new THREE.Raycaster();
-    this.mouse = new THREE.Vector2();
-
-    this.onClick = this.onClick.bind(this);
-    this.onMouseMove = this.onMouseMove.bind(this);
-    this.onResize = this.onResize.bind(this);
-
-    window.addEventListener("click", this.onClick, false);
-    window.addEventListener("mousemove", this.onMouseMove, false);
-    window.addEventListener("resize", this.onResize, false);
-
-    this.animate();
+    this.addListener(window, "click", this.onClick.bind(this));
+    this.addListener(window, "mousemove", this.onMouseMove.bind(this));
   }
 
   private initBoard() {
@@ -205,10 +166,7 @@ export class Go3DUI {
   private onMouseMove(event: MouseEvent) {
     if (!this.currentState || this.currentState.status !== "PLAYING") return;
 
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
+    this.updateMouse(event);
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const intersects = this.raycaster.intersectObjects(this.hitBoxes);
 
@@ -242,33 +200,5 @@ export class Go3DUI {
         this.ghostStone!.visible = false;
       }
     }
-  }
-
-  private onResize() {
-    if (!this.container) return;
-    this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-  }
-
-  public dispose() {
-    this.isDisposed = true;
-    if (this.animationId !== null) cancelAnimationFrame(this.animationId);
-
-    window.removeEventListener("click", this.onClick);
-    window.removeEventListener("mousemove", this.onMouseMove);
-    window.removeEventListener("resize", this.onResize);
-
-    this.renderer.dispose();
-    if (this.container && this.renderer.domElement) {
-      this.container.removeChild(this.renderer.domElement);
-    }
-  }
-
-  private animate() {
-    if (this.isDisposed) return;
-    this.animationId = requestAnimationFrame(this.animate.bind(this));
-    if (this.controls) this.controls.update();
-    this.renderer.render(this.scene, this.camera);
   }
 }

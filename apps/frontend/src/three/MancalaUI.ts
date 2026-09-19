@@ -1,18 +1,10 @@
-// src/three/Mancala3DUI.ts
+// src/three/MancalaUI.ts
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { MancalaState, MancalaAction } from "@engine/shared/rules/MancalaRuleset";
+import { BaseThreeUI } from "./BaseThreeUI";
 
-export class MancalaUI {
-  private container: HTMLElement;
+export class MancalaUI extends BaseThreeUI {
   private onAction: (action: MancalaAction) => void;
-
-  private scene!: THREE.Scene;
-  private camera!: THREE.PerspectiveCamera;
-  private renderer!: THREE.WebGLRenderer;
-  private controls!: OrbitControls;
-  private raycaster!: THREE.Raycaster;
-  private mouse!: THREE.Vector2;
 
   // メッシュの保持
   private pitMeshes: THREE.Mesh[] = [];
@@ -24,11 +16,6 @@ export class MancalaUI {
 
   // アニメーション管理
   private isAnimating = false;
-
-  // イベントリスナーの参照（解除用）
-  private onClickBound: (event: MouseEvent) => void;
-  private onMouseMoveBound: (event: MouseEvent) => void;
-  private onResizeBound: () => void;
 
   // --- マテリアルとジオメトリ ---
 
@@ -75,44 +62,12 @@ export class MancalaUI {
     onActionCallback: (action: MancalaAction) => void,
     myPlayerId: string = "",
   ) {
-    this.container = container;
+    super(container, { fov: 50, cameraPosition: [0, 8, 5], background: 0x1a1a1a, shadowMap: true });
     this.onAction = onActionCallback;
     this.myPlayerId = myPlayerId;
     this.geomStone.scale(1, 0.6, 1);
-
-    // イベントハンドラのバインド
-    this.onClickBound = this.onClick.bind(this);
-    this.onMouseMoveBound = this.onMouseMove.bind(this);
-    this.onResizeBound = this.onResize.bind(this);
-
-    this.initThreeJS();
-    this.initBoard();
-    this.initStonePool();
-    this.animate();
-  }
-
-  private initThreeJS() {
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x1a1a1a);
-
-    this.camera = new THREE.PerspectiveCamera(
-      50,
-      this.container.clientWidth / this.container.clientHeight,
-      0.1,
-      1000,
-    );
-    this.camera.position.set(0, 8, 5);
-
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-    this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
-    this.container.appendChild(this.renderer.domElement);
-
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.target.set(0, 0, 0);
-    this.controls.enableDamping = true;
-    this.controls.maxPolarAngle = Math.PI / 2 - 0.1;
+    this.controls!.maxPolarAngle = Math.PI / 2 - 0.1;
 
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
@@ -127,12 +82,11 @@ export class MancalaUI {
     backLight.position.set(-5, -2, -5);
     this.scene.add(backLight);
 
-    this.raycaster = new THREE.Raycaster();
-    this.mouse = new THREE.Vector2();
+    this.addListener(container, "click", this.onClick.bind(this));
+    this.addListener(container, "mousemove", this.onMouseMove.bind(this));
 
-    this.container.addEventListener("click", this.onClickBound, false);
-    this.container.addEventListener("mousemove", this.onMouseMoveBound, false);
-    window.addEventListener("resize", this.onResizeBound, false);
+    this.initBoard();
+    this.initStonePool();
   }
 
   private initBoard() {
@@ -277,10 +231,7 @@ export class MancalaUI {
       return;
     }
 
-    const rect = this.container.getBoundingClientRect();
-    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
+    this.updateMouse(event);
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const highlights = this.scene.children.filter(
       (obj) => obj.userData && obj.userData.isHighlight && obj.visible,
@@ -310,10 +261,7 @@ export class MancalaUI {
   private onClick(event: MouseEvent) {
     if (!this.currentState || this.currentState.status !== "PLAYING" || this.isAnimating) return;
 
-    const rect = this.container.getBoundingClientRect();
-    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
+    this.updateMouse(event);
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const highlights = this.scene.children.filter(
       (obj) => obj.userData && obj.userData.isHighlight && obj.visible,
@@ -330,30 +278,5 @@ export class MancalaUI {
         playerId: currentPlayerId,
       });
     }
-  }
-
-  private onResize() {
-    if (!this.container) return;
-    this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-  }
-
-  private animate() {
-    requestAnimationFrame(this.animate.bind(this));
-    if (this.controls) this.controls.update();
-    this.renderer.render(this.scene, this.camera);
-  }
-
-  public dispose() {
-    this.container.removeEventListener("click", this.onClickBound);
-    this.container.removeEventListener("mousemove", this.onMouseMoveBound);
-    window.removeEventListener("resize", this.onResizeBound);
-    this.renderer.dispose();
-    this.geomStone.dispose();
-    this.matBoard.dispose();
-    this.matPitInterior.dispose();
-    this.matHighlight.dispose();
-    this.matStone.dispose();
   }
 }
