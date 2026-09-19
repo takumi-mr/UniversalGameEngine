@@ -170,6 +170,70 @@ def _chess_from_obs_dim(game_type: str) -> Callable[[int], GameSpec]:
     return build
 
 
+# ---------------------------------------------------------------------- 囲碁
+# GoTensorAdapter（packages/shared/ai/TensorAdapter/GoTensorAdapter.ts）の契約（N = size × size。size は観測次元から求める）:
+#   obs[0:N]    現在の盤面。自分の石 = +1、相手の石 = -1、空 = 0（白番のプレイヤーから見ると符号反転。回転はしない）
+#   obs[N:2N]   直前に石が置かれる前の盤面（同じ符号規約。開始直後は全 0）。コウの禁止点や最後の着手位置が分かる
+#   obs[2N]     連続パス数（0 or 1。1 なら自分がパスすると終局）
+#   obs[2N+1]   自分視点のコミ（黒なら -komi、白なら +komi。自分の色も兼ねる）
+#   action = 打つ点の index（0..N-1）、N = パス
+GO_KOMI_SCALE = 10.0
+# 入力チャンネル: 自分の石 / 相手の石 / 直前の自分の石 / 直前の相手の石 / 連続パス数 / コミ / 定数 1（盤端の検出用）
+GO_CHANNELS = 7
+
+
+def go_board_size(obs_dim: int) -> int:
+    """観測次元から盤のサイズを求める（2 × size² + 2）。"""
+    n = (obs_dim - 2) // 2
+    size = int(math.isqrt(max(n, 0)))
+    if obs_dim < 2 or (obs_dim - 2) % 2 != 0 or size * size != n:
+        raise ValueError(f"go: obs_dim={obs_dim} is not 2 * size^2 + 2")
+    return size
+
+
+def go_obs_dim(size: int) -> int:
+    return size * size * 2 + 2
+
+
+def go_n_actions(size: int) -> int:
+    return size * size + 1
+
+
+def _go_planes(size: int) -> Callable[[np.ndarray], np.ndarray]:
+    n = size * size
+
+    def encode(obs: np.ndarray) -> np.ndarray:
+        """2N + 2 要素の観測 → (7, size, size)。"""
+        if obs.shape[-1] != go_obs_dim(size):
+            raise ValueError(f"go: expected obs_dim={go_obs_dim(size)}, got {obs.shape[-1]}")
+        lead = obs.shape[:-1]
+        board = obs[..., :n].reshape(*lead, size, size)
+        prev = obs[..., n : 2 * n].reshape(*lead, size, size)
+        stones = np.stack([board == 1, board == -1, prev == 1, prev == -1], axis=-3)
+        scalars = np.stack([obs[..., 2 * n], obs[..., 2 * n + 1] / GO_KOMI_SCALE, np.ones(lead)], axis=-1)
+        scalar_planes = np.broadcast_to(scalars[..., None, None], (*lead, 3, size, size))
+        return np.concatenate([stones, scalar_planes], axis=-3).astype(np.float32)
+
+    return encode
+
+
+def make_go_spec(size: int = 9) -> GameSpec:
+    return GameSpec(
+        game_type="go",
+        obs_shape=(GO_CHANNELS, size, size),
+        n_actions=go_n_actions(size),
+        encode=_go_planes(size),
+        description=(
+            f"Go {size}x{size}: obs=自分=+1/相手=-1 の盤面 + 直前の盤面 + パス数 + コミ, "
+            f"action=打つ点の index / {size * size}=パス ({go_n_actions(size)} 通り)"
+        ),
+    )
+
+
+def _go_from_obs_dim(obs_dim: int) -> GameSpec:
+    return make_go_spec(go_board_size(obs_dim))
+
+
 # ---------------------------------------------------------------------- レジストリ
 # game_type → (obs_dim → GameSpec)。サーバーが返す観測次元でアダプタとの整合を確認する
 _REGISTRY: dict[str, Callable[[int], GameSpec]] = {
@@ -178,6 +242,7 @@ _REGISTRY: dict[str, Callable[[int], GameSpec]] = {
     "shogi_3d": _shogi_from_obs_dim("shogi_3d"),
     "chess": _chess_from_obs_dim("chess"),
     "chess_3d": _chess_from_obs_dim("chess_3d"),
+    "go": _go_from_obs_dim,
 }
 
 

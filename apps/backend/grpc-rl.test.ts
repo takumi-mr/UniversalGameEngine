@@ -28,6 +28,9 @@ import { PIECES } from "@engine/shared/rules/ChessRuleset";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import { SHOGI_OBS_DIM } from "@engine/shared/ai/TensorAdapter/ShogiTensorAdapter";
 import { CHESS_OBS_DIM } from "@engine/shared/ai/TensorAdapter/ChessTensorAdapter";
+import type { GoState } from "@engine/shared/rules/GoRuleset";
+import { DEFAULT_KOMI } from "@engine/shared/rules/GoRuleset";
+import { goObsDim, goPassAction } from "@engine/shared/ai/TensorAdapter/GoTensorAdapter";
 // Redis/MongoDB へ接続しないよう、モジュール読み込み前に RL_MODE を有効化する
 process.env.RL_MODE = "true";
 const { startGrpcServer } = await import("@engine/backend/grpc-server");
@@ -447,6 +450,94 @@ describe("gRPC RL loop (Reset/Step)", () => {
     expect(stepped.isFinished).toBe(true);
     expect(stepped.reward).toBe(1);
     expect(stepped.legalActionIds).toEqual([]);
+  });
+
+  it("囲碁: Reset は 164 要素の観測と 82 の合法手（全点 + パス）を返し、Step / Simulate で打ち進められること", async () => {
+    const { gameId } = await createGame({ gameType: "go" });
+    const res = await reset({ gameId, playerIds: ["black", "white"] });
+    expect(res.activePlayers).toEqual(["black"]);
+    expect(res.initialStateTensor.length).toBe(goObsDim(9));
+    expect(res.initialLegalActionIds.length).toBe(82);
+    expect(res.initialLegalActionIds).toContain(goPassAction(9));
+    // 空盤、パス 0、黒視点のコミは -6.5
+    expect(res.initialStateTensor.slice(0, 162).every((v) => v === 0)).toBe(true);
+    expect(res.initialStateTensor.slice(162)).toEqual([0, -DEFAULT_KOMI]);
+
+    // Step: 黒が天元 (4,4) = 40 に打つ → 白視点の観測（相手の石は -1、直前の盤面は空、コミは +6.5）
+    const tengen = 40;
+    const stepped = await step({ gameId, playerId: "black", actionId: tengen });
+    expect(stepped.isFinished).toBe(false);
+    expect(stepped.activePlayers).toEqual(["white"]);
+    expect(stepped.nextStateTensor[tengen]).toBe(-1);
+    expect(stepped.nextStateTensor[81 + tengen]).toBe(0);
+    expect(stepped.nextStateTensor.slice(162)).toEqual([0, DEFAULT_KOMI]);
+    // 白は天元以外の 80 点 + パス
+    expect(stepped.legalActionIds.length).toBe(81);
+    expect(stepped.legalActionIds).not.toContain(tengen);
+    const state = JSON.parse(stepped.stateJson) as GoState;
+    expect(state.turn).toBe(-1);
+    expect(state.board[tengen]).toBe(1);
+
+    // Simulate: Step と同じ手を初期局面に適用すると同じ局面になる
+    const sim = await simulate({
+      gameType: "go",
+      stateJson: res.stateJson,
+      playerId: "black",
+      actionId: tengen,
+    });
+    expect(sim.error).toBe("");
+    expect((JSON.parse(sim.stateJson) as GoState).board).toEqual(state.board);
+    expect(sim.stateTensor).toEqual(stepped.nextStateTensor);
+  });
+
+  it("囲碁: 2 連続パスで終局し、Simulate / Step が地の多い側に報酬 1 を返すこと", async () => {
+    // 黒が天元に 1 子だけ置いた盤（黒 81 目 vs 白 コミ 6.5）。白番でパス → 黒がパスすると終局
+    const { gameId } = await createGame({ gameType: "go" });
+    const res = await reset({ gameId, playerIds: ["black", "white"] });
+    const state = JSON.parse(res.stateJson) as GoState;
+    state.board[40] = 1;
+    state.turn = -1;
+    state.activePlayers = ["white"];
+    state.history = [state.board.join(",")];
+    const pass = goPassAction(9);
+
+    // Simulate: 白のパス（1 回目）は終局しない。観測（黒視点）のパス数は 1
+    const first = await simulate({
+      gameType: "go",
+      stateJson: JSON.stringify(state),
+      playerId: "white",
+      actionId: pass,
+    });
+    expect(first.error).toBe("");
+    expect(first.isFinished).toBe(false);
+    expect(first.reward).toBe(0);
+    expect(first.activePlayers).toEqual(["black"]);
+    expect(first.stateTensor[162]).toBe(1);
+    // 黒のパス（2 回目）で終局。黒の勝ちなので黒視点の報酬は 1
+    const second = await simulate({
+      gameType: "go",
+      stateJson: first.stateJson,
+      playerId: "black",
+      actionId: pass,
+    });
+    expect(second.error).toBe("");
+    expect(second.isFinished).toBe(true);
+    expect(second.reward).toBe(1);
+    expect(second.legalActionIds).toEqual([]);
+    const finished = JSON.parse(second.stateJson) as GoState;
+    expect(finished.status).toBe("FINISHED");
+    expect(finished.scores).toEqual({ black: 81, white: DEFAULT_KOMI });
+
+    // Step も同じ（セッションの局面を差し替えてから打つ）。白がパスして負けを確定させると白視点の報酬は -1
+    const blackToMove: GoState = { ...state, turn: 1, activePlayers: ["black"] };
+    sessions.get(gameId)!.server.engine.loadState(blackToMove);
+    const blackPass = await step({ gameId, playerId: "black", actionId: pass });
+    expect(blackPass.isFinished).toBe(false);
+    expect(blackPass.legalActionIds.length).toBe(81);
+    const whitePass = await step({ gameId, playerId: "white", actionId: pass });
+    expect(whitePass.isFinished).toBe(true);
+    expect(whitePass.reward).toBe(-1);
+    expect(whitePass.legalActionIds).toEqual([]);
   });
 
   it("将棋: gRPC ボットは WaitForTurn 接続時に手番を受け取り、SubmitTurn で指せること", async () => {
