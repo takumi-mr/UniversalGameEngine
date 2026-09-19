@@ -43,6 +43,8 @@ interface PreparedState {
   sent: BaseGameState;
   /** 基準バージョン → その版からの差分（同じ targetId のソケットで共有） */
   patches: Map<number, { patch: Operation[]; payload: string }>;
+  /** この閲覧者に同梱するメタ（アクションはルールセットの maskAction で隠した後のもの） */
+  meta: StateUpdateMeta;
 }
 
 export class SocketGameServer extends GenericGameServer<BaseGameState, BaseGameAction> {
@@ -240,15 +242,14 @@ export class SocketGameServer extends GenericGameServer<BaseGameState, BaseGameA
    * @param targetSocketId 指定するとそのソケットにだけフル状態を送る（再同期要求）
    * @param action この更新を生んだアクション。状態本体には入れず（hash・差分計算に影響するため）
    *   state-update の第 2 引数 / state-patch の action フィールドとして同梱する。
-   *   部屋の全員（観戦者含む）に届くので、アクションに秘匿情報を載せないこと
+   *   部屋の全員（観戦者含む）に届くので、他人に見せてはいけない項目を持つアクションは
+   *   ルールセットの maskAction で閲覧者ごとに隠す（engine.getMaskedAction）
    */
   public broadcastLocal(targetSocketId?: string, action?: BaseGameAction): void {
     const state = this.engine.getState();
     const version = state.version ?? 0;
     const players = state.players ? (Object.values(state.players).filter(Boolean) as string[]) : [];
     const isForceFull = !!targetSocketId;
-    // 再同期（特定ソケットへのフル送信）は「どの手で進んだか」を伴わない
-    const meta: StateUpdateMeta = isForceFull ? {} : { action };
 
     const prepared = new Map<string, PreparedState>();
     const prepare = (userId: string): PreparedState => {
@@ -260,9 +261,15 @@ export class SocketGameServer extends GenericGameServer<BaseGameState, BaseGameA
         maskedState.version = version;
         maskedState.hash = calculateStateHash(maskedState);
         const json = JSON.stringify(maskedState);
+        // 再同期（特定ソケットへのフル送信）は「どの手で進んだか」を伴わない
+        const meta: StateUpdateMeta = {};
+        if (!isForceFull && action) {
+          const visible = this.engine.getMaskedAction(action, targetId);
+          if (visible) meta.action = visible;
+        }
         // 「最後に送った状態」はクライアントが受け取ったものと同じ（JSON を経由した）形で持つ。
         // 同じ targetId のソケットで共有するので変更しないこと
-        entry = { targetId, maskedState, json, sent: JSON.parse(json), patches: new Map() };
+        entry = { targetId, maskedState, json, sent: JSON.parse(json), patches: new Map(), meta };
         prepared.set(targetId, entry);
       }
       return entry;
@@ -275,7 +282,7 @@ export class SocketGameServer extends GenericGameServer<BaseGameState, BaseGameA
           if (targetSocketId && socket.id !== targetSocketId) continue;
 
           const entry = prepare(socket.data.userId);
-          const { maskedState, json: statePayload } = entry;
+          const { maskedState, json: statePayload, meta } = entry;
 
           const socketId = socket.id;
           const previousState = this.lastSentState.get(socketId);

@@ -521,6 +521,10 @@ export const WerewolfRuleset: GameRuleset<WerewolfState, WerewolfAction, Werewol
     return newState;
   },
 
+  // 夜の行動は「誰が行動したか」だけでも役職が割れる（行動するのは人狼・占い師・騎士だけ）ので、本人以外には配信しない。
+  // 投票と議論の打ち切りは公開情報
+  maskAction: (_state, action) => (action.type === "NIGHT_ACTION" ? null : action),
+
   checkWinCondition: (state: WerewolfState) => {
     const aliveWerewolves = state.alivePlayers.filter((id) => state.roles[id].value === "werewolf");
     const aliveVillagers = state.alivePlayers.filter((id) => state.roles[id].value !== "werewolf");

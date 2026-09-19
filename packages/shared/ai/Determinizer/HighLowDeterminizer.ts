@@ -1,5 +1,11 @@
 import type { IAIStateDeterminizer } from "@engine/shared/ai/IAIStateDeterminizer";
-import type { Card, HighLowState, Suit } from "@engine/shared/rules/HighLowRuleset";
+import {
+  secretDeck,
+  type Card,
+  type HighLowState,
+  type Suit,
+} from "@engine/shared/rules/HighLowRuleset";
+import { isSecret } from "@engine/shared/GameRules";
 
 const SUITS: Suit[] = ["♠", "♥", "♦", "♣"];
 
@@ -27,6 +33,13 @@ export class HighLowDeterminizer implements IAIStateDeterminizer<HighLowState> {
       [unseen[i], unseen[j]] = [unseen[j], unseen[i]];
     }
 
-    return { ...maskedState, deck: unseen.slice(0, maskedState.deck.length) };
+    // 山札は Secret<Card[]>。マスク済み状態では枚数分の "?" の配列に展開されているので、どちらでも枚数を取れるようにする
+    const deck: unknown = maskedState.deck;
+    const size = isSecret(deck)
+      ? (deck.value as Card[]).length
+      : Array.isArray(deck)
+        ? deck.length
+        : 0;
+    return { ...maskedState, deck: secretDeck(unseen.slice(0, size)) };
   }
 }

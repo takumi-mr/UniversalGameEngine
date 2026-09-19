@@ -365,6 +365,13 @@ export const CaveDiveRuleset: GameRuleset<CaveDiveState, CaveDiveAction> = {
     };
   },
 
+  // 「掘るか、逃げるか」は同時に秘密で選ぶので、選んだ事実だけを他人に見せて中身は落とす
+  maskAction: (_state, action) => {
+    if (action.type !== "CHOOSE") return action;
+    const { choice: _choice, ...rest } = action;
+    return rest;
+  },
+
   // 制限時間切れ: まだ選んでいない人は「逃げる」扱い（安全側）
   getTimeoutAction: (state, playerId) =>
     state.inCave.includes(playerId) && !state.choices[playerId]

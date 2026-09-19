@@ -55,7 +55,7 @@ describe("UniversalEngine builtin JOIN / START", () => {
     expect(state.status).toBe("PLAYING");
     // HighLow の START は山札を配る（組み込み START だけではこうならない）
     expect(state.baseCard).not.toBeNull();
-    expect(state.deck.length).toBeGreaterThan(0);
+    expect(state.deck.value.length).toBeGreaterThan(0);
   });
 
   it("着席・開始を含む対局が GameRecord からハッシュ一致で完全に再現できること", () => {

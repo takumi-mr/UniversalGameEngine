@@ -73,36 +73,29 @@ const getTileLetter = (row: number, col: number) => {
   return "";
 };
 
+// 正解はサーバー側の Secret で、クライアントには届かない。各文字の判定（results）はサーバーが計算したものを使う
 const getTileClass = (row: number, col: number) => {
   if (row >= props.state.guesses.length) return "";
-
-  const guess = props.state.guesses[row];
-  const letter = guess[col];
-  const secret = props.state.secretWord;
-
-  if (letter === secret[col]) return "correct";
-  if (secret.includes(letter)) return "present";
-  return "absent";
+  return props.state.results[row]?.[col] ?? "";
 };
 
 const getKeyClass = (key: string) => {
   if (key === "ENTER" || key === "BACKSPACE") return "wide";
 
   let status = "";
-  for (const guess of props.state.guesses) {
+  props.state.guesses.forEach((guess, row) => {
     for (let i = 0; i < guess.length; i++) {
-      if (guess[i] === key) {
-        if (guess[i] === props.state.secretWord[i]) {
-          return "correct";
-        }
-        if (props.state.secretWord.includes(key)) {
-          status = "present";
-        } else if (status !== "present") {
-          status = "absent";
-        }
+      if (guess[i] !== key) continue;
+      const result = props.state.results[row]?.[i];
+      if (result === "correct") {
+        status = "correct";
+      } else if (result === "present" && status !== "correct") {
+        status = "present";
+      } else if (result === "absent" && status === "") {
+        status = "absent";
       }
     }
-  }
+  });
   return status;
 };
 

@@ -1,5 +1,8 @@
 import { expect, test, describe } from "bun:test";
-import { HighLowRuleset as RealHighLowRuleset } from "@engine/shared/rules/HighLowRuleset";
+import {
+  HighLowRuleset as RealHighLowRuleset,
+  secretDeck,
+} from "@engine/shared/rules/HighLowRuleset";
 import { withTestRng } from "@engine/shared/testing/withTestRng";
 
 // ルールセットを直接呼ぶテストなので、固定シードの RNG を補う
@@ -9,7 +12,7 @@ describe("HighLowRuleset", () => {
   test("getInitialState should return correct initial state", () => {
     const state = HighLowRuleset.getInitialState();
     expect(state.status).toBe("WAITING");
-    expect(state.deck.length).toBe(0);
+    expect(state.deck.value.length).toBe(0);
     expect(state.currentTurn).toBe(1);
     expect(state.scores).toEqual({ 1: 0, 2: 0 });
   });
@@ -58,7 +61,7 @@ describe("HighLowRuleset", () => {
 
     // Mock current situation
     state.baseCard = { suit: "♠", rank: 7 };
-    state.deck = [{ suit: "♥", rank: 10 }]; // Higher than 7
+    state.deck = secretDeck([{ suit: "♥", rank: 10 }]); // Higher than 7
 
     const nextState = HighLowRuleset.reduce(state, {
       type: "GUESS",
@@ -79,7 +82,7 @@ describe("HighLowRuleset", () => {
     expect(HighLowRuleset.checkWinCondition(state).message).toContain("Player 1 Wins");
 
     state.scores = { 1: 0, 2: 0 };
-    state.deck = [];
+    state.deck = secretDeck([]);
     expect(HighLowRuleset.checkWinCondition(state).isFinished).toBe(true);
     expect(HighLowRuleset.checkWinCondition(state).message).toContain("Deck out");
   });

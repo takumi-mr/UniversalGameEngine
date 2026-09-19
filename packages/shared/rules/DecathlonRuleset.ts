@@ -437,6 +437,28 @@ export const DecathlonRuleset: GameRuleset<DecathlonState, DecathlonAction> = {
     return state;
   },
 
+  // 秘密の宣言は本人以外に見せない。種目（サブゲーム）のアクションは、そのルールセットの maskAction に委ねる
+  maskAction: (state, action, viewerId) => {
+    if (action.type === "DECLARE") {
+      const { declaration: _declaration, ...rest } = action;
+      return rest;
+    }
+    if (action.type === "SUBGAME_ACTION" && action.subAction) {
+      const def = state.currentGame ? resolveSubGame(state.currentGame) : undefined;
+      const subState = action.subGameId ? state.subGames[action.subGameId]?.state : undefined;
+      if (!def?.ruleset.maskAction) return action;
+      // 種目が終わって盤面が片付いていたら、サブゲーム側で判断できないので中身を落とす
+      if (!subState) {
+        const { subAction: _subAction, ...rest } = action;
+        return rest;
+      }
+      const masked = def.ruleset.maskAction(subState, action.subAction, viewerId);
+      if (!masked) return null;
+      return { ...action, subAction: masked };
+    }
+    return action;
+  },
+
   checkWinCondition: (state) => {
     if (state.phase !== "DONE") return { isFinished: false };
     const best = Math.max(...state.playerIds.map((p) => state.scores[p]));

@@ -1,11 +1,16 @@
 import { requireRng } from "@engine/shared/utils/requireRng";
 import type { BaseGameState, BaseGameAction, GameRuleset } from "@engine/shared/GameRules";
+import { createSecret, type Secret } from "@engine/shared/GameRules";
 import type { IGameRNG } from "@engine/shared/utils/IGameRNG";
 
 // --- 型定義 ---
+/** 1 文字の判定。correct = 位置も一致、present = 別の位置にある、absent = 含まれない */
+export type WordleTileResult = "correct" | "present" | "absent";
+
 export interface WordleState extends BaseGameState {
-  secretWord: string;
+  secretWord: Secret<string>; // 正解（終局まで誰にも見えない）
   guesses: string[];
+  results: WordleTileResult[][]; // guesses[i] の各文字の判定（サーバーが計算する。クライアントは正解を知らない）
   maxGuesses: number;
   currentRow: number;
 }
@@ -80,13 +85,42 @@ const WORDS = [
   "YACHT",
 ];
 
+/** 正解を Secret に包む（終局まで誰にも見えない） */
+function secretWordOf(word: string): Secret<string> {
+  return createSecret(word, [], "");
+}
+
+/**
+ * 推測を正解と照合する（同じ文字が複数あるときは正解側の残り数だけ present にする、標準の Wordle 判定）
+ */
+export function evaluateGuess(guess: string, secret: string): WordleTileResult[] {
+  const result: WordleTileResult[] = Array(guess.length).fill("absent");
+  const remaining: Record<string, number> = {};
+  for (let i = 0; i < guess.length; i++) {
+    if (guess[i] === secret[i]) {
+      result[i] = "correct";
+    } else {
+      remaining[secret[i]] = (remaining[secret[i]] ?? 0) + 1;
+    }
+  }
+  for (let i = 0; i < guess.length; i++) {
+    if (result[i] === "correct") continue;
+    if ((remaining[guess[i]] ?? 0) > 0) {
+      result[i] = "present";
+      remaining[guess[i]]--;
+    }
+  }
+  return result;
+}
+
 export const WordleRuleset: GameRuleset<WordleState, WordleAction> = {
   getInitialState: (_options?: unknown, rng?: IGameRNG): WordleState => {
     const secretWord = WORDS[requireRng(rng, "Wordle").nextInt(0, WORDS.length - 1)];
     return {
       status: "WAITING",
-      secretWord: secretWord,
+      secretWord: secretWordOf(secretWord),
       guesses: [],
+      results: [],
       maxGuesses: 6,
       currentRow: 0,
       players: {
@@ -137,6 +171,7 @@ export const WordleRuleset: GameRuleset<WordleState, WordleAction> = {
 
         const guess = action.word.toUpperCase();
         newState.guesses.push(guess);
+        newState.results.push(evaluateGuess(guess, state.secretWord.value));
         newState.currentRow++;
 
         break;
@@ -150,12 +185,13 @@ export const WordleRuleset: GameRuleset<WordleState, WordleAction> = {
     if (state.guesses.length === 0) return { isFinished: false };
 
     const lastGuess = state.guesses[state.guesses.length - 1];
-    if (lastGuess === state.secretWord) {
+    const secretWord = state.secretWord.value;
+    if (lastGuess === secretWord) {
       const winnerId = state.players?.[1] || Object.values(state.players || {})[0];
       return {
         isFinished: true,
         winnerIds: winnerId ? [winnerId] : [],
-        message: "Correct! The word was " + state.secretWord,
+        message: "Correct! The word was " + secretWord,
       };
     }
 
@@ -163,18 +199,20 @@ export const WordleRuleset: GameRuleset<WordleState, WordleAction> = {
       return {
         isFinished: true,
         winnerIds: [],
-        message: "Game Over. The word was " + state.secretWord,
+        message: "Game Over. The word was " + secretWord,
       };
     }
 
     return { isFinished: false };
   },
 
+  // 終局したら正解を開示する
   applyWinResult: (state, winResult) => ({
     ...state,
     status: "FINISHED",
     message: winResult.message,
     activePlayers: [],
+    secretWord: createSecret(state.secretWord.value, ["*"]),
   }),
 
   getLegalActions: (state, playerId) => {

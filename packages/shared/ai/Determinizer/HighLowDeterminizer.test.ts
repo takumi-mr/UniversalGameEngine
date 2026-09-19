@@ -1,17 +1,19 @@
 import { describe, expect, it } from "bun:test";
 import type { Card, HighLowState } from "@engine/shared/rules/HighLowRuleset";
 import { HighLowDeterminizer } from "@engine/shared/ai/Determinizer/HighLowDeterminizer";
+import type { Masked } from "@engine/shared/GameRules";
 
-const HIDDEN_CARD = { suit: "?", rank: 0 } as unknown as Card;
+/** 山札は Secret<Card[]> なので、マスク済み状態では枚数分の "?" に展開されている */
+const masked = (state: Masked<HighLowState>) => state as unknown as HighLowState;
 
 function maskedState(
   deckSize: number,
   baseCard: Card | null,
   lastResultCard: Card | null = null,
 ): HighLowState {
-  return {
+  return masked({
     status: "PLAYING",
-    deck: Array.from({ length: deckSize }, () => HIDDEN_CARD),
+    deck: Array.from({ length: deckSize }, () => "?"),
     currentTurn: 1,
     baseCard,
     lastGuess: null,
@@ -20,7 +22,7 @@ function maskedState(
     round: 1,
     players: { 1: "ai", 2: "human" },
     activePlayers: ["ai"],
-  };
+  });
 }
 
 const cardKey = (c: Card) => `${c.suit}${c.rank}`;
@@ -31,8 +33,8 @@ describe("HighLowDeterminizer", () => {
   it("keeps the deck size and fills it with real cards", () => {
     const result = determinizer.determinize(maskedState(30, { suit: "♠", rank: 2 }), "ai");
 
-    expect(result.deck).toHaveLength(30);
-    for (const card of result.deck) {
+    expect(result.deck.value).toHaveLength(30);
+    for (const card of result.deck.value) {
       expect(["♠", "♥", "♦", "♣"]).toContain(card.suit);
       expect(card.rank).toBeGreaterThanOrEqual(1);
       expect(card.rank).toBeLessThanOrEqual(13);
@@ -45,7 +47,7 @@ describe("HighLowDeterminizer", () => {
     // 52 - 2 枚 = 50 枚が上限なので、全て引かせて重複が無いことを確かめる
     const result = determinizer.determinize(maskedState(50, base, last), "ai");
 
-    const keys = result.deck.map(cardKey);
+    const keys = result.deck.value.map(cardKey);
     expect(new Set(keys).size).toBe(50);
     expect(keys).not.toContain(cardKey(base));
     expect(keys).not.toContain(cardKey(last));
@@ -60,8 +62,8 @@ describe("HighLowDeterminizer", () => {
 
   it("re-samples the deck on every call", () => {
     const state = maskedState(30, { suit: "♣", rank: 5 });
-    const first = determinizer.determinize(state, "ai").deck.map(cardKey).join(",");
-    const second = determinizer.determinize(state, "ai").deck.map(cardKey).join(",");
+    const first = determinizer.determinize(state, "ai").deck.value.map(cardKey).join(",");
+    const second = determinizer.determinize(state, "ai").deck.value.map(cardKey).join(",");
     expect(first).not.toBe(second);
   });
 });
