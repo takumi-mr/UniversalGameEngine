@@ -75,3 +75,30 @@ jobs:
 
       - name: Run Tests (pytest)
         run: python -m pytest tests -q
+
+  # Docker イメージのビルド検証（起動はしない）
+  # ルートの package.json / tsconfig を触ったときに Dockerfile の COPY 漏れで壊れるのを PR で検知する。
+  # docker-compose.yml と同じ context / dockerfile でビルドし、イメージは push しない。
+  docker-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [backend, frontend]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # レイヤーキャッシュを GitHub Actions のキャッシュに保存し、依存が変わらない PR では bun install を飛ばす
+      - name: Build ${{ matrix.app }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          push: false
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,scope=${{ matrix.app }},mode=max
