@@ -1,5 +1,6 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
+import { randomUUID } from "crypto";
 import { JWT_SECRET, isClusterMode } from "@engine/backend/config";
 import {
   sessions,
@@ -21,6 +22,7 @@ import { streamManager } from "@engine/backend/network/StreamManager";
 import { setIoInstance, onClusterEvent } from "@engine/backend/network/io";
 import { isBotType } from "@engine/backend/ai/botFactory";
 import { sanitizeCreateOptions } from "@engine/backend/gameOptions";
+import { createGameLimiter, isCreateOptionsWithinLimit } from "@engine/backend/rateLimiter";
 
 /** 他インスタンスからのクラスタイベントを購読する（Redis アダプタ使用時のみ届く） */
 const setupClusterHandlers = () => {
@@ -64,7 +66,11 @@ export const setupSocketIO = (io: Server) => {
     console.log(`User connected: ${socket.id} (User ID: ${userId})`);
 
     // 部屋の作成リクエスト
-    socket.on("request-create-game", async ({ type, options: rawOptions }) => {
+    socket.on("request-create-game", async (payload: unknown) => {
+      const { type, options: rawOptions } =
+        payload && typeof payload === "object"
+          ? (payload as { type?: unknown; options?: unknown })
+          : {};
       if (typeof type !== "string") {
         socket.emit("error-message", "Game type is required");
         return;
@@ -75,10 +81,26 @@ export const setupSocketIO = (io: Server) => {
         socket.emit("error-message", `Unknown game type: ${type}`);
         return;
       }
+      // 部屋の乱造を防ぐ（ユーザーごと・インスタンスローカルの緩い制限）
+      if (!createGameLimiter.tryAcquire(userId)) {
+        console.warn(`[Socket] request-create-game rate limited for user ${userId}`);
+        socket.emit("error-message", "Too many rooms created. Please wait a moment.");
+        return;
+      }
+      // 巨大な options を検疫に通す前に弾く
+      if (
+        !isCreateOptionsWithinLimit(
+          rawOptions === undefined ? undefined : JSON.stringify(rawOptions),
+        )
+      ) {
+        socket.emit("error-message", "Game options are too large");
+        return;
+      }
 
       try {
         console.log(`Creating game: ${type} for user ${userId}`);
-        const gameId = Math.random().toString(36).substring(7);
+        // 部屋 ID は推測できない UUID にする（短い乱数だと総当たりで他人の部屋を探せる）
+        const gameId = randomUUID();
         const normalizedType = normalizeGameType(type);
         // クライアントの options は許可リストを通す（serverSeed や initialScores 等は捨てる）
         const options = sanitizeCreateOptions(normalizedType, rawOptions);
