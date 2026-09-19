@@ -72,7 +72,7 @@ export class SocketGameServer extends GenericGameServer<BaseGameState, BaseGameA
 
   /** ボットを追加する（定義と実行時オブジェクトの両方） */
   public addBot(spec: BotSpec): SessionAIPlayer | null {
-    const player = createBotPlayer(spec, this.roomId, this.gameType);
+    const player = createBotPlayer(spec, this.roomId, this.gameType, this.engine);
     if (!player) return null;
     this.bots.push(spec);
     this.aiPlayers.set(spec.playerId, player);

@@ -54,3 +54,16 @@ export const MONGO_URL = process.env.MONGO_URL || "mongodb://localhost:27017";
  * 小さいほど 1 手あたりの保存サイズが小さくなるが、MongoDB への書き込みが増える。
  */
 export const REPLAY_FLUSH_SIZE = Math.max(1, Number(process.env.REPLAY_FLUSH_SIZE) || 100);
+
+/**
+ * 部屋作成（Socket.io `request-create-game` / gRPC `CreateGame`）の 1 ユーザーあたりのレート制限。
+ * インスタンスごとのインメモリ計数なので厳密ではないが、部屋の乱造でストアを埋め尽くされるのを防ぐ程度に緩く設定する。
+ */
+export const CREATE_GAME_RATE_LIMIT = Math.max(1, Number(process.env.CREATE_GAME_RATE_LIMIT) || 20);
+export const CREATE_GAME_RATE_WINDOW_MS = 60 * 1000;
+
+/** 部屋作成時にクライアントから受け取る options（JSON）のサイズ上限（バイト） */
+export const CREATE_GAME_OPTIONS_MAX_BYTES = Math.max(
+  1,
+  Number(process.env.CREATE_GAME_OPTIONS_MAX_BYTES) || 16 * 1024,
+);

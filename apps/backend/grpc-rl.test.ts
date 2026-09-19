@@ -25,7 +25,7 @@ import type { ShogiState } from "@engine/shared/rules/ShogiRuleset";
 import { ShogiRuleset } from "@engine/shared/rules/ShogiRuleset";
 import type { ChessState } from "@engine/shared/rules/ChessRuleset";
 import { PIECES } from "@engine/shared/rules/ChessRuleset";
-import { UniversalEngine } from "@engine/shared/UniversalEngine";
+import { UniversalEngine, type InternalGameState } from "@engine/shared/UniversalEngine";
 import { SHOGI_OBS_DIM } from "@engine/shared/ai/TensorAdapter/ShogiTensorAdapter";
 import { CHESS_OBS_DIM } from "@engine/shared/ai/TensorAdapter/ChessTensorAdapter";
 import type { GoState } from "@engine/shared/rules/GoRuleset";
@@ -36,6 +36,9 @@ process.env.RL_MODE = "true";
 const { startGrpcServer } = await import("@engine/backend/grpc-server");
 const { sessions, createSession } = await import("@engine/backend/store/sessionStore");
 const { setIoInstance } = await import("@engine/backend/socket/roomManager");
+const { createGameLimiter } = await import("@engine/backend/rateLimiter");
+const { CREATE_GAME_RATE_LIMIT, CREATE_GAME_OPTIONS_MAX_BYTES } =
+  await import("@engine/backend/config");
 
 const PROTO_PATH = path.resolve(__dirname, "../../packages/shared/network/game.proto");
 
@@ -568,7 +571,11 @@ describe("gRPC RL loop (Reset/Step)", () => {
     const turn1 = await nextTurn();
     expect(turn1.stateTensor.length).toBe(SHOGI_OBS_DIM);
     expect(turn1.legalActionIds.length).toBe(30);
-    expect((JSON.parse(turn1.stateJson) as ShogiState).turn).toBe(1);
+    const turn1State = JSON.parse(turn1.stateJson) as ShogiState;
+    expect(turn1State.turn).toBe(1);
+    // ボットへ流す局面はボット視点でマスク済み（サーバーシードは他のプレイヤーと同様に含まれない）
+    expect((engine.getState() as InternalGameState).prngSecret).toBeDefined();
+    expect("prngSecret" in turn1State).toBe(false);
 
     // ボットの着手 → 人間の手番になる
     const submitted = await submitTurn({
@@ -590,6 +597,7 @@ describe("gRPC RL loop (Reset/Step)", () => {
     expect(await gameServer.dispatchAction("human", humanMove)).toBe(true);
     const turn2 = await pending;
     expect((JSON.parse(turn2.stateJson) as ShogiState).turn).toBe(1);
+    expect("prngSecret" in JSON.parse(turn2.stateJson)).toBe(false);
     expect(turn2.legalActionIds.length).toBeGreaterThan(0);
 
     expect(turns.length).toBe(2);
@@ -621,6 +629,34 @@ describe("gRPC RL loop (Reset/Step)", () => {
       expect(created.gameId).toBeTruthy();
     } finally {
       process.env.RL_MODE = "true";
+    }
+  });
+
+  it("CreateGame は推測できない UUID の game_id を返すこと", async () => {
+    const { gameId } = await createGame({ gameType: "othello" });
+    expect(gameId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  });
+
+  it("CreateGame は巨大な options_json を INVALID_ARGUMENT で拒否すること", async () => {
+    const huge = JSON.stringify({ clientSeed: "x".repeat(CREATE_GAME_OPTIONS_MAX_BYTES + 1) });
+    expect(await grpcErrorCode(createGame({ gameType: "othello", optionsJson: huge }))).toBe(
+      grpc.status.INVALID_ARGUMENT,
+    );
+  });
+
+  it("RL_MODE でなければ CreateGame は 1 ユーザーあたりのレート制限を受けること", async () => {
+    process.env.RL_MODE = "false";
+    createGameLimiter.clear();
+    try {
+      for (let i = 0; i < CREATE_GAME_RATE_LIMIT; i++) {
+        expect((await createGame({ gameType: "othello" })).gameId).toBeTruthy();
+      }
+      expect(await grpcErrorCode(createGame({ gameType: "othello" }))).toBe(
+        grpc.status.RESOURCE_EXHAUSTED,
+      );
+    } finally {
+      process.env.RL_MODE = "true";
+      createGameLimiter.clear();
     }
   });
 });

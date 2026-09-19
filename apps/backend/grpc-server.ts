@@ -2,6 +2,7 @@
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 import path from "path";
+import { randomUUID } from "crypto";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET, isRlMode } from "@engine/backend/config";
 import {
@@ -20,6 +21,7 @@ import type { AnyRuleset } from "@engine/shared/rules/subGameResolver";
 import { GrpcBotPlayer } from "@engine/shared/ai/AIPlayer/GrpcBotPlayer";
 import { encodeBotTurn } from "@engine/backend/ai/botFactory";
 import { sanitizeCreateOptions } from "@engine/backend/gameOptions";
+import { createGameLimiter, isCreateOptionsWithinLimit } from "@engine/backend/rateLimiter";
 import type { ProtoGrpcType } from "@engine/shared/network/generated/game";
 import type { GameServiceHandlers } from "@engine/shared/network/generated/universal_game_engine/GameService";
 import type { CreateGameRequest__Output } from "@engine/shared/network/generated/universal_game_engine/CreateGameRequest";
@@ -192,8 +194,24 @@ const gameServiceHandlers: GameServiceHandlers = {
         message: `Unknown game type: ${rawGameType}`,
       });
 
+    // 部屋の乱造を防ぐ（Socket.io の request-create-game と同じ制限）。
+    // RL_MODE は学習ループが環境の数だけ一斉に部屋を作るので対象外（本番では無効なモード）
+    if (!isRlMode() && !createGameLimiter.tryAcquire(userId)) {
+      return callback({
+        code: grpc.status.RESOURCE_EXHAUSTED,
+        message: "Too many rooms created. Please wait a moment.",
+      });
+    }
+    if (!isCreateOptionsWithinLimit(rawOptionsJson)) {
+      return callback({
+        code: grpc.status.INVALID_ARGUMENT,
+        message: "options_json is too large",
+      });
+    }
+
     try {
-      const gameId = Math.random().toString(36).substring(7);
+      // 部屋 ID は推測できない UUID にする
+      const gameId = randomUUID();
       const gameType = normalizeGameType(rawGameType);
       // クライアントの options は許可リストを通す（serverSeed や initialScores 等は捨てる）
       const options = sanitizeCreateOptions(gameType, JSON.parse(rawOptionsJson || "{}"));
@@ -494,6 +512,8 @@ const gameServiceHandlers: GameServiceHandlers = {
   },
 
   WaitForTurn: async (call) => {
+    // TODO: 呼び出し元がそのボットのオーナー（部屋の作成者 / 認証済みユーザー）か確認する。
+    //       現状は誰でも任意のボットの席に対して待ち受けできる（流れる局面はボット視点でマスク済み）
     const { gameId, playerId } = call.request;
     streamManager.addBotStream(gameId, playerId, call);
 
@@ -508,7 +528,8 @@ const gameServiceHandlers: GameServiceHandlers = {
       if (!session) return;
       const state = session.server.engine.getState();
       if (state.status !== "PLAYING" || !state.activePlayers?.includes(playerId)) return;
-      const turn = encodeBotTurn(session.type, state, playerId);
+      // 局面はボット視点でマスクされる（他のプレイヤーへの配信と同じ条件）
+      const turn = encodeBotTurn(session.type, session.server.engine, playerId);
       if (turn && turn.legalActionIds.length > 0) {
         streamManager.notifyBotTurn(
           gameId,
@@ -524,6 +545,7 @@ const gameServiceHandlers: GameServiceHandlers = {
   },
 
   SubmitTurn: async (call, callback) => {
+    // TODO: 呼び出し元がそのボットのオーナーか確認する（WaitForTurn と同じ）
     const { gameId, playerId, actionId } = call.request;
     const session = await ensureSession(gameId);
     if (!session)

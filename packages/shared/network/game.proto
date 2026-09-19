@@ -142,7 +142,8 @@ message WaitForTurnRequest {
 message WaitForTurnResponse {
     repeated float state_tensor = 1;
     repeated int32 legal_action_ids = 2;
-    // 完全な局面（Simulate の親局面として渡せる。AlphaZero 風エージェントの木探索用）
+    // ボット自身の視点でマスクした局面（他のプレイヤーへの配信と同じ。Secret は展開済み・prngSecret なし）。
+    // 完全情報ゲームなら Simulate の親局面として渡せる（AlphaZero 風エージェントの木探索用）
     string state_json = 3;
 }
 
