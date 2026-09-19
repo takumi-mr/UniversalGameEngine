@@ -253,7 +253,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
-  renderer3D?.destroy();
+  renderer3D?.dispose();
 });
 </script>
 

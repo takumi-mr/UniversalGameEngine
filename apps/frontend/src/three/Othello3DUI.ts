@@ -1,19 +1,11 @@
 // src/three/Othello3DUI.ts
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { GameState, MoveAction } from "@engine/shared/rules/Othello3DRuleset";
+import { BaseThreeUI } from "./BaseThreeUI";
 
-export class Othello3DUI {
+export class Othello3DUI extends BaseThreeUI {
   private size: number;
   private onAction: (action: MoveAction) => void;
-  private container: HTMLElement;
-
-  private scene!: THREE.Scene;
-  private camera!: THREE.PerspectiveCamera;
-  private renderer!: THREE.WebGLRenderer;
-  private controls!: OrbitControls;
-  private raycaster!: THREE.Raycaster;
-  private mouse!: THREE.Vector2;
 
   private spheres: (THREE.Mesh | null)[][][] = [];
   private gridCubes: THREE.Mesh[][][] = [];
@@ -21,8 +13,6 @@ export class Othello3DUI {
 
   private currentHovered: THREE.Mesh | null = null;
   private currentState: GameState | null = null;
-  private animationId: number | null = null;
-  private isDisposed = false;
 
   // マテリアル
   private matEmpty = new THREE.MeshBasicMaterial({
@@ -68,30 +58,13 @@ export class Othello3DUI {
     size: number,
     onActionCallback: (action: MoveAction) => void,
   ) {
-    this.container = container;
+    super(container, {
+      fov: 75,
+      cameraPosition: [size * 1.8, size * 1.8, size * 2.8],
+      background: 0x1a1a1a,
+    });
     this.size = size;
     this.onAction = onActionCallback;
-    this.initThreeJS(container);
-  }
-
-  private initThreeJS(container: HTMLElement) {
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x1a1a1a);
-
-    this.camera = new THREE.PerspectiveCamera(
-      75,
-      container.clientWidth / container.clientHeight,
-      0.1,
-      1000,
-    );
-    this.camera.position.set(this.size * 1.8, this.size * 1.8, this.size * 2.8);
-
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
-    container.appendChild(this.renderer.domElement);
-
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
 
     this.scene.add(new THREE.AmbientLight(0x404040, 2));
     const dirLight = new THREE.DirectionalLight(0xffffff, 1);
@@ -100,17 +73,8 @@ export class Othello3DUI {
 
     this.initGrid();
 
-    this.raycaster = new THREE.Raycaster();
-    this.mouse = new THREE.Vector2();
-
-    this.onClick = this.onClick.bind(this);
-    this.onMouseMove = this.onMouseMove.bind(this);
-    this.onResize = this.onResize.bind(this);
-    window.addEventListener("click", this.onClick, false);
-    window.addEventListener("mousemove", this.onMouseMove, false);
-    window.addEventListener("resize", this.onResize, false);
-
-    this.animate();
+    this.addListener(window, "click", this.onClick.bind(this));
+    this.addListener(window, "mousemove", this.onMouseMove.bind(this));
   }
 
   private initGrid() {
@@ -199,13 +163,7 @@ export class Othello3DUI {
   private onMouseMove(event: MouseEvent) {
     if (!this.currentState || this.currentState.status !== "PLAYING") return;
 
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    const clientX = event.clientX - rect.left;
-    const clientY = event.clientY - rect.top;
-
-    this.mouse.x = (clientX / rect.width) * 2 - 1;
-    this.mouse.y = -(clientY / rect.height) * 2 + 1;
-
+    this.updateMouse(event);
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const validTargets = this.interactableCubes.filter((c) => c.userData.isValid);
     const intersects = this.raycaster.intersectObjects(validTargets);
@@ -228,13 +186,7 @@ export class Othello3DUI {
   private onClick(event: MouseEvent) {
     if (!this.currentState || this.currentState.status !== "PLAYING") return;
 
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    const clientX = event.clientX - rect.left;
-    const clientY = event.clientY - rect.top;
-
-    this.mouse.x = (clientX / rect.width) * 2 - 1;
-    this.mouse.y = -(clientY / rect.height) * 2 + 1;
-
+    this.updateMouse(event);
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const validTargets = this.interactableCubes.filter((c) => c.userData.isValid);
     const intersects = this.raycaster.intersectObjects(validTargets);
@@ -252,45 +204,5 @@ export class Othello3DUI {
         });
       }
     }
-  }
-
-  private onResize() {
-    if (!this.container) return;
-    this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-  }
-
-  public dispose() {
-    this.isDisposed = true;
-    if (this.animationId !== null) {
-      cancelAnimationFrame(this.animationId);
-    }
-    window.removeEventListener("click", this.onClick);
-    window.removeEventListener("mousemove", this.onMouseMove);
-    window.removeEventListener("resize", this.onResize);
-
-    this.renderer.dispose();
-    this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.geometry.dispose();
-        if (Array.isArray(object.material)) {
-          object.material.forEach((m) => m.dispose());
-        } else {
-          object.material.dispose();
-        }
-      }
-    });
-
-    if (this.container && this.renderer.domElement) {
-      this.container.removeChild(this.renderer.domElement);
-    }
-  }
-
-  private animate() {
-    if (this.isDisposed) return;
-    this.animationId = requestAnimationFrame(this.animate.bind(this));
-    if (this.controls) this.controls.update();
-    this.renderer.render(this.scene, this.camera);
   }
 }

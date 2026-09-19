@@ -1,18 +1,10 @@
-// src/three/Shogi3DUI.ts
+// src/three/ShogiUI.ts
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { ShogiState, ShogiAction } from "@engine/shared/rules/ShogiRuleset";
+import { BaseThreeUI } from "./BaseThreeUI";
 
-export class ShogiUI {
+export class ShogiUI extends BaseThreeUI {
   private onAction: (action: ShogiAction, canPromote: boolean) => void;
-  private container: HTMLElement;
-
-  private scene!: THREE.Scene;
-  private camera!: THREE.PerspectiveCamera;
-  private renderer!: THREE.WebGLRenderer;
-  private controls!: OrbitControls;
-  private raycaster!: THREE.Raycaster;
-  private mouse!: THREE.Vector2;
 
   private gridPlanes: THREE.Mesh[] = [];
   private pieceMeshes: Map<number, THREE.Mesh> = new Map(); // fromIndex -> Mesh
@@ -21,8 +13,6 @@ export class ShogiUI {
 
   // UIステート（2ステップ操作用）
   private selectedFromIndex: number | null = null;
-  private animationId: number | null = null;
-  private isDisposed = false;
 
   // マテリアル
   private matBoard = new THREE.MeshLambertMaterial({ color: 0xdeb887 }); // 木目色
@@ -40,29 +30,8 @@ export class ShogiUI {
     container: HTMLElement,
     onActionCallback: (action: ShogiAction, canPromote: boolean) => void,
   ) {
-    this.container = container;
+    super(container, { fov: 60, cameraPosition: [0, 8, 10], background: 0x222222 });
     this.onAction = onActionCallback;
-    this.initThreeJS(container);
-  }
-
-  private initThreeJS(container: HTMLElement) {
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x222222);
-
-    this.camera = new THREE.PerspectiveCamera(
-      60,
-      container.clientWidth / container.clientHeight,
-      0.1,
-      1000,
-    );
-    this.camera.position.set(0, 8, 10);
-
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
-    container.appendChild(this.renderer.domElement);
-
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.target.set(0, 0, 0);
 
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -71,15 +40,7 @@ export class ShogiUI {
 
     this.initBoard();
 
-    this.raycaster = new THREE.Raycaster();
-    this.mouse = new THREE.Vector2();
-
-    this.onClick = this.onClick.bind(this);
-    this.onResize = this.onResize.bind(this);
-    window.addEventListener("click", this.onClick, false);
-    window.addEventListener("resize", this.onResize, false);
-
-    this.animate();
+    this.addListener(window, "click", this.onClick.bind(this));
   }
 
   private initBoard() {
@@ -184,12 +145,7 @@ export class ShogiUI {
   private onClick(event: MouseEvent) {
     if (!this.currentState || this.currentState.status !== "PLAYING") return;
 
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    const clientX = event.clientX - rect.left;
-    const clientY = event.clientY - rect.top;
-    this.mouse.x = (clientX / rect.width) * 2 - 1;
-    this.mouse.y = -(clientY / rect.height) * 2 + 1;
-
+    this.updateMouse(event);
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
     // セル（マス）と駒の両方を対象にレイキャスト
@@ -249,44 +205,5 @@ export class ShogiUI {
       this.selectedFromIndex = null;
       this.clearHighlights();
     }
-  }
-
-  private onResize() {
-    if (!this.container) return;
-    this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-  }
-
-  public dispose() {
-    this.isDisposed = true;
-    if (this.animationId !== null) {
-      cancelAnimationFrame(this.animationId);
-    }
-    window.removeEventListener("click", this.onClick);
-    window.removeEventListener("resize", this.onResize);
-
-    this.renderer.dispose();
-    this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.geometry.dispose();
-        const materials = Array.isArray(object.material) ? object.material : [object.material];
-        materials.forEach((m) => {
-          if ("map" in m && m.map instanceof THREE.Texture) m.map.dispose();
-          m.dispose();
-        });
-      }
-    });
-
-    if (this.container && this.renderer.domElement) {
-      this.container.removeChild(this.renderer.domElement);
-    }
-  }
-
-  private animate() {
-    if (this.isDisposed) return;
-    this.animationId = requestAnimationFrame(this.animate.bind(this));
-    if (this.controls) this.controls.update();
-    this.renderer.render(this.scene, this.camera);
   }
 }

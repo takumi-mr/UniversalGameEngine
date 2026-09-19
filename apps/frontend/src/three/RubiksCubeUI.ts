@@ -1,7 +1,7 @@
 // src/three/RubiksCubeUI.ts
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { RubiksState, RubiksAction, FaceName } from "@engine/shared/rules/RubicCubeRuleset";
+import { BaseThreeUI } from "./BaseThreeUI";
 
 type Color = "W" | "Y" | "G" | "B" | "O" | "R";
 
@@ -108,14 +108,8 @@ function createArrowTexture(dir: 1 | -1, tint: string): THREE.CanvasTexture {
   return texture;
 }
 
-export class RubiksCubeUI {
+export class RubiksCubeUI extends BaseThreeUI {
   private onAction: (action: RubiksAction) => void;
-  private container: HTMLElement;
-
-  private scene!: THREE.Scene;
-  private camera!: THREE.PerspectiveCamera;
-  private renderer!: THREE.WebGLRenderer;
-  private controls!: OrbitControls;
 
   // ステッカーメッシュのリスト: [face][row][col] -> Mesh
   private stickers: Map<string, THREE.Mesh> = new Map();
@@ -123,51 +117,22 @@ export class RubiksCubeUI {
   // クリック可能な면 ボタンメッシュ
   private facePanels: { face: FaceName; dir: 1 | -1; mesh: THREE.Mesh }[] = [];
 
-  private raycaster = new THREE.Raycaster();
-  private mouse = new THREE.Vector2();
   private hoveredPanel: THREE.Mesh | null = null;
 
-  private animationId: number | null = null;
-  private isDisposed = false;
-
   constructor(container: HTMLElement, onActionCallback: (action: RubiksAction) => void) {
-    this.container = container;
+    super(container, {
+      fov: 55,
+      cameraPosition: [5.5, 5.5, 5.5],
+      background: 0x111827,
+      shadowMap: true,
+      pixelRatio: window.devicePixelRatio,
+    });
     this.onAction = onActionCallback;
 
-    this.onPointerDown = this.onPointerDown.bind(this);
-    this.onPointerUp = this.onPointerUp.bind(this);
-    this.onMouseMove = this.onMouseMove.bind(this);
-    this.onResize = this.onResize.bind(this);
-
-    this.initThreeJS(container);
-    this.buildCube();
-    this.buildFacePanels();
-  }
-
-  private initThreeJS(container: HTMLElement) {
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x111827);
-
-    this.camera = new THREE.PerspectiveCamera(
-      55,
-      container.clientWidth / container.clientHeight,
-      0.1,
-      1000,
-    );
-    this.camera.position.set(5.5, 5.5, 5.5);
-    this.camera.lookAt(0, 0, 0);
-
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
-    this.renderer.shadowMap.enabled = true;
-    container.appendChild(this.renderer.domElement);
-
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.08;
-    this.controls.minDistance = 4;
-    this.controls.maxDistance = 20;
+    const controls = this.controls!;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 4;
+    controls.maxDistance = 20;
 
     // ライティング
     const ambient = new THREE.AmbientLight(0xffffff, 0.5);
@@ -180,12 +145,13 @@ export class RubiksCubeUI {
     dir2.position.set(-8, -5, -8);
     this.scene.add(dir2);
 
-    this.renderer.domElement.addEventListener("pointerdown", this.onPointerDown);
-    this.renderer.domElement.addEventListener("pointerup", this.onPointerUp);
-    this.renderer.domElement.addEventListener("pointermove", this.onMouseMove);
-    window.addEventListener("resize", this.onResize);
+    const canvas = this.renderer.domElement;
+    this.addListener(canvas, "pointerdown", this.onPointerDown.bind(this));
+    this.addListener(canvas, "pointerup", this.onPointerUp.bind(this));
+    this.addListener(canvas, "pointermove", this.onMouseMove.bind(this));
 
-    this.animate();
+    this.buildCube();
+    this.buildFacePanels();
   }
 
   private buildCube() {
@@ -296,10 +262,7 @@ export class RubiksCubeUI {
   }
 
   private onMouseMove(event: MouseEvent) {
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
+    this.updateMouse(event);
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const panelMeshes = this.facePanels.map((p) => p.mesh);
     const hits = this.raycaster.intersectObjects(panelMeshes);
@@ -340,10 +303,7 @@ export class RubiksCubeUI {
     );
     if (dragDist > 5) return; // 5px以上動いたらドラッグとみなす
 
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
+    this.updateMouse(event);
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const panelMeshes = this.facePanels.map((p) => p.mesh);
     const hits = this.raycaster.intersectObjects(panelMeshes);
@@ -352,47 +312,6 @@ export class RubiksCubeUI {
       const { face, dir } = hits[0].object.userData;
       const action: RubiksAction = { type: "ROTATE", face, direction: dir };
       this.onAction(action);
-    }
-  }
-
-  private onResize() {
-    if (!this.container) return;
-    this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-  }
-
-  private animate() {
-    if (this.isDisposed) return;
-    this.animationId = requestAnimationFrame(this.animate.bind(this));
-    if (this.controls) this.controls.update();
-    this.renderer.render(this.scene, this.camera);
-  }
-
-  public dispose() {
-    this.isDisposed = true;
-    if (this.animationId !== null) {
-      cancelAnimationFrame(this.animationId);
-    }
-    this.renderer.domElement.removeEventListener("pointerdown", this.onPointerDown);
-    this.renderer.domElement.removeEventListener("pointerup", this.onPointerUp);
-    this.renderer.domElement.removeEventListener("pointermove", this.onMouseMove);
-    window.removeEventListener("resize", this.onResize);
-
-    this.renderer.dispose();
-    this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.geometry.dispose();
-        if (Array.isArray(object.material)) {
-          object.material.forEach((m) => m.dispose());
-        } else {
-          object.material.dispose();
-        }
-      }
-    });
-
-    if (this.container && this.renderer.domElement) {
-      this.container.removeChild(this.renderer.domElement);
     }
   }
 }

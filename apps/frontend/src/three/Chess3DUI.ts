@@ -1,20 +1,12 @@
 // src/three/Chess3DUI.ts
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import type { ChessState, ChessAction } from "@engine/shared/rules/ChessRuleset";
+import { BaseThreeUI } from "./BaseThreeUI";
 
-export class Chess3DUI {
+export class Chess3DUI extends BaseThreeUI {
   private onAction: (action: ChessAction) => void;
   private onRequirePromotion: (from: number, to: number) => void;
-  private container: HTMLElement;
-
-  private scene!: THREE.Scene;
-  private camera!: THREE.PerspectiveCamera;
-  private renderer!: THREE.WebGLRenderer;
-  private controls!: OrbitControls;
-  private raycaster!: THREE.Raycaster;
-  private mouse!: THREE.Vector2;
 
   private boardGroup = new THREE.Group();
   private piecesGroup = new THREE.Group();
@@ -25,8 +17,6 @@ export class Chess3DUI {
 
   private currentState: ChessState | null = null;
   private selectedIndex: number | null = null;
-  private animationId: number | null = null;
-  private isDisposed = false;
 
   private loader = new GLTFLoader();
 
@@ -44,32 +34,14 @@ export class Chess3DUI {
     onActionCallback: (action: ChessAction) => void,
     onRequirePromotion: (from: number, to: number) => void,
   ) {
-    this.container = container;
+    super(container, {
+      fov: 60,
+      cameraPosition: [0, 10, 12],
+      background: 0x111111,
+      shadowMap: true,
+    });
     this.onAction = onActionCallback;
     this.onRequirePromotion = onRequirePromotion;
-    this.initThreeJS(container);
-  }
-
-  private initThreeJS(container: HTMLElement) {
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x111111);
-
-    this.camera = new THREE.PerspectiveCamera(
-      60,
-      container.clientWidth / container.clientHeight,
-      0.1,
-      1000,
-    );
-    this.camera.position.set(0, 10, 12);
-
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
-    this.renderer.shadowMap.enabled = true;
-    container.appendChild(this.renderer.domElement);
-
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.target.set(0, 0, 0);
-    this.controls.enableDamping = true;
 
     // Lights
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.4));
@@ -95,15 +67,7 @@ export class Chess3DUI {
     this.initBoard();
     this.initEnvironment();
 
-    this.raycaster = new THREE.Raycaster();
-    this.mouse = new THREE.Vector2();
-
-    this.onClick = this.onClick.bind(this);
-    this.onResize = this.onResize.bind(this);
-    window.addEventListener("click", this.onClick, false);
-    window.addEventListener("resize", this.onResize, false);
-
-    this.animate();
+    this.addListener(window, "click", this.onClick.bind(this));
   }
 
   private initBoard() {
@@ -390,10 +354,7 @@ export class Chess3DUI {
   private onClick(event: MouseEvent) {
     if (!this.currentState || this.currentState.status !== "PLAYING") return;
 
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
+    this.updateMouse(event);
     this.raycaster.setFromCamera(this.mouse, this.camera);
     // Use recursive: true to hit meshes inside groups
     const intersects = this.raycaster.intersectObjects(
@@ -459,26 +420,5 @@ export class Chess3DUI {
 
     this.selectedIndex = null;
     this.updateHighlights();
-  }
-
-  private onResize() {
-    this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-  }
-
-  private animate() {
-    if (this.isDisposed) return;
-    this.animationId = requestAnimationFrame(this.animate.bind(this));
-    this.controls.update();
-    this.renderer.render(this.scene, this.camera);
-  }
-
-  public dispose() {
-    this.isDisposed = true;
-    if (this.animationId) cancelAnimationFrame(this.animationId);
-    window.removeEventListener("click", this.onClick);
-    window.removeEventListener("resize", this.onResize);
-    this.renderer.dispose();
   }
 }
