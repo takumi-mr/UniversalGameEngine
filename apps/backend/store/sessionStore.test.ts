@@ -184,6 +184,66 @@ describe("sessionStore", () => {
     expect((received.at(-1) as TicTacToeState | undefined)?.board?.[8]).toBe(1);
   });
 
+  it("dispatchAction はクライアント由来の組み込みアクション（JOIN / START / TIMEOUT）を適用しない", async () => {
+    const engine = new UniversalEngine(TicTacToeRuleset, {});
+    engine.dispatch({ type: "JOIN", playerId: "p1" });
+    const { server } = createSession("g-builtin", engine, "tictactoe");
+    await server.commit();
+
+    // 1 人しか居ない部屋を開始させられない
+    expect(await server.dispatchAction("p1", { type: "START" })).toBe(false);
+    expect(server.engine.getState().status).toBe("WAITING");
+    // dispatchAction 経由では着席できない（着席は join-game / gRPC Reset がエンジンに直接行う）
+    expect(await server.dispatchAction("intruder", { type: "JOIN" })).toBe(false);
+    expect(server.engine.getState().players).toEqual({ 1: "p1", [-1]: null });
+    // type を持たない値は弾く
+    expect(await server.dispatchAction("p1", null as unknown as BaseGameAction)).toBe(false);
+    expect(await server.dispatchAction("p1", { type: 1 } as unknown as BaseGameAction)).toBe(false);
+
+    // サーバー内部（deadlineSweeper）は internal: true で TIMEOUT を通せる
+    await withSession("g-builtin", async (session) => {
+      session.server.engine.dispatch({ type: "JOIN", playerId: "p2" });
+      session.server.engine.dispatch({ type: "START", playerId: "p1" });
+      session.server.engine.getState().turnDeadline = 1;
+      await session.server.commit();
+    });
+    expect(await server.dispatchAction("p1", { type: "TIMEOUT" })).toBe(false);
+    expect(server.engine.getState().status).toBe("PLAYING");
+    expect(await server.dispatchAction("p1", { type: "TIMEOUT" }, { internal: true })).toBe(true);
+    expect(server.engine.getState().status).toBe("FINISHED");
+  });
+
+  it("配信される状態にサーバーシード（prngSecret）が含まれない", async () => {
+    const { server } = createSession("g-secret", newTicTacToe(), "tictactoe");
+    const received: Record<string, unknown>[] = [];
+    localSockets = [
+      {
+        id: "s1",
+        data: { userId: "p1" },
+        emit: (_ev, p) => received.push(p as Record<string, unknown>),
+      },
+      {
+        id: "s2",
+        data: { userId: "watcher" },
+        emit: (_ev, p) => received.push(p as Record<string, unknown>),
+      },
+    ];
+    await server.dispatchAction("p1", { type: "PLACE", index: 4 });
+    await new Promise((r) => setTimeout(r, 0)); // fetchSockets の then を待つ
+
+    const states = received.filter((p) => p && typeof p === "object" && "board" in p);
+    expect(states.length).toBe(2);
+    for (const state of states) {
+      expect(state.prngSecret).toBeUndefined();
+      expect(state.prngConfig).toBeDefined();
+    }
+    expect((server.getPollingState("p1") as { prngSecret?: string }).prngSecret).toBeUndefined();
+    // ストアの記録（サーバー内部）には残る
+    expect(
+      ((await repo.loadSession("g-secret"))!.state as { prngSecret?: string }).prngSecret,
+    ).toBeTruthy();
+  });
+
   it("destroySession はストアとキャッシュの両方から消す", async () => {
     const { server } = createSession("g6", newTicTacToe(), "tictactoe");
     await server.commit();

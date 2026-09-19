@@ -25,6 +25,28 @@ export interface UniversalEngineOptions {
 }
 
 /**
+ * options のうちエンジン自身が解釈するキー。乱数のシードとハッシュ・履歴の設定で、
+ * クライアントに指定させると乱数の予測や検証の無効化ができてしまう。
+ * サーバーは部屋作成時にこれらをクライアントの options から取り除く（clientSeed だけは受け付けてよい）。
+ */
+export const ENGINE_RESERVED_OPTION_KEYS = [
+  "serverSeed",
+  "autoHash",
+  "hashInterval",
+  "maxHistorySize",
+] as const;
+
+export interface DispatchOptions {
+  /**
+   * 組み込みアクション（JOIN の着席・START のフォールバック・TIMEOUT）を有効にするか。既定 true。
+   * クライアントから届いたアクションは false で dispatch し、ルールセットの isValidAction が
+   * 受け付けるものだけを適用する（着席していない相手を勝手に開始させる・途中参加する等を防ぐ）。
+   * サーバー内部の着席・自動開始・締切処理だけが true で呼ぶ。
+   */
+  builtin?: boolean;
+}
+
+/**
  * リプレイ（GameRecord）を組み立てるためにエンジンが内部に持つ情報。
  * state と一緒に永続化しておけば、別インスタンスで loadState したエンジンでも
  * 完全な GameRecord を出力できる。
@@ -236,6 +258,10 @@ export class UniversalEngine<
     if (this.rules.maskState) {
       maskedState = this.rules.maskState(maskedState, playerId);
     }
+
+    // 3. サーバーシードは誰にも渡さない（clientSeed / nonce と合わせると以後の乱数が全て予測できる）。
+    //    終局後の開示は getGameRecord().finalServerSeed で行う
+    delete (maskedState as InternalGameState).prngSecret;
     return maskedState;
   }
 
@@ -275,7 +301,9 @@ export class UniversalEngine<
 
   // クライアントからの通信を受け取る汎用エンドポイント
   // 組み込みアクション（JOIN / START / TIMEOUT）はルールセットの TAction に含まれていなくても受け付ける
-  public dispatch(input: TAction | BuiltinAction): boolean {
+  // （options.builtin が true のとき。クライアント由来のアクションは false で呼ぶこと）
+  public dispatch(input: TAction | BuiltinAction, options: DispatchOptions = {}): boolean {
+    const builtin = options.builtin ?? true;
     // 組み込みアクションもルールセットに渡す（受け付けないルールセットは isValidAction で false を返す）
     const action = input as TAction;
     const base = this.cloneStrategy.clone(this.state);
@@ -287,7 +315,7 @@ export class UniversalEngine<
     //             その上でルールセットが JOIN を受け付ければルールセットの reduce も実行する
     //    - START: ルールセットが START を受け付けなければ status を PLAYING にする
     let builtinApplied = false;
-    if (action.type === "JOIN" && action.playerId) {
+    if (builtin && action.type === "JOIN" && action.playerId) {
       builtinApplied = this.seatPlayer(base, action.playerId, (action as { slot?: string }).slot);
     }
 
@@ -295,9 +323,11 @@ export class UniversalEngine<
     let valid = this.rules.isValidAction(base, action);
 
     //    TIMEOUT: 制限時間切れ。ルールセットが自前で扱わなければ組み込みで解決する
-    //    （getTimeoutAction → RESIGN → 強制終了）。履歴には TIMEOUT 自体が残り、リプレイでも同じ解決になる
+    //    （getTimeoutAction → RESIGN → 強制終了）。履歴には TIMEOUT 自体が残り、リプレイでも同じ解決になる。
+    //    締切はサーバー（deadlineSweeper）が発火させるものなので、クライアント由来なら受け付けない
     let timeoutResolution: TAction | "FORFEIT" | null = null;
     if (action.type === "TIMEOUT") {
+      if (!builtin) return false;
       if (!this.isTimeoutDue(base, action)) return false;
       if (!valid) {
         timeoutResolution = this.resolveTimeout(base, action);
@@ -306,7 +336,7 @@ export class UniversalEngine<
     }
 
     if (!valid) {
-      if (action.type === "START" && base.status === "WAITING") {
+      if (builtin && action.type === "START" && base.status === "WAITING") {
         base.status = "PLAYING";
         builtinApplied = true;
       } else if (timeoutResolution === "FORFEIT") {
@@ -338,7 +368,7 @@ export class UniversalEngine<
 
     // START を受け付けたのに WAITING のままなら開始扱いにする
     // （未知のアクションを素通しするルールセットや、status を持たない実装のため）
-    if (action.type === "START" && this.state.status === "WAITING") {
+    if (builtin && action.type === "START" && this.state.status === "WAITING") {
       this.state = { ...this.state, status: "PLAYING" };
       builtinApplied = true;
     }

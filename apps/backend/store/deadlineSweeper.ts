@@ -39,7 +39,13 @@ export const sweepDeadlines = async (now = Date.now()): Promise<string[]> => {
       if (!session) continue;
       let applied = false;
       for (const playerId of snapshot) {
-        if (await session.server.dispatchAction(playerId, { type: "TIMEOUT" })) applied = true;
+        // TIMEOUT は組み込みアクションなので、サーバー内部からの呼び出しであることを明示する
+        const timedOut = await session.server.dispatchAction(
+          playerId,
+          { type: "TIMEOUT" },
+          { internal: true },
+        );
+        if (timedOut) applied = true;
       }
       if (applied) {
         console.log(`[Deadline] TIMEOUT applied for game ${gameId} (${snapshot.join(", ")})`);

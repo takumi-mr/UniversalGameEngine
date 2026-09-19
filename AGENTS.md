@@ -60,14 +60,15 @@ applyWinResult?, getTimeoutAction?              // 任意
 - `BaseGameState` は `status: "WAITING" | "PLAYING" | "FINISHED"`, `players` (`{ "1": userId, "-1": userId }` のようなスロット→ID), `activePlayers`, `version`, `hash` を持つ。
 - **着席と開始はエンジンの組み込みアクション** `JOIN` / `START` で行う（`UniversalEngine.dispatch`）。`JOIN {playerId, slot?}` は `state.players` の空席に着席させ（ルールセットが JOIN を受け付ければその reduce も走る）、`START` はルールセットが START を持たなければ `status = "PLAYING"` にして合法手を持つプレイヤーを `activePlayers` にする。どちらも `history` / `version` に記録されるので、リプレイは着席から再現できる。`dispatch` は `TAction | BuiltinAction`（`GameRules.ts`）を受け付けるので、`{ type: "JOIN", playerId }` をキャストなしで渡せる。サーバー（`join-game`、gRPC `Reset`）は必ず `dispatch` 経由で行い、`state.players[...] = ...` や `state.status = ...` を直接書かない（例外: `leave-game` の離席は未対応）。`isValidAction` は通常 `status !== "PLAYING"` なら false を返すため、ルールセットの単体テストでは `state.status = "PLAYING"; state.players = {...}` を手で設定する。
 - パス処理（オセロ等）は `reduce` 内で完結させる。手番プレイヤーには必ず合法手がある状態を返す。
-- 秘匿情報は `Secret<T>` / `createSecret()` で宣言し、`engine.getMaskedState(playerId)` に任せる（`maskState` は deprecated）。
+- 秘匿情報は `Secret<T>` / `createSecret()` で宣言し、`engine.getMaskedState(playerId)` に任せる（`maskState` は deprecated）。**`Secret` で包んでいない項目は観戦者を含む全員に平文で届く**（手札・山札・正解などは必ず包む）。サーバーシード `prngSecret` は `getMaskedState` が常に取り除く（`prngConfig` のハッシュ・`clientSeed`・`nonce` は公開）。
 - 乱数は `IGameRNG` 経由のみ。**エンジンは常に RNG を渡す**（シード未指定でも自動生成し `prngConfig` / `prngSecret` に記録するので、あらゆる対局が再現可能）。ルールセットでは `requireRng(rng)`（`utils/requireRng.ts`）で受け取り、`Math.random` へのフォールバックは書かない — `determinism.test.ts` が全ゲームで `Math.random` 呼び出しを検出して落とす。ルールセットを直接呼ぶテストでは `testing/withTestRng.ts` でラップする。ID 生成も乱数に頼らない（`nextBlockId` のように既存キーから決定論的に採番する）。
 
 ### エンジンとサーバー
 
 - `UniversalEngine.dispatch(action)` = clone → 組み込み JOIN 着席 → validate → freeze → reduce（不正なら組み込み START のみ）→ RNG 設定の引き継ぎ → checkWinCondition（`WAITING` 中は評価しない）→ version++ → hash。
 - **バックエンドはステートレス**（複数インスタンス前提。詳細は [apps/backend/README.md](./apps/backend/README.md)）。真実の状態はリポジトリの `SessionRecord { type, state, bots }`、`apps/backend/store/sessionStore.ts` の `sessions` Map はインスタンスごとのキャッシュ。
-  - 着手は必ず `session.server.dispatchAction(playerId, action)`（ロック → ストアより古ければ再読込 → dispatch → 保存 → 配信）。`handleAction` は無効化してある。
+  - 着手は必ず `session.server.dispatchAction(playerId, action)`（ロック → ストアより古ければ再読込 → dispatch → 保存 → 配信）。`handleAction` は無効化してある。**`dispatchAction` は `engine.dispatch(action, { builtin: false })` で呼ぶ**ので、組み込みの JOIN 着席・START のフォールバック・TIMEOUT は効かず、ルールセットの `isValidAction` が受け付けるものだけが適用される（クライアントが人数の足りない部屋を開始させたり途中の空席に座ったりできない）。サーバー内部の締切処理だけが `dispatchAction(playerId, { type: "TIMEOUT" }, { internal: true })` で組み込みを有効にする。
+  - **部屋作成時の `options` は `apps/backend/gameOptions.ts` の `sanitizeCreateOptions` を通してからエンジンに渡す**（Socket.io `request-create-game` / gRPC `CreateGame`）。許可リスト方式で、共通キー（`clientSeed` / `playersConfig` / `addAi`）とゲームごとに登録したキーだけを型・範囲を確かめて通し、`serverSeed` / `autoHash` などのエンジン予約キー（`ENGINE_RESERVED_OPTION_KEYS`）や `playerIds` / `initialScores` のように席・点数を決めるキーは捨てる。ゲームに作成時オプションを足すときは `GAME_OPTION_SCHEMAS` に追加しないとクライアントから届かない。
   - エンジンを直接進める処理（JOIN / START / 離席、gRPC `Reset`）は `withSession(gameId, async (session) => { ...; await session.server.commit(); })` の中で行う。ロック外で `engine.dispatch` して保存しないと、別インスタンスの更新を上書きする。
   - セッションの取得は `ensureSession(gameId)`（なければストアから復元。`sessions.get` を直接使わない）。削除は `destroySession`。
   - 配信は `commit()` → `broadcastState()`（ローカルソケット + gRPC ストリーム + `serverSideEmit("uge:state-changed")`）。他インスタンスは `onRemoteStateChanged` で自分のクライアントに配り直す。AI の手番は対局を進めたインスタンスだけが起動する。
@@ -93,7 +94,7 @@ applyWinResult?, getTimeoutAction?              // 任意
 ### 新しいゲームを追加する
 
 1. `packages/shared/rules/<Name>Ruleset.ts` を実装（[rules/README.md](./packages/shared/rules/README.md) のベストプラクティス: アクションディスパッチャ、フェーズ分割、`Secret<T>`）。
-2. `packages/shared/GameRegistry.ts` に `register({ type, name, ruleset, minPlayers, maxPlayers, ... })`。`type` は小文字スネークケース（例 `othello_3d`）。
+2. `packages/shared/GameRegistry.ts` に `register({ type, name, ruleset, minPlayers, maxPlayers, ... })`。`type` は小文字スネークケース（例 `othello_3d`）。クライアントに指定させる作成時オプション（盤サイズ等）があれば `apps/backend/gameOptions.ts` の `GAME_OPTION_SCHEMAS` に型・範囲つきで登録する。
 3. テスト `packages/shared/rules/__tests__/<Name>Ruleset.test.ts`（bun:test）。
 4. フロント: `src/components/game/<Name>.vue` を作成し、`apps/frontend/src/games/<type>/index.ts` に `defineGameUI({ type, category, component: () => import(...) })` を置く（`games/registry.ts` が自動収集し、対局・リプレイ・選択画面すべてに反映される。名前・人数などは GameRegistry から取る）。`src/i18n/` の `games.<type>` に name/description/rules を追加。コンポーネント内の「自分は誰か・何ができるか」は `useGameSession(props, emit, Ruleset)` の `isPlayer / isMyTurn / legalActions / can / send` を使い、ルール判定を UI に書かない。駒を選んで動かす系は `useSelectAndMove` も併用（`Chess.vue` 参照）。
    - 効果音を付けるなら `src/games/<type>/sound.ts` に `defineSoundProfile({ se, bgm?, onAction?, onStateChange?, bgmFor? })` を置き、`defineGameUI` に `sound: () => import("@/games/<type>/sound")` を足す（`src/sound/`、[apps/frontend/README.md](./apps/frontend/README.md) の「サウンド」）。開始 / 手番 / 勝敗の共通音は書かなくても鳴る。音源は `public/sounds/<game>/` に置く（リポジトリには含めない）。

@@ -183,17 +183,26 @@ export class SocketGameServer extends GenericGameServer<BaseGameState, BaseGameA
   /**
    * アクションを 1 手適用する。ロック → 最新化 → dispatch → 配信 → 保存 までを行う。
    * Socket.io / HTTP / gRPC / AI のすべての着手はここを通る。
+   *
+   * 組み込みアクション（JOIN / START のフォールバック / TIMEOUT）はここでは無効。
+   * ルールセットの isValidAction が受け付けるアクションだけが適用されるので、
+   * クライアントが着席前の部屋を開始させたり、途中の空席に座ったりはできない。
+   * サーバー内部の処理（deadlineSweeper の TIMEOUT）だけが `internal: true` で呼ぶ。
    */
   public async dispatchAction<TAction extends BaseGameAction>(
     playerId: string,
     action: TAction,
+    options: { internal?: boolean } = {},
   ): Promise<boolean> {
+    // クライアントの送信値は型が保証されないので、最低限「type を持つオブジェクト」だけ通す
+    if (!action || typeof action !== "object" || typeof action.type !== "string") return false;
+
     return repo.withSessionLock(this.roomId, async () => {
       await this.refreshFromStore();
       // セキュリティ: 送信元の playerId をアクションに強制付与（改ざん防止）
       action.playerId = playerId;
       action.timestamp = Date.now();
-      const success = this.engine.dispatch(action);
+      const success = this.engine.dispatch(action, { builtin: options.internal === true });
       if (success) await this.commit(action);
       return success;
     });

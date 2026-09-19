@@ -20,6 +20,7 @@ import {
 import { streamManager } from "@engine/backend/network/StreamManager";
 import { setIoInstance, onClusterEvent } from "@engine/backend/network/io";
 import { isBotType } from "@engine/backend/ai/botFactory";
+import { sanitizeCreateOptions } from "@engine/backend/gameOptions";
 
 /** 他インスタンスからのクラスタイベントを購読する（Redis アダプタ使用時のみ届く） */
 const setupClusterHandlers = () => {
@@ -63,7 +64,11 @@ export const setupSocketIO = (io: Server) => {
     console.log(`User connected: ${socket.id} (User ID: ${userId})`);
 
     // 部屋の作成リクエスト
-    socket.on("request-create-game", async ({ type, options }) => {
+    socket.on("request-create-game", async ({ type, options: rawOptions }) => {
+      if (typeof type !== "string") {
+        socket.emit("error-message", "Game type is required");
+        return;
+      }
       const def = gameRegistry.getDefinition(type.toLowerCase());
       if (!def) {
         console.error(`Unknown game type: ${type}`);
@@ -75,6 +80,8 @@ export const setupSocketIO = (io: Server) => {
         console.log(`Creating game: ${type} for user ${userId}`);
         const gameId = Math.random().toString(36).substring(7);
         const normalizedType = normalizeGameType(type);
+        // クライアントの options は許可リストを通す（serverSeed や initialScores 等は捨てる）
+        const options = sanitizeCreateOptions(normalizedType, rawOptions);
         const engine = new UniversalEngine(def.ruleset, options);
         const { server } = createSession(gameId, engine, normalizedType);
 
@@ -83,7 +90,7 @@ export const setupSocketIO = (io: Server) => {
         if (state.players) {
           const slotKeys = Object.keys(state.players);
           // playersConfig: スロットごとの種別配列 (例: ['human', 'random', 'minimax'])
-          const playersConfig: string[] | undefined = options?.playersConfig;
+          const playersConfig = options.playersConfig as string[] | undefined;
 
           const seatBot = (slotKey: string, aiType: string, idx: number) => {
             if (!isBotType(aiType)) return;
@@ -101,7 +108,7 @@ export const setupSocketIO = (io: Server) => {
               const slotType = playersConfig[i];
               if (slotType && slotType !== "human") seatBot(slotKeys[i] as string, slotType, i);
             }
-          } else if (options?.addAi) {
+          } else if (typeof options.addAi === "string") {
             // レガシー互換: 最初のスロットを人間用に残し、残りを同じAIで埋める
             for (let i = 1; i < slotKeys.length; i++) {
               seatBot(slotKeys[i] as string, options.addAi, i);
@@ -286,16 +293,17 @@ export const setupSocketIO = (io: Server) => {
 
     // 着手アクションの受信
     socket.on("dispatch-action", async ({ gameId, action }) => {
+      if (!action || typeof action !== "object" || typeof action.type !== "string") {
+        socket.emit("error-message", "Invalid action");
+        return;
+      }
       const session = await ensureSession(gameId);
       if (!session) return;
 
+      // 開始前に通すのはルールセット自身が扱う START / RESET だけ。
+      // 組み込みの JOIN / START / TIMEOUT は dispatchAction では無効（着席は join-game で行う）
       const currentState = session.server.engine.getState();
-      if (
-        currentState.status !== "PLAYING" &&
-        action.type !== "JOIN" &&
-        action.type !== "RESET" &&
-        action.type !== "START"
-      ) {
+      if (currentState.status !== "PLAYING" && action.type !== "RESET" && action.type !== "START") {
         console.warn(
           `[Blocked] Action ${action.type} for game ${gameId} blocked - status is ${currentState.status}`,
         );
