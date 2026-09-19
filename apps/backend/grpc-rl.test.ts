@@ -23,8 +23,11 @@ import type { CommonResponse__Output } from "@engine/shared/network/generated/un
 import type { OthelloState } from "@engine/shared/rules/OthelloRuleset";
 import type { ShogiState } from "@engine/shared/rules/ShogiRuleset";
 import { ShogiRuleset } from "@engine/shared/rules/ShogiRuleset";
+import type { ChessState } from "@engine/shared/rules/ChessRuleset";
+import { PIECES } from "@engine/shared/rules/ChessRuleset";
 import { UniversalEngine } from "@engine/shared/UniversalEngine";
 import { SHOGI_OBS_DIM } from "@engine/shared/ai/TensorAdapter/ShogiTensorAdapter";
+import { CHESS_OBS_DIM } from "@engine/shared/ai/TensorAdapter/ChessTensorAdapter";
 // Redis/MongoDB へ接続しないよう、モジュール読み込み前に RL_MODE を有効化する
 process.env.RL_MODE = "true";
 const { startGrpcServer } = await import("@engine/backend/grpc-server");
@@ -365,6 +368,82 @@ describe("gRPC RL loop (Reset/Step)", () => {
     // Step も同じ（セッションの局面を差し替えてから指す）
     sessions.get(gameId)!.server.engine.loadState(state);
     const stepped = await step({ gameId, playerId: "sente", actionId: mate });
+    expect(stepped.isFinished).toBe(true);
+    expect(stepped.reward).toBe(1);
+    expect(stepped.legalActionIds).toEqual([]);
+  });
+
+  it("チェス: Reset は 71 要素の観測と 20 の合法手を返し、Step / Simulate で指し進められること", async () => {
+    const { gameId } = await createGame({ gameType: "chess" });
+    const res = await reset({ gameId, playerIds: ["white", "black"] });
+    expect(res.activePlayers).toEqual(["white"]);
+    expect(res.initialStateTensor.length).toBe(CHESS_OBS_DIM);
+    expect(res.initialLegalActionIds.length).toBe(20);
+    // 白のキングは自分視点の (4,7)、黒のキングは (4,0)。キャスリング権 4 つ、アンパッサンなし
+    expect(res.initialStateTensor[7 * 8 + 4]).toBe(PIECES.K);
+    expect(res.initialStateTensor[4]).toBe(-PIECES.K);
+    expect(res.initialStateTensor.slice(64)).toEqual([1, 1, 1, 1, -1, 0, 1]);
+
+    // Step: 白の e2-e4（移動先 (4,4) = 36 × 28 + 上方向 0）→ 黒視点の観測（上下反転して自分のキングが (4,7) に見える）
+    const e4 = 36 * 28;
+    expect(res.initialLegalActionIds).toContain(e4);
+    const stepped = await step({ gameId, playerId: "white", actionId: e4 });
+    expect(stepped.isFinished).toBe(false);
+    expect(stepped.activePlayers).toEqual(["black"]);
+    expect(stepped.nextStateTensor[7 * 8 + 4]).toBe(PIECES.K);
+    // 黒視点では白のポーンが e4 = (4,4) → 反転して (4,3) に見える。アンパッサン対象 e3 = (4,5) → 反転して (4,2)
+    expect(stepped.nextStateTensor[3 * 8 + 4]).toBe(-PIECES.P);
+    expect(stepped.nextStateTensor[68]).toBe(2 * 8 + 4);
+    expect(stepped.legalActionIds.length).toBe(20);
+    const state = JSON.parse(stepped.stateJson) as ChessState;
+    expect(state.turn).toBe(-1);
+    expect(state.board[36]).toBe(PIECES.P);
+
+    // Simulate: Step と同じ手を初期局面に適用すると同じ局面になる
+    const sim = await simulate({
+      gameType: "chess",
+      stateJson: res.stateJson,
+      playerId: "white",
+      actionId: e4,
+    });
+    expect(sim.error).toBe("");
+    expect((JSON.parse(sim.stateJson) as ChessState).board).toEqual(state.board);
+    expect(sim.stateTensor).toEqual(stepped.nextStateTensor);
+  });
+
+  it("チェス: チェックメイトの手を Simulate / Step すると is_finished と報酬 1 が返ること", async () => {
+    // 白: K e1, R a1 / 黒: K e8, P d7 e7 f7。Ra1-a8 でバックランクメイト
+    const I = (x: number, y: number) => y * 8 + x;
+    const { gameId } = await createGame({ gameType: "chess" });
+    const res = await reset({ gameId, playerIds: ["white", "black"] });
+    const state = JSON.parse(res.stateJson) as ChessState;
+    state.board = new Array(64).fill(0);
+    state.board[I(4, 7)] = PIECES.K;
+    state.board[I(0, 7)] = PIECES.R;
+    state.board[I(4, 0)] = -PIECES.K;
+    state.board[I(3, 1)] = -PIECES.P;
+    state.board[I(4, 1)] = -PIECES.P;
+    state.board[I(5, 1)] = -PIECES.P;
+    state.castling = { wK: false, wQ: false, bK: false, bQ: false };
+    state.positionHistory = [];
+    // ルーク a8: 移動先 (0,0) × 28 + 上方向 0
+    const mate = I(0, 0) * 28 + 0;
+
+    const sim = await simulate({
+      gameType: "chess",
+      stateJson: JSON.stringify(state),
+      playerId: "white",
+      actionId: mate,
+    });
+    expect(sim.error).toBe("");
+    expect(sim.isFinished).toBe(true);
+    expect(sim.reward).toBe(1);
+    expect(sim.legalActionIds).toEqual([]);
+    expect((JSON.parse(sim.stateJson) as ChessState).status).toBe("FINISHED");
+
+    // Step も同じ（セッションの局面を差し替えてから指す）
+    sessions.get(gameId)!.server.engine.loadState(state);
+    const stepped = await step({ gameId, playerId: "white", actionId: mate });
     expect(stepped.isFinished).toBe(true);
     expect(stepped.reward).toBe(1);
     expect(stepped.legalActionIds).toEqual([]);

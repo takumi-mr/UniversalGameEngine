@@ -8,7 +8,7 @@ import torch
 
 from uge_rl.az_net import build_policy_value_net
 from uge_rl.dqn import build_qnet
-from uge_rl.games import SHOGI_N_ACTIONS, SHOGI_OBS_DIM, get_game_spec
+from uge_rl.games import CHESS_N_ACTIONS, CHESS_OBS_DIM, SHOGI_N_ACTIONS, SHOGI_OBS_DIM, get_game_spec
 
 
 def _shogi_initial_obs() -> np.ndarray:
@@ -74,6 +74,84 @@ def test_shogi_networks_forward() -> None:
     assert logits.shape == (2, SHOGI_N_ACTIONS) and values.shape == (2,)
     q = build_qnet(spec, SHOGI_OBS_DIM)(x)
     assert q.shape == (2, SHOGI_N_ACTIONS)
+
+
+def _chess_initial_obs() -> np.ndarray:
+    """ChessTensorAdapter が初期局面で返す観測（白視点）を再現する。"""
+    board = np.zeros(64, dtype=np.float32)
+    back = [4, 2, 3, 5, 6, 3, 2, 4]
+    board[0:8] = [-v for v in back]  # 黒の一段目
+    board[8:16] = -1  # 黒のポーン
+    board[48:56] = 1  # 白のポーン
+    board[56:64] = back  # 白の一段目
+    # キャスリング権 4 つ、アンパッサンなし、50 手カウンタ 0、同形 1 回目
+    extra = np.array([1, 1, 1, 1, -1, 0, 1], dtype=np.float32)
+    return np.concatenate([board, extra])
+
+
+def test_chess_spec_shape_and_actions() -> None:
+    spec = get_game_spec("chess", CHESS_OBS_DIM)
+    assert spec.obs_shape == (19, 8, 8)
+    assert spec.n_actions == CHESS_N_ACTIONS == 1792
+    # chess_3d も同じ契約
+    assert get_game_spec("chess_3d", CHESS_OBS_DIM).n_actions == CHESS_N_ACTIONS
+    with pytest.raises(ValueError):
+        get_game_spec("chess", 64)
+
+
+def test_chess_planes_encode_pieces_and_scalars() -> None:
+    spec = get_game_spec("chess", CHESS_OBS_DIM)
+    obs = _chess_initial_obs()
+    obs[64 + 1] = 0  # 自分のクイーンサイドのキャスリング権を失った
+    obs[68] = 3 * 8 + 4  # アンパッサンの対象 (x=4, y=3)
+    obs[69] = 50  # 50 手カウンタ
+    obs[70] = 2  # 同形 2 回目
+    x = spec.encode(obs)
+    assert x.shape == (19, 8, 8) and x.dtype == np.float32
+
+    # 自分のキング（駒種 6 → チャンネル 5）は (4,7)、相手のキング（チャンネル 6+5）は (4,0)
+    assert x[5, 7, 4] == 1 and x[5].sum() == 1
+    assert x[6 + 5, 0, 4] == 1 and x[6 + 5].sum() == 1
+    # 自分のポーン（チャンネル 0）は 8 枚、相手のポーン（チャンネル 6）も 8 枚
+    assert x[0].sum() == 8 and x[6].sum() == 8
+    # 盤面プレーンは各マス高々 1 つの駒種
+    assert (x[:12].sum(axis=0) <= 1).all()
+    # キャスリング権は盤全体に敷く（自分 K=1, 自分 Q=0, 相手 K=1, 相手 Q=1）
+    assert np.allclose(x[12], 1) and np.allclose(x[13], 0) and np.allclose(x[14], 1) and np.allclose(x[15], 1)
+    # 50 手カウンタ / 100、同形回数 / 3
+    assert np.allclose(x[16], 0.5)
+    assert np.allclose(x[17], 2 / 3)
+    # アンパッサンは one-hot
+    assert x[18, 3, 4] == 1 and x[18].sum() == 1
+
+
+def test_chess_en_passant_plane_is_empty_without_target() -> None:
+    spec = get_game_spec("chess", CHESS_OBS_DIM)
+    x = spec.encode(_chess_initial_obs())
+    assert x[18].sum() == 0
+    assert np.allclose(x[17], 1 / 3)
+
+
+def test_chess_encode_handles_batches() -> None:
+    spec = get_game_spec("chess", CHESS_OBS_DIM)
+    second = _chess_initial_obs()
+    second[68] = 20
+    batch = np.stack([_chess_initial_obs(), second, _chess_initial_obs()])
+    x = spec.encode(batch)
+    assert x.shape == (3, 19, 8, 8)
+    assert np.array_equal(x[0], spec.encode(_chess_initial_obs()))
+    assert np.array_equal(x[1], spec.encode(second))
+    assert x[1, 18, 2, 4] == 1 and x[0, 18].sum() == 0
+
+
+def test_chess_networks_forward() -> None:
+    spec = get_game_spec("chess", CHESS_OBS_DIM)
+    x = torch.as_tensor(spec.encode(np.stack([_chess_initial_obs()] * 2)))
+    net = build_policy_value_net(spec, CHESS_OBS_DIM, channels=8, blocks=1)
+    logits, values = net(x)
+    assert logits.shape == (2, CHESS_N_ACTIONS) and values.shape == (2,)
+    q = build_qnet(spec, CHESS_OBS_DIM)(x)
+    assert q.shape == (2, CHESS_N_ACTIONS)
 
 
 def test_othello_spec_still_square() -> None:
